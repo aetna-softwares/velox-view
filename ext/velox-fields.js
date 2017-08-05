@@ -6,7 +6,7 @@
     } else if (typeof define === 'function' && define.amd) {
         define(['VeloxScriptLoader', 'VeloxWebView'], factory);
     } else {
-        global.VeloxWebView.registerExtension(factory(global.VeloxScriptLoader, global.VeloxWebView));
+        global.VeloxWebView.registerExtension(factory(global.veloxScriptLoader, global.VeloxWebView));
     }
 }(this, (function (VeloxScriptLoader, VeloxWebView) { 'use strict';
 

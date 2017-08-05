@@ -6,7 +6,7 @@
     } else if (typeof define === 'function' && define.amd) {
         define(['VeloxScriptLoader', 'VeloxWebView'], factory);
     } else {
-        global.VeloxWebView.registerExtension(factory(global.VeloxScriptLoader, global.VeloxWebView));
+        global.VeloxWebView.registerExtension(factory(global.veloxScriptLoader, global.VeloxWebView));
     }
 }(this, (function (VeloxScriptLoader, VeloxWebView) { 'use strict';
 
@@ -23,7 +23,9 @@
         var view = this ;
         if(schema) {
             doInitView.bind(view)(cb) ;
-        }  
+        } else {
+            cb() ;
+        }
     } ;
 
     /**

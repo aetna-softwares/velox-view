@@ -20,24 +20,20 @@
         var loadedCss = {};
 
         /**
-         * Unique ID generator
-         * 
-         * @constructor
+         * Create an unique ID
          */
-        function UniqueId() {
-                this.increment = 0;
+        function uuidv4() {
+                if(crypto && crypto.getRandomValues){
+                return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+                        (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                ) ;
+                }else{
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                        return v.toString(16);
+                });
+                }
         }
-        /**
-         * Create a new unique id
-         */
-        UniqueId.prototype.createId = function () {
-                return this.increment++;
-        };
-
-        /**
-         * Global ID generator
-         */
-        var globalUid = new UniqueId();
 
         /**
          * Event emiter
@@ -380,7 +376,7 @@
                         var match;
                         while ((match = REGEXP_ID.exec(html)) !== null) {
                                 var id = match[1];
-                                var uuidEl = globalUid.createId();
+                                var uuidEl = uuidv4();
 
                                 if (id[0] === "#") {
                                         //force keep this id
@@ -562,20 +558,75 @@
                                         if (!viewId) {
                                                 viewId = el.getAttribute("data-original-id");
                                                 if (!viewId) {
-                                                        viewId = globalUid.createId();
+                                                        viewId = uuidv4();
                                                 }
                                                 el.setAttribute("data-view-id", viewId);
                                         }
                                         if (!this.views[viewId]) {
-                                                this.views[viewId] = {
-                                                        el: el,
-                                                        bindPath: bindPath,
-                                                        html: el.innerHTML,
-                                                        instances: []
-                                                };
+                                                var viewAttr = el.getAttribute("data-view");
+                                                if(viewAttr){
+                                                        var lastSlash = viewAttr.lastIndexOf("/") ;
+                                                        var dir = this.directory ;
+                                                        var file = viewAttr ;
+                                                        if(lastSlash !== -1){
+                                                                dir = viewAttr.substring(0, lastSlash) ;
+                                                                file= viewAttr.substring(lastSlash+1) ;
+                                                        }
+                                                        this.views[viewId] = {
+                                                                el: el,
+                                                                bindPath: bindPath,
+                                                                dir: dir,
+                                                                file: file,
+                                                                instances: []
+                                                        };
+                                                }else{
+                                                        this.views[viewId] = {
+                                                                el: el,
+                                                                bindPath: bindPath,
+                                                                html: el.innerHTML,
+                                                                instances: []
+                                                        };
+                                                }
+                                                
+
+                                                
                                                 el.innerHTML = "";
                                         }
                                 }
+                        }
+
+                        var elementsView = this.container.querySelectorAll('[data-view]');
+                        //first run to eliminate sub views HTML and populate data bind reference
+                        for (i = 0; i < elementsView.length; i++) {
+                                el = elementsView[i];
+                                if(!el.getAttribute("data-bind")){ //view with data-bind has already been taken in data-bind loop
+                                        var viewId = el.getAttribute("data-view-id");
+                                        if (!viewId) {
+                                                viewId = el.getAttribute("data-original-id");
+                                                if (!viewId) {
+                                                        viewId = uuidv4();
+                                                }
+                                                el.setAttribute("data-view-id", viewId);
+                                        }
+                                        
+                                        var viewAttr = el.getAttribute("data-view");
+                                        
+                                        var lastSlash = viewAttr.lastIndexOf("/") ;
+                                        var dir = this.directory ;
+                                        var file = viewAttr ;
+                                        if(lastSlash !== -1){
+                                                dir = viewAttr.substring(0, lastSlash) ;
+                                                file= viewAttr.substring(lastSlash+1) ;
+                                        }
+                                        this.views[viewId] = {
+                                                el: el,
+                                                bindPath: this.bindPath,
+                                                dir: dir,
+                                                file: file,
+                                                instances: []
+                                        };
+                                }
+                                
                         }
 
                         elements = this.container.querySelectorAll('[data-bind]');
@@ -624,19 +675,22 @@
                 Object.keys(this.views).forEach((function (viewId) {
                         var view = this.views[viewId];
                         var el = view.el;
-                        var bindPath = view.bindPath;
+                        var bindPath = view.bindPath || "";
                         var bindData = pathExtract(baseData, bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
+                        if(!Array.isArray(bindData)){
+                                bindData = [bindData] ;
+                        }
                         bindData.forEach((function (d, y) {
                                 if (!view.instances[y]) {
                                         //this instance does not exist yet, create it
-                                        var v = new VeloxWebView();
+                                        var v = new VeloxWebView(view.dir, view.file);
                                         view.instances[y] = v;
                                         calls.push((function (cb) {
 
                                                 v.init({
                                                         containerParent: el,
                                                         html: view.html,
-                                                        css: "",
+                                                        css: view.html?"":undefined,
                                                         bindObject: this.bindObject,
                                                         bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + y + "]")
                                                 }, cb);
@@ -648,6 +702,7 @@
                                         }).bind(this));
                                 }
                         }).bind(this));
+
                         //delete removed elements
                         var removedInstance = view.instances.splice(bindData.length);
                         removedInstance.forEach((function (instance) {
