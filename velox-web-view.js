@@ -112,45 +112,27 @@
         };
 
         /**
-         * Convert relative path to absolute
-         * 
-         * for example "/foo/bar/" + "../foo" gives "/foo/foo"
-         * 
-         * credit : http://stackoverflow.com/a/14780463
-         * 
-         * @param base {string} - the base path
-         * @param relative {string} - the relative path to apply
-         * @return {string} - the absolute path corresponding to the relative
-         */
-        function relativePathToAbsolute(base, relative) {
-                var stack = base.split("/"),
-                        parts = relative.split("/");
-                stack.pop(); // remove current file name (or empty string)
-                // (omit if "base" is the current folder without trailing slash)
-                for (var i = 0; i < parts.length; i++) {
-                        if (parts[i] == ".")
-                                continue;
-                        if (parts[i] == "..")
-                                stack.pop();
-                        else
-                                stack.push(parts[i]);
-                }
-                return stack.join("/");
-        }
-
-        /**
          * Extract a sub object use a path
          * 
          * for example {foo: {bar : "something"}} with the path "foo.bar" gives "something"
          * 
          * @param {object} obj - The object in wich extract the sub object
          * @param {(string|string[])} path - The path used to extract the sub object
+         * @param {boolean} getParent return the object containing the target value instead of the target value (default false)
          * @return {object} - The extracted sub object
          */
-        function pathExtract(obj, path) {
-                var pathArray = path.slice();
+        function pathExtract(obj, path, getParent) {
+                if(!path){
+                        return obj ;
+                }
+                var pathArray = path ;
                 if (!Array.isArray(path)) {
                         pathArray = path.split(".");
+                }else{
+                        pathArray = path.slice();
+                }
+                if(getParent){
+                        pathArray.pop() ;
                 }
                 var dataObject = obj;
                 while (pathArray.length > 0) {
@@ -279,6 +261,7 @@
                 this.initDone = false;
                 this.bindObject = null;
                 this.bindPath = null;
+                this.innerViewIds = [] ;
 
                 Object.defineProperty(this, "EL", {
                         get: (function () {
@@ -293,9 +276,13 @@
                                         Object.keys(this.ids).forEach((function (id) {
                                                 els[id] = document.getElementById(this.ids[id]);
                                                 if (els[id]) {
+                                                        els[id].on = els[id].addEventListener ;
                                                         elFound = true;
                                                 }
                                         }).bind(this));
+                                        this.innerViewIds.forEach(function(innerViewId){
+                                                els[innerViewId.id] = innerViewId ;
+                                        }.bind(this)) ;
                                 }
                                 if (elFound) {
                                         this.elements = els; //remember only if found
@@ -343,27 +330,7 @@
                         return callback();
                 }
 
-                if (typeof (this.container) === "string") {
-                        this.containerId = this.container;
-                        this.container = document.getElementById(this.container);
-                }
-
-                if (!this.container) {
-                        if (this.containerParent) {
-                                //automatically create container in parent if not exist
-                                this.container = document.createElement("DIV");
-                                if (this.containerId) {
-                                        this.container.id = this.containerId;
-                                }
-
-                                if (typeof (this.containerParent) === "string") {
-                                        this.containerParent = document.getElementById(this.containerParent);
-                                }
-                                this.containerParent.appendChild(this.container);
-                        } else {
-                                throw this.containerId + " is not found";
-                        }
-                }
+                
 
 
                 this.loadCSS();
@@ -372,6 +339,19 @@
                         this.ids = {};
 
                         var htmlReplaced = html;
+
+                        var functionInView = null;
+                        var indexScript = htmlReplaced.toLowerCase().indexOf("<script") ;
+                        if(indexScript !== -1){
+                                var indexBodyScript = htmlReplaced.indexOf(">", indexScript) ;
+                                var indexEndScript = htmlReplaced.toLowerCase().indexOf("</script>") ;
+                                if(indexEndScript === -1){
+                                        return callback("can't find closing </script> in view") ;
+                                }
+                                var scriptBody = htmlReplaced.substring(indexBodyScript+1, indexEndScript) ;
+                                functionInView = new Function("view", scriptBody) ;
+                                htmlReplaced = htmlReplaced.substring(0, indexScript)+htmlReplaced.substring(indexEndScript+"</script>".length) ;
+                        }
 
                         var match;
                         while ((match = REGEXP_ID.exec(html)) !== null) {
@@ -400,29 +380,74 @@
 
                         htmlReplaced = htmlReplaced.replace(/__dir__/g, this.directory);
 
-                        this.container.innerHTML = htmlReplaced;
+
+
+                        if (typeof (this.container) === "string") {
+                                this.containerId = this.container;
+                                this.container = document.getElementById(this.container);
+                        }
+
+                        if (!this.container) {
+                                if (this.containerParent) {
+                                        //automatically create container in parent if not exist
+                                        var div = document.createElement("DIV");
+                                        div.innerHTML = htmlReplaced;
+                                        if(div.childElementCount === 1){
+                                                //only 1 root element in view, use it as container
+                                                this.container = div.children[0] ;
+                                        }else{
+                                                //many root element in the view, use the div as container
+                                                this.container = div ;
+                                        }
+
+                                        if (this.containerId) {
+                                                this.container.id = this.containerId;
+                                        }
+
+                                        if (typeof (this.containerParent) === "string") {
+                                                this.containerParent = document.getElementById(this.containerParent);
+                                        }
+                                        this.container.style.display = "none"; //hide during init
+                                        this.containerParent.appendChild(this.container);
+                                } else {
+                                        throw this.containerId + " is not found";
+                                }
+                        } else {
+                                this.container.style.display = "none"; //hide during init
+                                this.container.innerHTML = htmlReplaced;
+                        }
+
+                        
 
                         this.initAutoEmit();
 
-                        this.render((function () {
+                        this.prepareSubView() ;
+
+                        var calls = [];
+                        VeloxWebView.extensions.forEach((function (extension) {
+                                if (extension.init) {
+                                        if (extension.init.length === 0) {
+                                                //no callback
+                                                extension.init.bind(this)();
+                                        } else {
+                                                calls.push((function (cb) {
+                                                        extension.init.bind(this)(cb);
+                                                }).bind(this));
+                                        }
+                                }
+                        }).bind(this));
+
+                        asyncSeries(calls, (function (err) {
+                                
+
+                                if(functionInView){
+                                        functionInView(this) ;
+                                }
                                 this.initDone = true;
                                 this.emit("initDone");
 
-                                var calls = [];
-                                VeloxWebView.extensions.forEach((function (extension) {
-                                        if (extension.init) {
-                                                if (extension.init.length === 0) {
-                                                        //no callback
-                                                        extension.init.bind(this)();
-                                                } else {
-                                                        calls.push((function (cb) {
-                                                                extension.init.bind(this)(cb);
-                                                        }).bind(this));
-                                                }
-                                        }
-                                }).bind(this));
-
-                                asyncSeries(calls, (function (err) {
+                                this.render((function () {
+                                        this.container.style.display = ""; //show after init        
                                         callback(err);
                                 }).bind(this));
                         }).bind(this));
@@ -436,7 +461,7 @@
          * @return {object} - The object bound to the view
          */
         VeloxWebView.prototype.getBoundObject = function () {
-                return getDataFromPath(this.bindObject, this.bindPath);
+                return pathExtract(this.bindObject, this.bindPath);
         };
 
         /**
@@ -525,6 +550,132 @@
         };
 
 
+        VeloxWebView.prototype._addSubView = function(el){
+                if(Object.keys(this.views).some(function(k){ return this.views[k].el === el;}.bind(this))){
+                        return; //already added
+                }
+
+
+                var viewId = el.getAttribute("data-view-id");
+                if (!viewId) {
+                        viewId = el.getAttribute("data-original-id");
+                        if (!viewId) {
+                                viewId = uuidv4();
+                        }
+                        el.setAttribute("data-view-id", viewId);
+                }
+                if (!this.views[viewId]) {
+                        var viewAttr = el.getAttribute("data-view");
+                        var bindAttr = el.getAttribute("data-bind");
+                        var showIfAttr = el.getAttribute("data-show-if");
+                        var hideIfAttr = el.getAttribute("data-hide-if");
+                        if(viewAttr){
+                                var lastSlash = viewAttr.lastIndexOf("/") ;
+                                var dir = this.directory ;
+                                var file = viewAttr ;
+                                if(lastSlash !== -1){
+                                        dir = viewAttr.substring(0, lastSlash) ;
+                                        file= viewAttr.substring(lastSlash+1) ;
+                                }
+                                this.views[viewId] = {
+                                        el: el,
+                                        bindPath: bindAttr,
+                                        dir: dir,
+                                        file: file,
+                                        showIf: showIfAttr,
+                                        hideIf: hideIfAttr,
+                                        instances: []
+                                };
+                        }else{
+                                this.views[viewId] = {
+                                        el: el,
+                                        bindPath: bindAttr,
+                                        html: el.innerHTML,
+                                        showIf: showIfAttr,
+                                        hideIf: hideIfAttr,
+                                        instances: []
+                                };
+                                
+                        }
+                        
+                        el.innerHTML = "";
+                }
+        } ;
+
+        VeloxWebView.prototype.prepareSubView = function () {
+                var elementsSubs = [] ;
+                var i, el, bindPath;
+                
+                //views linked to data-show-if
+                var elementsShowIf = this.container.querySelectorAll('[data-show-if]');
+                for (i = 0; i < elementsShowIf.length; i++) {
+                        elementsSubs.push(elementsShowIf[i]) ;
+                }
+
+                //views linked to data-show-if
+                var elementsHideIf = this.container.querySelectorAll('[data-hide-if]');
+                for (i = 0; i < elementsHideIf.length; i++) {
+                        elementsSubs.push(elementsHideIf[i]) ;
+                }
+
+                
+                //views linked to data bind of array like data-bind="obj.listOfSomething[]"
+                var elements = this.container.querySelectorAll('[data-bind]');
+                for (i = 0; i < elements.length; i++) {
+                        el = elements[i];
+                        bindPath = el.getAttribute("data-bind");
+                        if (bindPath.replace(/\s/g, "").match(/\[\]$/)) {
+                                elementsSubs.push(el) ;
+                        }
+                }
+
+                //view explicitelly referenced with data-view="dir/myview"
+                var elementsView = this.container.querySelectorAll('[data-view]');
+                for (i = 0; i < elementsView.length; i++) {
+                        elementsSubs.push(elementsView[i]) ;
+                }
+
+                for (i = 0; i < elementsSubs.length; i++) {
+                        el = elementsSubs[i] ;
+                        //check if it is a sub element of a subview
+                        var parent = el.parentElement ;
+                        var isAlreadyInSubView = false;
+                        while(parent && parent !== this.container){
+                                if(elementsSubs.indexOf(parent) !== -1){
+                                     isAlreadyInSubView = true;
+                                     break;   
+                                }
+                                parent = parent.parentElement ;
+                        }
+
+                        //reset the id has it will be parsed again when sub view will be instancied
+                        var elementsSubViews = el.querySelectorAll('[data-original-id]');
+                        for(var z=0; z<elementsSubViews.length; z++){
+                                var elInner = elementsSubViews[z] ;
+                                elInner.id = elInner.getAttribute("data-original-id") ; 
+                                elInner.setAttribute("data-original-id", "") ;
+
+                                //for the anonymous subviews, remember all internal id to give access in EL (because there is no explicit view to access to them)
+                                this.innerViewIds.push({
+                                        id: elInner.id,
+                                        el :el,
+                                        listeners: {},
+                                        addEventListener: function(event, listener){
+                                                if(!this.listeners[event]){
+                                                        this.listeners[event] = [] ;
+                                                }
+                                                this.listeners[event].push(listener) ;
+                                        }
+                                }) ;
+                        }
+                        if(!isAlreadyInSubView){
+                                //we reference only the direct subview, subviews of subviews will be handled by the subview
+                                this._addSubView(el) ;
+                        }
+                }
+
+        };
+
         /**
          * Render data in the view
          * 
@@ -532,6 +683,8 @@
          * @param {function} [callback] - Called when render is done
          */
         VeloxWebView.prototype.render = function (bindObject, callback) {
+                this.elements = null; //clear EL collection to force recompute as some sub element may change on render
+
                 if (typeof (bindObject) === "function") {
                         callback = bindObject;
                         bindObject = undefined;
@@ -547,93 +700,10 @@
                 if (!this.boundElements) {
                         this.boundElements = [];
 
-                        var i, el, bindPath;
                         var elements = this.container.querySelectorAll('[data-bind]');
-                        //first run to eliminate sub views HTML and populate data bind reference
-                        for (i = 0; i < elements.length; i++) {
-                                el = elements[i];
-                                bindPath = el.getAttribute("data-bind");
-                                if (bindPath.replace(/\s/g, "").match(/\[\]$/)) {
-                                        var viewId = el.getAttribute("data-view-id");
-                                        if (!viewId) {
-                                                viewId = el.getAttribute("data-original-id");
-                                                if (!viewId) {
-                                                        viewId = uuidv4();
-                                                }
-                                                el.setAttribute("data-view-id", viewId);
-                                        }
-                                        if (!this.views[viewId]) {
-                                                var viewAttr = el.getAttribute("data-view");
-                                                if(viewAttr){
-                                                        var lastSlash = viewAttr.lastIndexOf("/") ;
-                                                        var dir = this.directory ;
-                                                        var file = viewAttr ;
-                                                        if(lastSlash !== -1){
-                                                                dir = viewAttr.substring(0, lastSlash) ;
-                                                                file= viewAttr.substring(lastSlash+1) ;
-                                                        }
-                                                        this.views[viewId] = {
-                                                                el: el,
-                                                                bindPath: bindPath,
-                                                                dir: dir,
-                                                                file: file,
-                                                                instances: []
-                                                        };
-                                                }else{
-                                                        this.views[viewId] = {
-                                                                el: el,
-                                                                bindPath: bindPath,
-                                                                html: el.innerHTML,
-                                                                instances: []
-                                                        };
-                                                }
-                                                
-
-                                                
-                                                el.innerHTML = "";
-                                        }
-                                }
-                        }
-
-                        var elementsView = this.container.querySelectorAll('[data-view]');
-                        //first run to eliminate sub views HTML and populate data bind reference
-                        for (i = 0; i < elementsView.length; i++) {
-                                el = elementsView[i];
-                                if(!el.getAttribute("data-bind")){ //view with data-bind has already been taken in data-bind loop
-                                        var viewId = el.getAttribute("data-view-id");
-                                        if (!viewId) {
-                                                viewId = el.getAttribute("data-original-id");
-                                                if (!viewId) {
-                                                        viewId = uuidv4();
-                                                }
-                                                el.setAttribute("data-view-id", viewId);
-                                        }
-                                        
-                                        var viewAttr = el.getAttribute("data-view");
-                                        
-                                        var lastSlash = viewAttr.lastIndexOf("/") ;
-                                        var dir = this.directory ;
-                                        var file = viewAttr ;
-                                        if(lastSlash !== -1){
-                                                dir = viewAttr.substring(0, lastSlash) ;
-                                                file= viewAttr.substring(lastSlash+1) ;
-                                        }
-                                        this.views[viewId] = {
-                                                el: el,
-                                                bindPath: this.bindPath,
-                                                dir: dir,
-                                                file: file,
-                                                instances: []
-                                        };
-                                }
-                                
-                        }
-
-                        elements = this.container.querySelectorAll('[data-bind]');
-                        //second run to get simple bind
-                        for (i = 0; i < elements.length; i++) {
-                                el = elements[i];
-                                bindPath = el.getAttribute("data-bind");
+                        for (var i = 0; i < elements.length; i++) {
+                                var el = elements[i];
+                                var bindPath = el.getAttribute("data-bind");
                                 if (!bindPath.replace(/\s/g, "").match(/\[\]$/)) {
                                         this.boundElements.push({
                                                 el: el,
@@ -668,7 +738,33 @@
                                 }
                                 el.innerHTML = bindData;
                         }
+
+                        //dispatch bound event on this element
+                        var event = document.createEvent('CustomEvent');
+                        event.initCustomEvent('bound', false, true, {
+                                value: bindData,
+                                baseData: baseData,
+                                bindPath: bindPath,
+                                data: pathExtract(baseData, bindPath, true)
+                        });
+                        Object.keys(event.detail).forEach(function(k){
+                                event[k] = event.detail[k] ;
+                        });
+                        el.dispatchEvent(event);
                 }).bind(this));
+
+                //dispatch bound event on container element
+                var event = document.createEvent('CustomEvent');
+                event.initCustomEvent('bound', false, true, {
+                        value: this.getBoundObject(),
+                        baseData: this.bindObject,
+                        bindPath: this.bindPath,
+                        data: pathExtract(this.bindObject, this.bindPath, true)
+                });
+                Object.keys(event.detail).forEach(function(k){
+                        event[k] = event.detail[k] ;
+                });
+                this.container.dispatchEvent(event);
 
                 //set sub views
                 var calls = [];
@@ -676,35 +772,80 @@
                         var view = this.views[viewId];
                         var el = view.el;
                         var bindPath = view.bindPath || "";
-                        var bindData = pathExtract(baseData, bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
-                        if(!Array.isArray(bindData)){
-                                bindData = [bindData] ;
-                        }
-                        bindData.forEach((function (d, y) {
-                                if (!view.instances[y]) {
-                                        //this instance does not exist yet, create it
-                                        var v = new VeloxWebView(view.dir, view.file);
-                                        view.instances[y] = v;
-                                        calls.push((function (cb) {
-
-                                                v.init({
-                                                        containerParent: el,
-                                                        html: view.html,
-                                                        css: view.html?"":undefined,
-                                                        bindObject: this.bindObject,
-                                                        bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + y + "]")
-                                                }, cb);
-                                        }).bind(this));
-                                } else {
-                                        //this instance already exist, just reload data in it
-                                        calls.push((function (cb) {
-                                                view.instances[y].render(cb);
-                                        }).bind(this));
+                        var shouldDisplay = true;
+                        if(view.showIf){
+                                var showIfData = pathExtract(baseData, view.showIf) ;
+                                if(!showIfData || (Array.isArray(showIfData) && showIfData.length === 0)){
+                                       shouldDisplay = false ; 
                                 }
-                        }).bind(this));
+                        }
+                        if(view.hideIf){
+                                var hideIfData = pathExtract(baseData, view.hideIf) ;
+                                shouldDisplay = false;
+                                if(hideIfData) {
+                                        if(!Array.isArray(hideIfData)){
+                                               shouldDisplay = true ; 
+                                        } else if(hideIfData.length>0){
+                                                shouldDisplay = true ; 
+                                        }
+                                }
+                        }
+
+                        var removedInstance = [] ;
+                        if(shouldDisplay){
+                                var bindData = pathExtract(baseData, bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
+                                if(!Array.isArray(bindData)){
+                                        bindData = [bindData] ;
+                                }
+                                bindData.forEach((function (d, y) {
+                                        if (!view.instances[y]) {
+                                                //this instance does not exist yet, create it
+                                                var v = new VeloxWebView(view.dir, view.file);
+                                                view.instances[y] = v;
+                                                if(view.html){ //anonymous subview
+                                                        v.on("initDone", function(){
+                                                                //propagate event listener from containing view to subview created elements
+                                                                this.innerViewIds.forEach(function(innerViewId){
+                                                                        if(v.ids[innerViewId.id]){ //the ids belong to this view
+                                                                                Object.keys(innerViewId.listeners).forEach(function(event){
+                                                                                        innerViewId.listeners[event].forEach(function(l){
+                                                                                                v.EL[innerViewId.id].addEventListener(event, l) ;
+                                                                                        }) ;
+                                                                                }) ;  
+                                                                        }
+                                                                }) ;
+                                                                //as it is an anonymous subview, the emitted event are propagated to this view
+                                                                v.emit = function(event, data){
+                                                                        this.emit(event, data) ;
+                                                                }.bind(this) ;
+                                                        }.bind(this)) ;
+                                                        
+                                                }
+                                                calls.push((function (cb) {
+                                                        v.init({
+                                                                containerParent: el,
+                                                                html: view.html,
+                                                                css: view.html?"":undefined,
+                                                                bindObject: this.bindObject,
+                                                                bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + y + "]")
+                                                        }, cb);
+                                                }).bind(this));
+                                        } else {
+                                                //this instance already exist, just reload data in it
+                                                calls.push((function (cb) {
+                                                        view.instances[y].render(cb);
+                                                }).bind(this));
+                                        }
+                                }).bind(this));
+
+                                
+                                removedInstance = view.instances.splice(bindData.length);
+                        }else{
+                                //not displayed, remove all instance
+                                removedInstance = view.instances.splice();
+                        }
 
                         //delete removed elements
-                        var removedInstance = view.instances.splice(bindData.length);
                         removedInstance.forEach((function (instance) {
                                 el.removeChild(instance.container);
                         }).bind(this));
@@ -779,7 +920,10 @@
          * @private
          */
         VeloxWebView.prototype.initAutoEmit = function () {
-                var emitters = this.container.querySelectorAll("[data-emit]");
+                var emitters = Array.prototype.slice.call(this.container.querySelectorAll("[data-emit]"));
+                if(this.container.hasAttribute("data-emit")){
+                        emitters.push(this.container) ;
+                }
                 for (var i = 0; i < emitters.length; i++) {
                         (function (i) {
                                 var el = emitters[i];
@@ -789,7 +933,8 @@
                                 }
                                 el.addEventListener(event, (function () {
                                         var id = el.getAttribute("data-original-id");
-                                        this.emit(id);
+
+                                        this.emit(id, {data: this.getBoundObject()});
                                 }).bind(this));
                         }).bind(this)(i);
                 }
