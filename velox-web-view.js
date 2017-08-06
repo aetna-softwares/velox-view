@@ -107,7 +107,7 @@
                 }
                 for (var i = 0; i < listeners.length; i++) {
                         var listener = listeners[i];
-                        listener.apply(this, { type: type, data: data });
+                        listener({ type: type, data: data });
                 }
         };
 
@@ -349,7 +349,10 @@
                                         return callback("can't find closing </script> in view") ;
                                 }
                                 var scriptBody = htmlReplaced.substring(indexBodyScript+1, indexEndScript) ;
-                                functionInView = new Function("view", scriptBody) ;
+
+                                functionInView = function(view){
+                                        eval(scriptBody) ;
+                                } ;
                                 htmlReplaced = htmlReplaced.substring(0, indexScript)+htmlReplaced.substring(indexEndScript+"</script>".length) ;
                         }
 
@@ -842,7 +845,7 @@
                                 removedInstance = view.instances.splice(bindData.length);
                         }else{
                                 //not displayed, remove all instance
-                                removedInstance = view.instances.splice();
+                                removedInstance = view.instances.splice(0);
                         }
 
                         //delete removed elements
@@ -934,7 +937,11 @@
                                 el.addEventListener(event, (function () {
                                         var id = el.getAttribute("data-original-id");
 
-                                        this.emit(id, {data: this.getBoundObject()});
+                                        this.emit(id, {
+                                                data: this.getBoundObject(),
+                                                parentData: pathExtract(this.bindObject, this.bindPath, true),
+                                                view: this
+                                        });
                                 }).bind(this));
                         }).bind(this)(i);
                 }
