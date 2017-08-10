@@ -349,10 +349,11 @@
                                         return callback("can't find closing </script> in view") ;
                                 }
                                 var scriptBody = htmlReplaced.substring(indexBodyScript+1, indexEndScript) ;
+                                
+                                scriptBody +=  "//# sourceURL=/"+this.directory+"/"+this.name+".js" ;
 
-                                functionInView = function(view){
-                                        eval(scriptBody) ;
-                                } ;
+                                functionInView = new Function("view", scriptBody) ;
+                                
                                 htmlReplaced = htmlReplaced.substring(0, indexScript)+htmlReplaced.substring(indexEndScript+"</script>".length) ;
                         }
 
@@ -450,7 +451,8 @@
                                 this.emit("initDone");
 
                                 this.render((function () {
-                                        this.container.style.display = ""; //show after init        
+                                        this.container.style.display = ""; //show after init  
+                                        this.emit("displayed");      
                                         callback(err);
                                 }).bind(this));
                         }).bind(this));
