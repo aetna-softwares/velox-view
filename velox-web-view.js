@@ -247,14 +247,24 @@
         /**
          * The Velox Web View class
          * 
+         * Options are : 
+         *   container : id or reference of HTML Element
+         *   bindObject : object to bind with the view
+         *   bindPath : bind path to apply to object to get values to use in the view
+         *   containerParent : id or reference of parent HTML Element, if container is not given, a DIV will be added in containerParent
+         *   staticHTML : use this HTML instead of fetch HTML file
+         *   staticCSS : use this CSS instead of fetch CSS file
+         * 
          * @constructor
          * 
          * @param {string} directory - The directory path of the view HTML file
          * @param {string} name - The name of the view HTML file (without extension)
+         * @param {object} options - The name of the view HTML file (without extension)
          */
-        function VeloxWebView(directory, name) {
+        function VeloxWebView(directory, name, options) {
                 EventEmiter.call(this);
 
+                this.options = options;
                 this.directory = directory;
                 this.name = name;
                 this.views = {};
@@ -296,26 +306,21 @@
         VeloxWebView.prototype.constructor = VeloxWebView;
 
         /**
-         * Init the view
+         * Open the view
          * 
-         * Options are : 
-         *   container : id or reference of HTML Element
-         *   bindObject : object to bind with the view
-         *   bindPath : bind path to apply to object to get values to use in the view
-         *   containerParent : id or reference of parent HTML Element, if container is not given, a DIV will be added in containerParent
-         *   staticHTML : use this HTML instead of fetch HTML file
-         *   staticCSS : use this CSS instead of fetch CSS file
-         * 
-         * @param {object} options - The options
          * @param {function(Error)} [callback] - Called when init is done
          */
-        VeloxWebView.prototype.init = function (options, callback) {
-                this.container = options.container;
-                this.bindObject = options.bindObject;
-                this.bindPath = options.bindPath;
-                this.containerParent = options.containerParent;
-                this.staticHTML = options.html;
-                this.staticCSS = options.css;
+        VeloxWebView.prototype.open = function (data, callback) {
+                if(typeof(data) === "function"){
+                        callback = data;
+                        data = null;
+                }
+                this.container = this.options.container;
+                this.bindObject = data || this.options.bindObject;
+                this.bindPath = this.options.bindPath;
+                this.containerParent = this.options.containerParent;
+                this.staticHTML = this.options.html;
+                this.staticCSS = this.options.css;
 
                 if (!callback) { callback = function (err) { 
                         
@@ -459,6 +464,19 @@
                 }).bind(this));
                 return this;
         };
+
+
+        VeloxWebView.prototype.close = function(){
+                if(!this.options.container && this.options.containerParent){
+                        this.containerParent.removeChild(this.container) ;
+                }else{
+                        this.container.innerHTML = "" ;
+                }
+                this.ids = null;
+                this.views = {};
+                this.elements = null;
+                this.initDone = false;
+        } ;
 
         /**
          * Get the current bound object
@@ -705,7 +723,10 @@
                 if (!this.boundElements) {
                         this.boundElements = [];
 
-                        var elements = this.container.querySelectorAll('[data-bind]');
+                        var elements = Array.prototype.slice.apply(this.container.querySelectorAll('[data-bind]'));
+                        if(this.container.hasAttribute("data-bind")){//add the container himself if it has data-bind attribute
+                                elements.push(this.container) ;
+                        }
                         for (var i = 0; i < elements.length; i++) {
                                 var el = elements[i];
                                 var bindPath = el.getAttribute("data-bind");
@@ -805,7 +826,13 @@
                                 bindData.forEach((function (d, y) {
                                         if (!view.instances[y]) {
                                                 //this instance does not exist yet, create it
-                                                var v = new VeloxWebView(view.dir, view.file);
+                                                var v = new VeloxWebView(view.dir, view.file, {
+                                                        containerParent: el,
+                                                        html: view.html,
+                                                        css: view.html?"":undefined,
+                                                        bindObject: this.bindObject,
+                                                        bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + y + "]")
+                                                });
                                                 view.instances[y] = v;
                                                 if(view.html){ //anonymous subview
                                                         v.on("initDone", function(){
@@ -827,13 +854,7 @@
                                                         
                                                 }
                                                 calls.push((function (cb) {
-                                                        v.init({
-                                                                containerParent: el,
-                                                                html: view.html,
-                                                                css: view.html?"":undefined,
-                                                                bindObject: this.bindObject,
-                                                                bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + y + "]")
-                                                        }, cb);
+                                                        v.open(cb);
                                                 }).bind(this));
                                         } else {
                                                 //this instance already exist, just reload data in it
@@ -906,16 +927,23 @@
                 //set sub views
                 Object.keys(this.views).forEach((function (viewId) {
                         var view = this.views[viewId];
-                        var viewData = pathExtract(baseData, view.bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
+                        var viewBindPath =  view.bindPath;
+                        if(viewBindPath){
+                                viewBindPath = viewBindPath.replace(/\s/g, "").replace(/\[\]$/, "") ;
+                        }
+                        var viewData = pathExtract(baseData, viewBindPath);
                         if (!viewData) {
                                 viewData = [];
-                                pathSetValue(baseData, view.bindPath.replace(/\s/g, "").replace(/\[\]$/, ""), viewData);
+                                pathSetValue(baseData, viewBindPath, viewData);
                         }
                         view.instances.forEach((function (instance) {
                                 instance.updateData(dataObject);
                         }).bind(this));
 
-                        viewData.splice(view.instances.length);
+                        if(Array.isArray(viewData) && viewData.length>0){
+                                viewData.splice(view.instances.length);
+                        }
+                        
                 }).bind(this));
         };
 
