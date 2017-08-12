@@ -60,7 +60,10 @@
                     return cb("Unknow table : "+schemaId[0].trim()) ;
                 }
 
+                
+
                 if(schemaId[1] === "grid"){
+                    element.setAttribute("data-field", "grid") ;
                     prepareGrid(element, schemaId[0], tableDef) ;
                     VeloxWebView.fields.createField(element, "grid", null, null, cb) ;
                 } else {
@@ -74,6 +77,8 @@
                     if(!colDef){
                         return cb("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
                     }
+
+                    element.setAttribute("data-field", colDef.type) ;
 
                     if(!element.hasAttribute("data-bind")){
                         element.setAttribute("data-bind", colDef.name) ;

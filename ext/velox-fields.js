@@ -45,6 +45,7 @@
     } ;
     extension.extendsGlobal = {} ;
 
+    
     /**
      * Global object to access to fields configuration
      */
@@ -81,6 +82,15 @@
         createField: function(element, fieldType, fieldSize, fieldOptions, callback){
             createField(element, fieldType, fieldSize, fieldOptions, callback) ;
         }
+    } ;
+
+
+    extension.extendsProto = {} ;
+
+    extension.extendsProto.setReadOnly = function(readOnly){
+        this.elementsHavingAttribute("data-field").forEach(function(element){
+            element.setReadOnly(readOnly) ;
+        }) ;
     } ;
 
     ///// DEPENDENCIES LIBRARIES LOADING ////////
@@ -533,20 +543,20 @@
 
         var maskField = null;
 
-        element.veloxGetValue = function(){
+        element.getValue = function(){
             if(maskField){
                 return maskField._valueGet() ;
             }
             return input.value ;
         } ;
-        element.veloxSetValue = function(value){
+        element.setValue = function(value){
             if(maskField){
                 maskField._valueSet(value) ;
                 return;
             }
             input.value = value?""+value:"";
         } ;
-        element.veloxSetReadOnly = function(readOnly){
+        element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
 
@@ -688,7 +698,7 @@
             }.bind(this)) ;
         }.bind(this)) ;
 
-        element.veloxGetValue = function(){
+        element.getValue = function(){
             if(maskField){
                 var value = maskField._valueGet() ;
                 if(maskOptions){
@@ -705,7 +715,7 @@
             }
             return input.value ;
         } ;
-        element.veloxSetValue = function(value){
+        element.setValue = function(value){
             if(maskField){
                 value = new libs.Decimal(value) ;
                 if(fieldType === "percent"){
@@ -715,6 +725,9 @@
                 return;
             }
             input.value = value?""+value:"";
+        } ;
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
         } ;
     }
 
@@ -803,15 +816,18 @@
             }.bind(this)) ;
         }.bind(this)) ;
 
-        element.veloxGetValue = function(){
+        element.getValue = function(){
             var value = null;
             if(pickrField && pickrField.selectedDates.length > 0){
                 value = pickrField.selectedDates[0] ;
             }
             return value ;
         } ;
-        element.veloxSetValue = function(value){
+        element.setValue = function(value){
             pickrField.setDate(value, false) ;
+        } ;
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
         } ;
     }
 
@@ -872,11 +888,14 @@
             }
             window.jQuery(select).select2();
 
-            element.veloxGetValue = function(){
+            element.getValue = function(){
                 return window.jQuery(select).val() ;
             } ;
-            element.veloxSetValue = function(value){
+            element.setValue = function(value){
                 window.jQuery(select).val(value) ;
+            } ;
+            element.setReadOnly = function(readOnly){
+                setReadOnly(element, readOnly) ;
             } ;
             callback() ;
         }) ;
@@ -1049,14 +1068,14 @@
                     element.innerHTML = "" ;
                     var grid = window.jQuery(element).w2grid(gridOptions) ;
                 
-                    element.veloxGetValue = function(){
+                    element.getValue = function(){
                         var records = grid.records.slice() ;
                         records.forEach(function(r){
                             delete r.recid ;
                         }) ;
                         return records;
                     } ;
-                    element.veloxSetValue = function(value){
+                    element.setValue = function(value){
                         grid.clear() ;
                         if(value){
                             value.forEach(function(d,i){
@@ -1066,6 +1085,10 @@
                             });
                             grid.add(value) ;
                         }
+                    } ;
+                    element.setReadOnly = function(readOnly){
+                        //FIXME
+                        console.log("implement read only on grid ?")
                     } ;
                     grid.on("dblClick", function(ev){
                         var record = grid.get(ev.recid) ;
@@ -1127,16 +1150,19 @@
             element.appendChild(label) ;
             loadSwitchCSS() ;
         }
-        element.veloxGetValue = function(){
+        element.getValue = function(){
             return input.checked ;
         } ;
-        element.veloxSetValue = function(value){
+        element.setValue = function(value){
             if(value === true || value === "true" || value === "1" || value === "on"){
                 value = true ;
             }else{
                 value = false ;
             }
             return input.checked = value;
+        } ;
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
         } ;
         callback() ;
     }

@@ -787,8 +787,8 @@
                         var bindPath = boundEl.bindPath;
                         var bindData = pathExtract(baseData, bindPath);
                         
-                        if (el.veloxSetValue){
-                                el.veloxSetValue(bindData) ;
+                        if (el.setValue){
+                                el.setValue(bindData) ;
                         }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
                                 if (bindData === null || bindData === undefined) {
                                         bindData = "";
@@ -950,8 +950,8 @@
                         var el = boundEl.el;
                         var bindPath = boundEl.bindPath;
                         var value = undefined;
-                        if (el.veloxGetValue){
-                                value = el.veloxGetValue();
+                        if (el.getValue){
+                                value = el.getValue();
                         }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
                                 value = el.value;
                         }
@@ -982,6 +982,7 @@
                         }
                         
                 }).bind(this));
+                return dataObject ;
         };
 
         /**
