@@ -22,6 +22,11 @@
     var libs = {} ;
 
     /**
+     * decorators to modify HTML element before insert them
+     */
+    var decorators = [] ;
+
+    /**
      * the current locale
      */
     var currentLocale = null ;
@@ -59,6 +64,11 @@
                 }) ;
             }
         },
+
+        addDecorator: function(decorator){
+            decorators.push(decorator) ;
+        },
+
         /**
          * Create the field
          * 
@@ -370,6 +380,25 @@
      * @param {function(Error)} callback called when the field is created
      */
     function createField(element, fieldType, fieldSize, fieldOptions, callback){
+        _createField(element, fieldType, fieldSize, fieldOptions, function(err){
+            if(err){ return callback(err); }
+            decorators.forEach(function(deco){
+                deco(element, fieldType, fieldSize, fieldOptions) ;
+            }) ;
+            callback() ;
+        }) ;
+    }
+
+    /**
+     * Create the field
+     * 
+     * @param {HTMLElement} element the HTML element to transform to field
+     * @param {string} fieldType the field type
+     * @param {string} fieldSize the field size
+     * @param {object} fieldOptions field options map (from element attributes)
+     * @param {function(Error)} callback called when the field is created
+     */
+    function _createField(element, fieldType, fieldSize, fieldOptions, callback){
         if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
             createTextField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
@@ -418,6 +447,37 @@
             }) ;
         }else{
             callback() ;
+        }
+    }
+
+    /**
+     * Set the field as readonly or not
+     * 
+     * @param {HTMLElement} element the element to set as readonly
+     * @param {boolean} readOnly the flag read only or not
+     */
+    function setReadOnly(element, readOnly) {
+        element._veloxIsReadOnly = readOnly ;
+        var input = element.getElementsByTagName("input")[0] ;
+        if(input){
+            if(input.type === "text" || input.type === "password"){
+                input.readOnly = readOnly ;
+            }else{
+                input.disabled = readOnly ;
+            }
+        } else {
+            var select = element.getElementsByTagName("select")[0] ;
+            select.disabled = readOnly ;
+        }
+
+        if(readOnly){
+            if(element.className.indexOf("readonly") === -1){
+                element.className += " readonly" ;
+            }
+        }else{
+            if(element.className.indexOf("readonly") !== -1){
+                element.className = element.className.replace("readonly", "") ;
+            }
         }
     }
 
@@ -485,6 +545,9 @@
                 return;
             }
             input.value = value?""+value:"";
+        } ;
+        element.veloxSetReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
         } ;
 
         if( fieldOptions.mask){
@@ -925,7 +988,7 @@
                         });
                         var type = th.getAttribute("data-field-type") ;
                         if(type){
-                            colDef.render = type ;
+                            colDef.render = createGridRenderer(type) ;
                         }
                         gridOptions.columns.push(colDef) ;
                     }) ;
@@ -995,17 +1058,44 @@
                     } ;
                     element.veloxSetValue = function(value){
                         grid.clear() ;
-                        value.forEach(function(d,i){
-                            if(!d.recid){
-                                d.recid = i ;
-                            }
-                        });
-                        grid.add(value) ;
+                        if(value){
+                            value.forEach(function(d,i){
+                                if(!d.recid){
+                                    d.recid = i ;
+                                }
+                            });
+                            grid.add(value) ;
+                        }
                     } ;
+                    grid.on("dblClick", function(ev){
+                        var record = grid.get(ev.recid) ;
+                        var event = document.createEvent('CustomEvent');
+                        event.initCustomEvent('gridDblClick', false, true, {
+                                record: record
+                        });
+                        event.record = record ;
+                        element.dispatchEvent(event);
+                    }) ;
+                    grid.on("click", function(ev){
+                        var record = grid.get(ev.recid) ;
+                        var event = document.createEvent('CustomEvent');
+                        event.initCustomEvent('gridClick', false, true, {
+                                record: record
+                        });
+                        event.record = record ;
+                        element.dispatchEvent(event);
+                    }) ;
                     callback() ;
                 }) ;
             }) ;
         }) ;
+    }
+
+    function createGridRenderer(type){
+        if(["varchar", "text"].indexOf(type) !== -1){
+            return null;
+        }
+        return type;
     }
 
     /**

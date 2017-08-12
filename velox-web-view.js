@@ -311,6 +311,11 @@
          * @param {function(Error)} [callback] - Called when init is done
          */
         VeloxWebView.prototype.open = function (data, callback) {
+                if (this.initDone) {
+                        //already init
+                        return callback();
+                }
+
                 if(typeof(data) === "function"){
                         callback = data;
                         data = null;
@@ -330,11 +335,7 @@
                         }
                 }; }
 
-                if (this.initDone) {
-                        //already init
-                        return callback();
-                }
-
+                
                 
 
 
@@ -465,17 +466,47 @@
                 return this;
         };
 
+        /**
+         * Hide the view in the DOM (display none)
+         */
+        VeloxWebView.prototype.hide = function(){
+                this.container.style.display = "none";
+        } ;
+       
+        /**
+         * Show the view in the DOM (display empty)
+         */
+        VeloxWebView.prototype.show = function(){
+                this.container.style.display = ""; 
+        } ;
+
+        /**
+         * Get all elements of the view having an attribute
+         * This will also return the container if it has the attribute
+         * 
+         * @param {string} attributeName the attribute name
+         */
+        VeloxWebView.prototype.elementsHavingAttribute = function(attributeName){
+                var elements = Array.prototype.slice.apply(this.container.querySelectorAll('['+attributeName+']'));
+                if(this.container.hasAttribute(attributeName)){//add the container himself if it has this attribute
+                        elements.push(this.container) ;
+                }
+                return elements;
+        } ;
+
+
 
         VeloxWebView.prototype.close = function(){
-                if(!this.options.container && this.options.containerParent){
+                if(!this.options.container && this.options.containerParent && this.containerParent && this.container){
                         this.containerParent.removeChild(this.container) ;
-                }else{
+                }else if(this.container){
                         this.container.innerHTML = "" ;
                 }
                 this.ids = null;
                 this.views = {};
                 this.elements = null;
                 this.initDone = false;
+                this.boundElements = null;
         } ;
 
         /**
@@ -550,7 +581,12 @@
                         xhr.open('HEAD', cssUrl);
                         xhr.onload = (function () {
                                 if (xhr.status !== 404) {
-                                        document.querySelector('head').innerHTML += '<link rel="stylesheet" href="' + cssUrl + '" type="text/css"/>';
+                                        var link = document.createElement("link");
+                                        link.rel = "stylesheet";
+                                        link.type = "text/css";
+                                        link.href = cssUrl;
+		
+                                        document.getElementsByTagName("head")[0].appendChild(link);
                                 }
                         }).bind(this);
                         xhr.send();
@@ -846,13 +882,14 @@
                                                                                 }) ;  
                                                                         }
                                                                 }) ;
-                                                                //as it is an anonymous subview, the emitted event are propagated to this view
-                                                                v.emit = function(event, data){
-                                                                        this.emit(event, data) ;
-                                                                }.bind(this) ;
                                                         }.bind(this)) ;
-                                                        
                                                 }
+                                                //the emitted event are propagated to this view
+                                                var _emit = v.emit ;
+                                                v.emit = function(event, data){
+                                                        _emit.bind(v)(event, data) ; //emit the event inside the view
+                                                        this.emit(event, data) ; //propagate on this view
+                                                }.bind(this) ;
                                                 calls.push((function (cb) {
                                                         v.open(cb);
                                                 }).bind(this));

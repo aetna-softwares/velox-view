@@ -19,11 +19,17 @@
 
     var schema; 
 
+    var addLabelToFields = false ;
+
     extension.init = function(cb){
         var view = this ;
         if(schema) {
             doInitView.bind(view)(cb) ;
         } else {
+            var elements = view.elementsHavingAttribute('data-field-def');
+            if(elements.length > 0){
+                console.error("You must set the schema with VeloxWebView.fieldsSchema.setSchema before instanciate your views") ;
+            }
             cb() ;
         }
     } ;
@@ -37,15 +43,17 @@
         if(!VeloxWebView.fields){
             return callback("You need to load the fields extension to use fields schema extension") ;
         }
-        var view = this ;
-        var elements = this.container.querySelectorAll('[data-field-def]');
+        var elements = this.elementsHavingAttribute('data-field-def');
         var calls = [] ;
         elements.forEach(function(element){
+            
             calls.push(function(cb){
                 var schemaId = element.getAttribute("data-field-def").split(".") ;
                 if(schemaId.length !== 2){
                     return cb("Invalid data-field-def value : "+element.getAttribute("data-field-def")+", expected format is table.column") ;
                 }
+
+                
 
                 var tableDef = schema[schemaId[0]];
                 if(!tableDef){
@@ -65,6 +73,10 @@
                     }) ;
                     if(!colDef){
                         return cb("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
+                    }
+
+                    if(!element.hasAttribute("data-bind")){
+                        element.setAttribute("data-bind", colDef.name) ;
                     }
 
                     prepareElement(element,schemaId[0], colDef, cb) ;
@@ -130,6 +142,33 @@
      */
     extension.extendsGlobal.fieldsSchema.getSchema = function(){
         return schema ;
+    } ;
+    
+
+     /**
+     * @typedef VeloxViewFieldSchemaOptions
+     * @type {object}
+     * @property {boolean} [addLabelToFields] automatically add <label> to the field (default false)
+     */
+
+
+    /**
+     * Configure fields schema
+     * 
+     * @param {VeloxViewFieldSchemaOptions} options the option of field schema extension
+     */
+    extension.extendsGlobal.fieldsSchema.configure = function(options){
+        if(options.addLabelToFields){
+            if(!VeloxWebView.i18n){
+                throw "you should add the i18n extension to use the option addLabelToFields" ;
+            }
+            VeloxWebView.fields.addDecorator(function(element, fieldType){
+                if(fieldType === "grid"){ return ;}
+                var label = document.createElement("LABEL") ;
+                label.innerHTML = VeloxWebView.tr("fields."+element.getAttribute("data-field-def")) ;
+                element.insertBefore(label, element.children[0]) ;
+            }) ;
+        }
     } ;
 
     function extendsSchema(schemaBase, schemaExtends){
@@ -212,6 +251,8 @@
             var tr = document.createElement("TR") ;
             thead.appendChild(tr) ;
             tableDef.columns.forEach(function(colDef){
+                if(colDef.name.indexOf("velox_") === 0) { return ; }
+                
                 var th = document.createElement("TH") ;
                 tr.appendChild(th) ;
                 th.setAttribute("data-field-name", colDef.name) ;
