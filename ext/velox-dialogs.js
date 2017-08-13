@@ -389,19 +389,26 @@
      * }).then(()=>{
      *         ... do something on success ...
      * })) ;
+     * 
+     * @param {function(done)} doTask the function that do the task and call done on finish
+     * @param {function(err)} [callback] called when the long task is done
      */
-    extension.extendsProto.longTask = function (doTask) {
+    extension.extendsProto.longTask = function (doTask, callback) {
+        if(!callback){ callback = function(){} ;}
         this.startWait() ;
         if(typeof(doTask) === "function"){
             doTask(function(error){
-                if(error){ return this.endWaitError(error) ;}
+                if(error){ this.endWaitError(error) ; return callback(error) ;}
                 this.endWait() ;
+                callback() ;
             }.bind(this)) ;
         }else if(doTask.constructor && doTask.constructor.name === "Promise"){
             doTask.then(function(){
                 this.endWait() ;
+                callback() ;
             }.bind(this)).catch(function(error){
                 this.endWaitError(error) ;
+                callback(error) ;
             }.bind(this)) ;
         }
     };
