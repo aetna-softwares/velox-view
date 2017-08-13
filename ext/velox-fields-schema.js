@@ -19,7 +19,8 @@
 
     var schema; 
 
-    var addLabelToFields = false ;
+    //must run before fields extension
+    extension.mustRunBefore = ["fields"] ;
 
     extension.init = function(cb){
         var view = this ;
@@ -65,7 +66,7 @@
                 if(schemaId[1] === "grid"){
                     element.setAttribute("data-field", "grid") ;
                     prepareGrid(element, schemaId[0], tableDef) ;
-                    VeloxWebView.fields.createField(element, "grid", null, null, cb) ;
+                    cb() ;
                 } else {
                     var colDef = null;
                     tableDef.columns.some(function(c){
@@ -78,21 +79,22 @@
                         return cb("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
                     }
 
-                    element.setAttribute("data-field", colDef.type) ;
 
                     if(!element.hasAttribute("data-bind")){
                         element.setAttribute("data-bind", colDef.name) ;
                     }
 
-                    prepareElement(element,schemaId[0], colDef, cb) ;
+                    element.setAttribute("data-field", colDef.type) ;
+                    element.setAttribute("data-field-size", colDef.size) ;
+                    if(colDef.options){
+                        Object.keys(colDef.options).forEach(function(k){
+                            element.setAttribute("data-field-"+k, colDef.options[k]) ;
+                        }) ;
+                    }
 
-                    var fieldType = colDef.type ;
-                    var fieldSize = colDef.size ;
-                    var fieldOptions = colDef.options || {} ;
-                    
-                    VeloxWebView.fields.createField(element, fieldType, fieldSize, fieldOptions, cb) ;
+                    prepareElement(element,schemaId[0], colDef) ;
+                    cb() ;
                 }
-
                 
             }) ;
         });
@@ -168,9 +170,16 @@
                 throw "you should add the i18n extension to use the option addLabelToFields" ;
             }
             VeloxWebView.fields.addDecorator(function(element, fieldType){
-                if(fieldType === "grid"){ return ;}
+                if(fieldType === "grid"){ return ;}//ignore grids
                 var label = document.createElement("LABEL") ;
-                label.innerHTML = VeloxWebView.tr("fields."+element.getAttribute("data-field-def")) ;
+                var text = document.createTextNode(VeloxWebView.tr("fields."+element.getAttribute("data-field-def")));
+                if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
+                    //for checkbox, add input in the label
+                    var input = element.querySelector("input") ;
+                    element.removeChild(input) ;
+                    label.appendChild(input) ;
+                }
+                label.appendChild(text) ;
                 element.insertBefore(label, element.children[0]) ;
             }) ;
         }
@@ -248,11 +257,20 @@
         }else{
             table = listTables[0] ;
         }
+        
         var listTH = Array.prototype.slice.call(table.getElementsByTagName("TABLE")) ;
         if(listTH.length === 0){
             listTH = [] ;
-            var thead = document.createElement("THEAD") ;
-            table.appendChild(thead) ;
+            var listThead = element.getElementsByTagName("THEAD") ;
+
+            var thead = null;
+            if(listThead.length === 0){
+                var thead = document.createElement("THEAD") ;
+                table.appendChild(thead) ;
+            }else{
+                thead = listThead[0] ;
+            }
+
             var tr = document.createElement("TR") ;
             thead.appendChild(tr) ;
             tableDef.columns.forEach(function(colDef){

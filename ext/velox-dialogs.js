@@ -1,3 +1,5 @@
+/*global VeloxWebView */
+
 ; (function (global, factory) {
         if (typeof exports === 'object' && typeof module !== 'undefined') {
         var VeloxScriptLoader = require("velox-scriptloader") ;
@@ -54,6 +56,9 @@
     var customHTMLWaiter = null;
     var customHTMLInfo = null;
     var customHTMLError = null;
+    var customHTMLConfirm = null;
+    var confirmNoLabel = null;
+    var confirmYesLabel = null;
     var waitCount = 0;
 	var showTimeout = null;
     var waiterDelay = 300;
@@ -214,15 +219,16 @@
         html = html.replace("$CLOSE", "Custombox.modal.close('"+boxId+"')") ;                    
 
         if(typeof(message) === "object"){
+            console.error("unexpected error", message) ;
 			if(message && message.constructor === Error){
                 if(this.tr){
-                    message = this.tr("unexpectedError", {err : message.message+"\n"+message.stack}) ;
+                    message = this.tr("global.unexpectedError", {err : message.message+"\n"+message.stack}) ;
                 }else{
                     message =  message.message+"\n"+message.stack ;
                 }
 			}else{
                 if(this.tr){
-                    message = this.tr("unexpectedError", {err : JSON.stringify(message)}) ;
+                    message = this.tr("global.unexpectedError", {err : JSON.stringify(message)}) ;
                 }else{
                     message =  JSON.stringify(message) ;
                 }
@@ -241,6 +247,98 @@
                 target: "#velox-errorbox",
                 //delay: 0,
                 onClose: callback
+            },
+            overlay: {
+                close: false
+            },
+            loader: {
+                active: false
+            }
+        });
+    } ;
+
+     /**
+     * @typedef VeloxDialogConfirmOptions
+     * @type {object}
+     * @property {boolean} focusToNoButton Focus to the NO button instead of YES button
+     * @property {string} yesLabel Yes button label
+     * @property {string} noLabel No button label
+     */
+
+     /**
+     * This callback is called when user answer confirm dialong
+     * @callback VeloxDialogConfirmCallback
+     * @param {boolean} yes is user answer YES ?
+     */
+
+    /**
+     * Display confirm box
+     * 
+     * @param {string} message the message to display
+     * @param {VeloxDialogConfirmOptions} [options] display options
+     * @param {VeloxDialogConfirmCallback} callback called when user answer dialog
+     */
+    extension.extendsProto.confirm = function (message, options, callback) {
+        if(typeof(options) === "function"){
+            callback = options;
+            options = {} ;
+        }
+        if(!options){ options = {} ; }
+        var confirmboxEl = document.createElement("DIV") ;
+        confirmboxEl.style.display = "none" ;
+        document.body.appendChild(confirmboxEl) ;
+
+        var html = customHTMLConfirm ;
+        var boxId = "box"+uuidv4().replace(/-/g, "") ;
+        if(!html){
+            var labelYes = options.yesLabel||confirmYesLabel ;
+            if(!labelYes){
+                labelYes = VeloxWebView.tr?VeloxWebView.tr("global.yes"):"Yes";
+            }
+            var labelNo = options.noLabel||confirmNoLabel ;
+            if(!labelNo){
+                labelNo = VeloxWebView.tr?VeloxWebView.tr("global.no"):"No";
+            }
+            html = '<div style="box-shadow: rgba(236, 131, 0, 0.2) 0px 11px 15px -7px, rgba(224, 144, 88, 0.137255) 0px 24px 38px 3px, rgba(0, 0, 0, 0.117647) 0px 9px 46px 8px;'+
+                        'padding: 25px; width: 60%; position: relative;color:#5a0d0d; background: rgba(255, 255, 255, 0.9)">'+
+                        message+'<div style="margin-top: 10px">'+
+                        '<button data-button-no style="float:left;background: #bb4c4c; border: 0;padding: 10px; color: white">'+labelNo+'</button>'+
+                        '<button data-button-yes style="float: right;background: #008047; border: 0;padding: 10px; color: white">'+labelYes+'</button>'+
+                        '</div>'+
+                        '</div>' ;
+        }
+
+        confirmboxEl.innerHTML = html ;
+        var buttonNo = confirmboxEl.querySelector("[data-button-no]");
+        buttonNo.addEventListener("click", function(){
+            callback(false) ;
+            Custombox.modal.close(boxId) ;
+        }) ;
+        var buttonYes = confirmboxEl.querySelector("[data-button-yes]") ;
+        buttonYes.addEventListener("click", function(){
+            callback(true) ;
+            Custombox.modal.close(boxId) ;
+        }) ;
+
+        confirmboxEl.children[0].id = boxId ;
+        
+        openModal({
+            content: {
+                id: boxId,
+                close: true,
+                clone: false,
+                target: "#"+boxId,
+                delay: 0,
+                onClose: function(){
+                    document.body.removeChild(confirmboxEl) ;
+                },
+                onComplete: function(){
+                    if(options.focusToNoButton){
+                        buttonNo.focus() ;
+                    }else{
+                        buttonYes.focus() ;
+                    }
+                }
             },
             overlay: {
                 close: false
@@ -355,17 +453,34 @@
     extension.extendsGlobal = {} ;
 
     extension.extendsGlobal.dialogs = {} ;
+
+
+     /**
+     * @typedef VeloxDialogGlobalOptions
+     * @type {object}
+     * @property {Custombox} [custombox] the custom box instance to use (autoloaded if not given)
+     * @property {string} [defaultWaitMessage] the default waiting message (tr("global.pleaseWait") if not given and i18n activate, "" if no i18n)
+     * @property {string} [waiterDelay] waiter is displayed only after a short delay to avoid flashing on very short task. you can change this delay (default : 300)
+     * @property {string} [customHTMLWaiter] use your custom HTML for waiter
+     * @property {string} [customHTMLInfo] use your custom HTML for info
+     * @property {string} [customHTMLError] use your custom HTML for error
+     * @property {string} [customHTMLConfirm] use your custom HTML for confirm
+     * @property {string} [confirmYesLabel] the default YES label in confirm (tr("global.yes") if not given and i18n activate, "Yes" if no i18n)
+     * @property {string} [confirmNoLabel] the default NO label in confirm (tr("global.no") if not given and i18n activate, "No" if no i18n)
+     */
+
+
     /**
      * Configure the dialogs
      * 
      * options are : 
      * {
-     *       custombox : the custom box instance to use (autoloaded if not given)
-     *       defaultWaitMessage : the default waiting message (tr("pleaseWait") if not given and i18n activate, "" if no i18n)
-     *       customHTMLWaiter : use your custom HTML for waiter
-     *       customHTMLInfo : use your custom HTML for info dialog
-     *       customHTMLError : use your custom HTML for error dialog
-     *       waiterDelay : waiter is displayed only after a short delay to avoid flashing on very short task. you can change this delay (default : 300)
+     *       custombox : 
+     *        : 
+     *       customHTMLWaiter : 
+     *        : use your custom HTML for info dialog
+     *        : use your custom HTML for error dialog
+     *        : 
      *   }
      * 
      * @param {object} options - Init option of dialog
@@ -376,6 +491,9 @@
         if(options.customHTMLWaiter){ customHTMLWaiter = options.customHTMLWaiter ; }
         if(options.customHTMLInfo){ customHTMLInfo = options.customHTMLInfo ; }
         if(options.customHTMLError){ customHTMLError = options.customHTMLError ; }
+        if(options.customHTMLConfirm){ customHTMLConfirm = options.customHTMLConfirm ; }
+        if(options.confirmYesLabel){ confirmYesLabel = options.confirmYesLabel ; }
+        if(options.confirmNoLabel){ confirmNoLabel = options.confirmNoLabel ; }
         if(options.waiterDelay){ waiterDelay = options.waiterDelay ; }
     } ;
     

@@ -221,7 +221,8 @@
             i18nextInitDone = true ;
             console.debug("i18next init done") ;
             if(err){
-                return callback(err) ;
+                //just warn some files are missing, fallback will handle resolution to fallback lang
+                console.warn("Some translation file are missing", err) ;
             }
 
             initListeners.forEach(function(l){

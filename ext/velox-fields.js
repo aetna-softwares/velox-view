@@ -107,8 +107,8 @@
         name: "jquery",
         type: "js",
         version: JQUERY_VERSION,
-        cdn: "http://code.jquery.com/jquery-$VERSION.slim.min.js",
-        bowerPath: "jquery/dist/jquery.slim.min.js"
+        cdn: "http://code.jquery.com/jquery-$VERSION.min.js",
+        bowerPath: "jquery/dist/jquery.min.js"
     } ;
     var INPUT_MASK_LIB = [
         JQUERY_LIB,
@@ -418,7 +418,7 @@
             createDateField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "selection" || fieldType === "select"){
             createSelectField(element, fieldType, fieldSize, fieldOptions, callback) ;
-        } else if(fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
+        } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
             createCheckboxField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "grid"){
             createGridField(element, fieldType, fieldSize, fieldOptions, callback) ;
@@ -957,14 +957,14 @@
                     }).filter(function(c){ return !!c;}).reverse().join(".") ;
 
                     var gridOptions = {
-                        name: idPath||uuidv4(),
+                        name: idPath||"grid_"+uuidv4(),
                         columns   : [],
                         show      : {},
                         searches : []
                     } ;
 
                     if(thead){
-                        ["header", "toolbar", "footer", "lineNumbers", "selectColumn", "expandColumn"].forEach(function(showAttr){
+                        ["header", "toolbar","toolbarAdd", "toolbarEdit", "toolbarDelete","toolbarSave","footer", "lineNumbers", "selectColumn", "expandColumn"].forEach(function(showAttr){
                             var showValue = thead.getAttribute(showAttr);
                             if(showValue){
                                 gridOptions.show[showAttr] = showValue.trim().toLowerCase() === "true" ;
@@ -1001,10 +1001,16 @@
 
                         ["sortable", "searchable", "hidden"].forEach(function(colAtt){
                                 var colValue = th.getAttribute(colAtt);
-                                if(colValue){
-                                    colDef[colAtt] = colValue.trim().toLowerCase() === "true" ;
+                                if(colValue !== null){
+                                    colDef[colAtt] = colValue.trim().toLowerCase() !== "false" ;
                                 }
                         });
+                        if(colDef.searchable === undefined){
+                            colDef.searchable = true ;
+                        }
+                        if(colDef.sortable === undefined){
+                            colDef.sortable = true ;
+                        }
                         var type = th.getAttribute("data-field-type") ;
                         if(type){
                             colDef.render = createGridRenderer(type) ;
@@ -1088,26 +1094,19 @@
                     } ;
                     element.setReadOnly = function(readOnly){
                         //FIXME
-                        console.log("implement read only on grid ?")
+                        console.log("implement read only on grid ?") ;
                     } ;
-                    grid.on("dblClick", function(ev){
-                        var record = grid.get(ev.recid) ;
-                        var event = document.createEvent('CustomEvent');
-                        event.initCustomEvent('gridDblClick', false, true, {
-                                record: record
-                        });
-                        event.record = record ;
-                        element.dispatchEvent(event);
-                    }) ;
-                    grid.on("click", function(ev){
-                        var record = grid.get(ev.recid) ;
-                        var event = document.createEvent('CustomEvent');
-                        event.initCustomEvent('gridClick', false, true, {
-                                record: record
-                        });
-                        event.record = record ;
-                        element.dispatchEvent(event);
-                    }) ;
+                    element.addEventListener = function(event, listener){
+                        //call the normal listener
+                        Object.getPrototypeOf(element).addEventListener.apply(element, arguments) ;
+                        grid.on(event, function(ev){
+                            if(ev.recid){
+                                ev.record = grid.get(ev.recid) ;
+                            }
+                            listener(ev) ;
+                        }); 
+                    } ;
+                    
                     callback() ;
                 }) ;
             }) ;
@@ -1132,7 +1131,7 @@
      */
     function createCheckboxField(element, fieldType, fieldSize, fieldOptions, callback){
         var input = null;
-        if(fieldType === "boolean" || fieldType === "checkbox"){
+        if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
             input = appendInputHtml(element) ;
             input.type = "checkbox" ;
             
