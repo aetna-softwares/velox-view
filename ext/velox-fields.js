@@ -360,7 +360,7 @@
      * @private
      */
     function doInitView(callback){
-        var elements = this.container.querySelectorAll('[data-field]');
+        var elements = this.elementsHavingAttribute("data-field");
         var calls = [] ;
         elements.forEach(function(element){
             calls.push(function(cb){
@@ -981,10 +981,28 @@
                     
                     listTh.forEach(function(th){
                         var colDef = {
-                            caption   : th.innerHTML,
                             field     : th.getAttribute("data-field-name"),
                             size      : th.getAttribute("data-field-size")
                         };
+
+                        var scriptRender = th.querySelector("script") ;
+                        if(scriptRender){
+                            var scriptBody = scriptRender.text ;
+                            scriptBody +=  "//# sourceURL=/column/render/"+element.getAttribute("data-original-id")+"/"+colDef.field+".js" ;
+                            var functionRender = new Function("record", "index", "column_index", scriptBody) ;
+                            colDef.render = functionRender ;
+                            th.removeChild(scriptRender) ;
+                        }
+
+                        var labelEl = th.querySelector("label") ;
+                        if(labelEl){
+                             colDef.caption = labelEl.innerHTML ;
+                        }else{
+                            colDef.caption = th.innerHTML ;
+                        }
+
+                        
+                        
                         if(colDef.size){
                             if(colDef.size.indexOf("px") === -1 && colDef.size.indexOf("%") === -1){
                                 //no unit given, assuming px
@@ -1012,7 +1030,7 @@
                             colDef.sortable = true ;
                         }
                         var type = th.getAttribute("data-field-type") ;
-                        if(type){
+                        if(!colDef.render && type){
                             colDef.render = createGridRenderer(type) ;
                         }
                         gridOptions.columns.push(colDef) ;

@@ -258,7 +258,7 @@
             table = listTables[0] ;
         }
         
-        var listTH = Array.prototype.slice.call(table.getElementsByTagName("TABLE")) ;
+        var listTH = Array.prototype.slice.call(table.getElementsByTagName("TH")) ;
         if(listTH.length === 0){
             listTH = [] ;
             var listThead = element.getElementsByTagName("THEAD") ;

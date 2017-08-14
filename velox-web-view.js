@@ -348,7 +348,7 @@
 
             var functionInView = null;
             var indexScript = htmlReplaced.toLowerCase().indexOf("<script") ;
-            if(indexScript !== -1){
+            if(indexScript === 0){
                 var indexBodyScript = htmlReplaced.indexOf(">", indexScript) ;
                 var indexEndScript = htmlReplaced.toLowerCase().indexOf("</script>") ;
                 if(indexEndScript === -1){
@@ -561,27 +561,27 @@
      * @private
      */
     VeloxWebView.prototype.loadCSS = function () {
-        if (!loadedCss[this.directory + "_" + this.name]) {
-            if (this.staticCSS !== undefined) {
-                if (this.staticCSS) {
-                    var head = document.getElementsByTagName('head')[0];
-                    var s = document.createElement('style');
-                    s.setAttribute('type', 'text/css');
-                    if (s.styleSheet) {   // IE
-                        s.styleSheet.cssText = this.staticCSS;
-                    } else {        // the world
-                        s.appendChild(document.createTextNode(this.staticCSS));
-                    }
-                    head.appendChild(s);
-                    //$('head').append('<style>'+this.staticCSS+'</style>');
-                }
-
-                loadedCss[this.directory + "_" + this.name] = true;
-            } else {
-                this.loadCSSFile();
-            }
+        if(this.staticCSS){
+            this.loadStaticCss(this.staticCSS) ;
+        }else if(this.name){
+            this.loadCSSFile();
         }
     };
+
+    VeloxWebView.prototype.loadStaticCss = function(css){
+        if (!loadedCss[css]) {
+            var head = document.getElementsByTagName('head')[0];
+            var s = document.createElement('style');
+            s.setAttribute('type', 'text/css');
+            if (s.styleSheet) {   // IE
+                s.styleSheet.cssText = css;
+            } else {        // the world
+                s.appendChild(document.createTextNode(css));
+            }
+            head.appendChild(s);
+            loadedCss[css] = true;
+        }
+    } ;
 
     /**
      * Load CSS from file
