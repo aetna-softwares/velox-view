@@ -18,22 +18,40 @@
     extension.name = "fieldsSchema" ;
 
     var schema; 
+    var schemaExtend; 
+    var apiClient; 
 
     //must run before fields extension
     extension.mustRunBefore = ["fields"] ;
 
     extension.init = function(cb){
         var view = this ;
-        if(schema) {
-            doInitView.bind(view)(cb) ;
-        } else {
-            var elements = view.elementsHavingAttribute('data-field-def');
-            if(elements.length > 0){
-                console.error("You must set the schema with VeloxWebView.fieldsSchema.setSchema before instanciate your views") ;
+        getSchema(function(err, schema){
+            if(err){ return cb(err); }
+            if(schema) {
+                doInitView.bind(view)(cb) ;
+            } else {
+                var elements = view.elementsHavingAttribute('data-field-def');
+                if(elements.length > 0){
+                    console.error("You must set the schema with VeloxWebView.fieldsSchema.setSchema before instanciate your views") ;
+                }
+                cb() ;
             }
-            cb() ;
-        }
+        }) ;
     } ;
+
+    function getSchema(callback){
+        if(schema){ return callback(null, schema) ;}
+        if(!apiClient) { return callback(null, null) ;}
+        apiClient.__velox_database.getSchema(function(err, schemaFromServer){
+            if(err){ return callback(err); }
+            schema = schemaFromServer ;
+            if(schema && schemaExtend){
+                extendsSchema(schema, schemaExtend) ;
+            }
+            callback(null, schema) ;
+        }) ;
+    }
 
     /**
      * init view fields from schema
@@ -92,8 +110,7 @@
                         }) ;
                     }
 
-                    prepareElement(element,schemaId[0], colDef) ;
-                    cb() ;
+                    prepareElement(element,schemaId[0], colDef, cb) ;
                 }
                 
             }) ;
@@ -105,44 +122,7 @@
 
     extension.extendsGlobal.fieldsSchema = {} ;
     
-    /**
-     * Set the datamodel schema
-     * 
-     * @example
-     * {
-     *      "tableName": {
-	 *		    columns: [
-	 *				{name : "name", type: "varchar", size: 10},
-	 *				{name : "status", type: "selection", values: ["todo", "done"]},
-	 *				{name : "date_done", type: "date"},
-	 *				{name : "level", type: "int"},
-	 *				{name : "cost", type: "decimal:3"},
-	 *			]
-	 *		}
-     * }
-     * 
-     * @param {object|string} schemaOrUrl schema object or URL to retrieve it 
-     * @param {object} [schemaExtends] schema object that extends the base schema 
-     * @param {function(Error)} callback - Called when configuration is done
-     */
-    extension.extendsGlobal.fieldsSchema.setSchema = function(schemaOrUrl, schemaExtends, callback){
-        if(typeof(schemaExtends) === "function"){
-            callback = schemaExtends ;
-            schemaExtends = null;
-        }
-        if(!callback){ callback= function(){} ;} 
-        if(typeof(schemaOrUrl) === "object"){
-            schema = schemaOrUrl ;
-            if(schemaExtends){ extendsSchema(schema, schemaExtends) ; }
-        }else{
-            VeloxScriptLoader.loadJSON(schemaOrUrl, function(err, schemaJSON){
-                if(err){ return callback(err) ;}
-                schema = schemaJSON ;
-                if(schemaExtends){ extendsSchema(schema, schemaExtends) ; }
-                callback() ;
-            }) ;
-        }
-    } ;
+   
 
     /**
      * Get schema
@@ -155,24 +135,53 @@
      /**
      * @typedef VeloxViewFieldSchemaOptions
      * @type {object}
+     * @property {VeloxServiceClient} [apiClient] The api client object. Will be used to get schema if not given and linked table values if used
+     * @property {object} [schema] The database schema. if not given, use the apiClient to retrieve it
+     * @property {object} [schemaExtend] schema object that extends the base schema  
      * @property {boolean} [addLabelToFields] automatically add <label> to the field (default false)
      */
 
 
     /**
      * Configure fields schema
+     * @example
+     * VeloxWebView.configure({ schema: 
+     *     {
+     *      "tableName": {
+	 *		    columns: [
+	 *				{name : "name", type: "varchar", size: 10},
+	 *				{name : "status", type: "selection", values: ["todo", "done"]},
+	 *				{name : "date_done", type: "date"},
+	 *				{name : "level", type: "int"},
+	 *				{name : "cost", type: "decimal:3"},
+	 *			]
+     *		}
+     *     }
+     * })
      * 
      * @param {VeloxViewFieldSchemaOptions} options the option of field schema extension
      */
     extension.extendsGlobal.fieldsSchema.configure = function(options){
+        if(!options.schema && !options.apiClient){
+            throw "you should provide either a schema or an apiClient option" ;
+        }
+        apiClient = options.apiClient ;
+        schema = options.schema;
+        schemaExtend = options.schemaExtend;
+        if(schema && options.schemaExtend){
+            extendsSchema(schema, options.schemaExtend) ;
+        }
         if(options.addLabelToFields){
             if(!VeloxWebView.i18n){
                 throw "you should add the i18n extension to use the option addLabelToFields" ;
             }
             VeloxWebView.fields.addDecorator(function(element, fieldType){
                 if(fieldType === "grid"){ return ;}//ignore grids
+                var fieldDef = element.getAttribute("data-field-def") ;
+                if(!fieldDef){ return ; }
+                
                 var label = document.createElement("LABEL") ;
-                var text = document.createTextNode(VeloxWebView.tr("fields."+element.getAttribute("data-field-def")));
+                var text = document.createTextNode(VeloxWebView.tr("fields."+fieldDef));
                 if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
                     //for checkbox, add input in the label
                     var input = element.querySelector("input") ;
@@ -214,12 +223,17 @@
      * @param {string} table the table name
      * @param {object} colDef the column configuration to apply
      */
-    function prepareElement(element, table, colDef){
-        if(colDef.type === "selection"){
+    function prepareElement(element, table, colDef, callback){
+        if(colDef.type === "selection" || colDef.type === "select"){
             if(element.tagName !== "SELECT" && element.getElementsByTagName("select").length === 0){
                 var select = document.createElement("SELECT") ;
+                var emptyOption = document.createElement("OPTION") ;
+                emptyOption.value = "";
+                emptyOption.innerHTML = "&nbsp;" ;
+                select.appendChild(emptyOption) ;
                 element.appendChild(select) ;
                 if(colDef.values && Array.isArray(colDef.values)){
+                    //case where values are defined by list of values
                     colDef.values.forEach(function(val){
                         var option = document.createElement("OPTION") ;
                         option.value = val;
@@ -231,7 +245,9 @@
                         }
                         select.appendChild(option) ;
                     }) ;
+                    callback() ;
                 }else if(colDef.values && typeof(colDef.values) === "object"){
+                    //case where values are defined as key:label object
                     Object.keys(colDef.values).forEach(function(val){
                         var option = document.createElement("OPTION") ;
                         option.value = val;
@@ -243,8 +259,58 @@
                         }
                         select.appendChild(option) ;
                     }) ;
+                    callback() ;
+                }else if(colDef.values === "2one"){
+                    //case where values are content of another table
+                    if(!apiClient){
+                        return callback("You must give the VeloxServiceClient VeloxWebView.fieldsSchema.configure options to use the selection 2one fields") ;
+                    }
+                    var otherTable = colDef.otherTable ;
+                    var valColumn = colDef.valFields ;
+                    if(!otherTable || !valColumn){
+                        //try to get in fk
+                        schema[table].fk.some(function(fk){
+                            if(fk.thisColumn === colDef.name){
+                                if(!otherTable){
+                                    otherTable = fk.targetTable;
+                                }
+                                if(!valColumn){ //if val column in other table not explicitelly given, use the FK target column
+                                    valColumn = fk.targetColumn;
+                                }
+                                return true ;
+                            }
+                        }) ;
+                    }
+                    if(!otherTable){
+                        return  callback("Can't find target table for "+table+"."+colDef.name+" you should define a FK or give option otherTable in col def") ;
+                    }
+                    if(!valColumn){
+                        //val column not given and not found in FK
+                        return  callback("Can't find target column value for "+table+"."+colDef.name+" you should define a FK or give option valField in col def") ;
+                    }
+                    var orderBy = colDef.orderBy ;
+                    if(!orderBy){
+                        schema[otherTable].pk.join(',') ;
+                    }
+                    
+                    apiClient.__velox_database[otherTable].search(colDef.search||{}, orderBy, function(err, results){
+                        if(err){ return callback(err); }
+                        results.forEach(function(r){
+                            var option = document.createElement("OPTION") ;
+                            option.value = r[valColumn];
+                            var label = colDef.labelField || valColumn;
+                            schema[otherTable].columns.forEach(function(c){
+                                label = label.replace(c.name, r[c.name]) ;
+                            }) ;
+                            option.innerHTML = label ;
+                            select.appendChild(option) ;
+                        }.bind(this)) ;
+                        callback() ;
+                    }.bind(this));
                 }
             }
+        }else{
+            callback() ;
         }
     }
 

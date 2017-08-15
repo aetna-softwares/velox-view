@@ -460,7 +460,7 @@
             }).bind(this));
 
             asyncSeries(calls, (function (err) {
-                
+                if(err){ return callback(err) ;}
 
                 if(functionInView){
                     functionInView(this) ;
@@ -468,9 +468,10 @@
                 this.initDone = true;
                 this.emit("initDone");
 
-                this.render((function () {
+                this.render((function (err) {
+                    if(err){ return callback(err) ;}
                     this.show();      
-                    callback(err);
+                    callback();
                 }).bind(this));
             }).bind(this));
         }).bind(this));
@@ -831,10 +832,15 @@
                 if (el.setValue){
                     el.setValue(bindData) ;
                 }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-                    if (bindData === null || bindData === undefined) {
-                        bindData = "";
+                    if(el.tagName === "INPUT" && el.type === "checkbox"){
+                        el.checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
+                    }else{
+                        if (bindData === null || bindData === undefined) {
+                            bindData = "";
+                        }
+                        el.value = bindData;
                     }
-                    el.value = bindData;
+                    
                 } else {
                     if (bindData === null || bindData === undefined) {
                         bindData = "";
@@ -998,7 +1004,11 @@
             if (el.getValue){
                 value = el.getValue();
             }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-                value = el.value;
+                if(el.tagName === "INPUT" && el.type === "checkbox"){
+                    value = el.checked ;
+                }else{
+                    value = el.value;
+                }
             }
             if(value !== undefined){
                 pathSetValue(baseData, bindPath, value);

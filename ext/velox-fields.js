@@ -390,6 +390,7 @@
      * @param {function(Error)} callback called when the field is created
      */
     function createField(element, fieldType, fieldSize, fieldOptions, callback){
+
         _createField(element, fieldType, fieldSize, fieldOptions, function(err){
             if(err){ return callback(err); }
             decorators.forEach(function(deco){
@@ -892,7 +893,7 @@
                 return window.jQuery(select).val() ;
             } ;
             element.setValue = function(value){
-                window.jQuery(select).val(value) ;
+                window.jQuery(select).val(value).trigger('change') ;
             } ;
             element.setReadOnly = function(readOnly){
                 setReadOnly(element, readOnly) ;
