@@ -157,6 +157,8 @@
         return dataObject;
     }
 
+    
+
     /**
      * Set a value inside the object following a path
      * 
@@ -437,9 +439,9 @@
             VeloxWebView.extensions.sort(function(e1, e2){
                 //sort accordingly to mustRunBefore setting
                 if(e1.mustRunBefore && e1.mustRunBefore.indexOf(e2.name) !== -1){
-                    return 1;
+                    return -1;
                 }else {
-                    return -1 ;
+                    return 1 ;
                 }
             }).forEach((function (extension) {
                 if (extension.init) {
@@ -530,6 +532,11 @@
      */
     VeloxWebView.prototype.getBoundObject = function () {
         return pathExtract(this.bindObject, this.bindPath);
+    };
+
+
+    VeloxWebView.prototype.pathExtract = function(obj, path, getParent) {
+        return pathExtract(obj, path, getParent) ;
     };
 
     /**
@@ -772,7 +779,7 @@
         }else{
             callback("The transformData function should take argument (data) or (data, callback)") ;
         }
-    }
+    } ;
 
     /**
      * Render data in the view
@@ -900,76 +907,130 @@
                     }
                 }
 
+                var bindData = pathExtract(baseData, bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
+                if(bindPath.length >0 && bindPath[bindPath.length - 1] === "]" && !bindData){
+                    //array binding but array is null
+                    shouldDisplay = false;
+                }
+
+
                 var removedInstance = [] ;
                 if(shouldDisplay){
-                    var bindData = pathExtract(baseData, bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
-                    if(!Array.isArray(bindData)){
-                        bindData = [bindData] ;
-                    }
-                    bindData.forEach((function (d, y) {
-                        if (!view.instances[y]) {
-                            //this instance does not exist yet, create it
-                            var v = new VeloxWebView(view.dir, view.file, {
-                                containerParent: el,
-                                html: view.html,
-                                css: view.html?"":undefined,
-                                bindObject: this.bindObject,
-                                bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + y + "]")
-                            });
-                            view.instances[y] = v;
-                            if(view.html){ //anonymous subview
-                                v.on("initDone", function(){
-                                    //propagate event listener from containing view to subview created elements
-                                    this.innerViewIds.forEach(function(innerViewId){
-                                        if(v.ids[innerViewId.id]){ //the ids belong to this view
-                                            Object.keys(innerViewId.listeners).forEach(function(event){
-                                                innerViewId.listeners[event].forEach(function(l){
-                                                    v.EL[innerViewId.id].addEventListener(event, l) ;
-                                                }) ;
-                                            }) ;  
-                                        }
-                                    }) ;
-                                }.bind(this)) ;
-                            }
-                            //the emitted event are propagated to this view
-                            var _emit = v.emit ;
-                            v.emit = function(event, data){
-                                _emit.bind(v)(event, data) ; //emit the event inside the view
-                                this.emit(event, data) ; //propagate on this view
-                            }.bind(this) ;
-                            calls.push((function (cb) {
-                                v.open(cb);
-                            }).bind(this));
-                        } else {
-                            //this instance already exist, just reload data in it
-                            calls.push((function (cb) {
-                                view.instances[y].render(cb);
-                            }).bind(this));
-                        }
-                    }).bind(this));
-
-                    
-                    removedInstance = view.instances.splice(bindData.length);
+                    calls.push(function(cb){
+                            this.renderOneView(viewId, bindData, cb) ;
+                    }.bind(this)) ;
                 }else{
                     //not displayed, remove all instance
                     removedInstance = view.instances.splice(0);
+                    removedInstance.forEach((function (instance) {
+                        el.removeChild(instance.container);
+                    }).bind(this));
                 }
-
-                //delete removed elements
-                removedInstance.forEach((function (instance) {
-                    el.removeChild(instance.container);
-                }).bind(this));
             }).bind(this));
 
             asyncSeries(calls, (function () {
                 this.emit("load");
                 callback();
             }).bind(this));
-        }.bind(this));
-        
+        }.bind(this));  
+    };
+
+
+    VeloxWebView.prototype.renderOneView = function (viewId, bindData, callback) {
+        var view = this.views[viewId];
+        var el = view.el;
+        if(!Array.isArray(bindData)){
+            bindData = [bindData] ;
+        }
+        var calls = [];
+        bindData.forEach((function (d, y) {
+            if (!view.instances[y]) {
+                //this instance does not exist yet, create it
+                calls.push(function(cb){
+                    this.addViewInstance(viewId, cb) ;
+                }.bind(this)) ;
+            } else {
+                //this instance already exist, just reload data in it
+                calls.push(view.instances[y].render.bind(view.instances[y])) ;
+            }
+        }).bind(this));
 
         
-    };
+        var removedInstance = view.instances.splice(bindData.length);
+        
+        //delete removed elements
+        removedInstance.forEach((function (instance) {
+            el.removeChild(instance.container);
+        }).bind(this));
+        asyncSeries(calls, (function () {
+            callback();
+        }).bind(this));
+    } ;
+
+    /**
+     * Add a new instance of a sub view (usefull for list)
+     * 
+     * @param {string} viewId id of the sub view
+     * @param {function} callback called when the view is created
+     */
+    VeloxWebView.prototype.removeViewInstance = function (viewId, index) {
+        var view = this.views[viewId];
+        var el = view.el;
+        var removedInstance = view.instances.splice(index, 1);
+        
+        //delete removed elements
+        removedInstance.forEach((function (instance) {
+            el.removeChild(instance.container);
+        }).bind(this));
+        this.emit("viewInstanceRemoved", {viewId: viewId, index : index}) ;
+    } ;
+    /**
+     * Add a new instance of a sub view (usefull for list)
+     * 
+     * @param {string} viewId id of the sub view
+     * @param {function} callback called when the view is created
+     */
+    VeloxWebView.prototype.addViewInstance = function (viewId, callback) {
+        var view = this.views[viewId];
+        var el = view.el;
+        var bindPath = view.bindPath || "";
+
+        var v = new VeloxWebView(view.dir, view.file, {
+            containerParent: el,
+            html: view.html,
+            css: view.html?"":undefined,
+            bindObject: this.bindObject,
+            bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + view.instances.length + "]")
+        });
+        v.viewId = viewId;
+        v.parentView = this ;
+        view.instances.push(v);
+        if(view.html){ //anonymous subview
+            v.on("initDone", function(){
+                //propagate event listener from containing view to subview created elements
+                this.innerViewIds.forEach(function(innerViewId){
+                    if(v.ids[innerViewId.id]){ //the ids belong to this view
+                        Object.keys(innerViewId.listeners).forEach(function(event){
+                            innerViewId.listeners[event].forEach(function(l){
+                                v.EL[innerViewId.id].addEventListener(event, l) ;
+                            }) ;
+                        }) ;  
+                    }
+                }) ;
+            }.bind(this)) ;
+        }
+        //the emitted event are propagated to this view
+        var _emit = v.emit ;
+        v.emit = function(event, data){
+            _emit.bind(v)(event, data) ; //emit the event inside the view
+            this.emit(event, data) ; //propagate on this view
+        }.bind(this) ;
+        v.open(function(err){
+            if(err){return callback(err);}
+            callback() ;
+            this.emit("viewInstanceAdded", {viewId: viewId, index : view.instances.length-1}) ;
+        }.bind(this)) ;
+    } ;
 
     /**
      * Redo the render from the previously rendered object

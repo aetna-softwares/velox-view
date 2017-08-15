@@ -14,7 +14,10 @@
      * field extension definition
      */
     var extension = {} ;
-    extension.name = "velox-fields" ;
+    extension.name = "fields" ;
+
+    //must run before fields extension
+    extension.mustRunBefore = ["list"] ;
 
     /**
      * contains loaded libs
@@ -101,6 +104,7 @@
     var FLATPICKR_VERSION = "3.0.5-1" ;
     var MOMENTJS_VERSION = "2.18.1" ;
     var SELECT2_VERSION = "4.0.3" ;
+    var SELECTIZE_VERSION = "0.12.4" ;
     var W2UI_VERSION = "1.5.rc1" ;
 
     var JQUERY_LIB = {
@@ -180,6 +184,24 @@
             version: SELECT2_VERSION,
             cdn: "https://cdnjs.cloudflare.com/ajax/libs/select2/$VERSION/js/select2.min.js",
             bowerPath: "select2/dist/js/select2.min.js"
+        }
+    ];
+    
+    var SELECTIZE_LIB = [
+        JQUERY_LIB,
+        {
+            name: "selectize-css",
+            type: "css",
+            version: SELECTIZE_VERSION,
+            cdn: "https://cdnjs.cloudflare.com/ajax/libs/selectize.js/$VERSION/css/selectize.css",
+            bowerPath: "bower_components/selectize/dist/css/selectize.css"
+        },
+        {
+            name: "selectize-js",
+            type: "js",
+            version: SELECTIZE_VERSION,
+            cdn: "https://cdnjs.cloudflare.com/ajax/libs/selectize.js/$VERSION/js/standalone/selectize.min.js",
+            bowerPath: "selectize/dist/js/standalone/selectize.min.js"
         }
     ];
 
@@ -560,6 +582,12 @@
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+        // ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+        //     input.addEventListener(eventName, function(ev){
+        //         var cloneEv = new ev.constructor(ev.type, ev);
+        //         element.dispatchEvent(cloneEv);
+        //     }) ;
+        // }) ;
 
         if( fieldOptions.mask){
             loadInputMask(function(err){
@@ -730,6 +758,12 @@
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
     }
 
     /**
@@ -830,6 +864,12 @@
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
     }
 
     /**
@@ -874,7 +914,7 @@
      * @param {*} callback 
      */
     function createSelectField(element, fieldType, fieldSize, fieldOptions, callback){
-        loadLib("select2", SELECT2_VERSION, SELECT2_LIB, function(err){
+        loadLib("selectize", SELECTIZE_VERSION, SELECTIZE_LIB, function(err){
             if(err){ return callback(err); }
 
             var select = null ;
@@ -887,17 +927,33 @@
                 }
                 select = subSelects[0];
             }
-            window.jQuery(select).select2();
+            //element.style.visibility = "hidden";
+
+            var $select = window.jQuery(select) ;
+            $select.selectize();
+            var selectize = $select[0].selectize;
+            //element.style.visibility = "visible";
 
             element.getValue = function(){
-                return window.jQuery(select).val() ;
+                return selectize.getValue() ;
             } ;
             element.setValue = function(value){
-                window.jQuery(select).val(value).trigger('change') ;
+                return selectize.setValue(value) ;
             } ;
             element.setReadOnly = function(readOnly){
-                setReadOnly(element, readOnly) ;
+                if(readOnly) {
+                    selectize.lock();
+                }else{
+                    selectize.unlock();
+                }
             } ;
+            ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+                $select.on(eventName, function(ev){
+                    var event = new Event(ev.type);
+                    //var cloneEv = new ev.constructor(ev.type, ev);
+                    element.dispatchEvent(event);
+                }) ;
+            }) ;
             callback() ;
         }) ;
     }
@@ -1182,6 +1238,12 @@
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
         callback() ;
     }
 
