@@ -302,6 +302,16 @@
                 return els;
             }).bind(this)
         });
+
+        //add extension features
+        VeloxWebView.extensions.forEach(function(extension){
+            if (extension.extendsObj) {
+                Object.keys(extension.extendsObj).forEach(function (key) {
+                    this[key] = extension.extendsObj[key].bind(this) ;
+                }.bind(this));
+            }
+        }.bind(this));
+
     }
 
     VeloxWebView.prototype = Object.create(EventEmiter.prototype);
@@ -951,7 +961,13 @@
                 }.bind(this)) ;
             } else {
                 //this instance already exist, just reload data in it
-                calls.push(view.instances[y].render.bind(view.instances[y])) ;
+                calls.push(function(cb){
+                    if(view.instances[y].bindPath && view.instances[y].bindPath[view.instances[y].bindPath.length-1] === "]"){
+                        //update bind path because the index in array may have change with user remove line in list auto
+                        view.instances[y].bindPath = view.instances[y].bindPath.substring(0, view.instances[y].bindPath.lastIndexOf("[")+1)+y+"]" ;
+                    }
+                    view.instances[y].render(this.bindObject, cb) ;
+                }.bind(this)) ;
             }
         }).bind(this));
 
@@ -1079,26 +1095,48 @@
 
         //set sub views
         Object.keys(this.views).forEach((function (viewId) {
-            var view = this.views[viewId];
-            var viewBindPath =  view.bindPath;
-            if(viewBindPath){
-                viewBindPath = viewBindPath.replace(/\s/g, "").replace(/\[\]$/, "") ;
-            }
-            var viewData = pathExtract(baseData, viewBindPath);
-            if (!viewData) {
-                viewData = [];
-                pathSetValue(baseData, viewBindPath, viewData);
-            }
-            view.instances.forEach((function (instance) {
-                instance.updateData(dataObject);
-            }).bind(this));
-
-            if(Array.isArray(viewData) && viewData.length>0){
-                viewData.splice(view.instances.length);
-            }
-            
+            this._updateDataFromView(viewId, baseData, dataObject) ;
         }).bind(this));
         return dataObject ;
+    };
+
+    /**
+     * update the data from the sub view instances
+     * 
+     * @param {string} viewId the view id
+     * @param {object} baseData the data of this view
+     * @param {object} dataObject the global data object
+     */
+    VeloxWebView.prototype._updateDataFromView = function (viewId, baseData, dataObject) {
+        var view = this.views[viewId];
+        var viewBindPath =  view.bindPath;
+        if(viewBindPath){
+            viewBindPath = viewBindPath.replace(/\s/g, "").replace(/\[\]$/, "") ;
+        }
+        var viewData = pathExtract(baseData, viewBindPath);
+        if (!viewData) {
+            viewData = [];
+            pathSetValue(baseData, viewBindPath, viewData);
+        }
+        
+            
+        view.instances.forEach((function (instance, i) {
+
+            if(instance.bindPath[instance.bindPath.length-1] === "]"){
+                //refresh the path index because it may have changed from user manual remove
+                instance.bindPath = instance.bindPath.substring(0, instance.bindPath.lastIndexOf("[")+1)+i+"]" ;
+                if(!viewData[i]){
+                    //list object, add object for each instance
+                    viewData[i] = {} ;
+                }
+            };
+            instance.updateData(dataObject);
+        }).bind(this));
+
+        if(Array.isArray(viewData) && viewData.length>0){
+            viewData.splice(view.instances.length);
+        }
+        return viewData ;
     };
 
     /**
@@ -1120,7 +1158,7 @@
                 }
                 el.addEventListener(event, (function () {
                     var id = el.getAttribute("data-original-id");
-
+                    
                     this.emit(id, {
                         data: this.getBoundObject(),
                         parentData: pathExtract(this.bindObject, this.bindPath, true),
@@ -1130,7 +1168,8 @@
             }).bind(this)(i);
         }
     };
-
+    
+    VeloxWebView.prototype._asyncSeries = asyncSeries ;
     /**
      * contains extensions
      */
