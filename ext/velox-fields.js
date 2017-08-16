@@ -677,7 +677,47 @@
         var input = appendInputHtml(element) ;
         var maskField = null;
         var maskOptions = null;
-        loadLib("decimaljs", DECIMALJS_VERSION, DECIMALJS_LIB, function(err){
+
+        element.getValue = function(){
+            if(maskField){
+                var value = maskField._valueGet() ;
+                if(maskOptions){
+                    value = replaceAll(value, maskOptions.radixPoint, ".");
+                    value = replaceAll(value, maskOptions.groupSeparator, "");
+                    value = replaceAll(value, maskOptions.prefix, "");
+                    value = replaceAll(value, maskOptions.suffix, "");
+                }
+                value = value === "" ? new libs.Decimal(0) : new libs.Decimal(value);
+                if(fieldType === "percent"){
+                    value = value.div(100) ;
+                }
+                return value ;
+            }
+            return input.value ;
+        } ;
+        element.setValue = function(value){
+            if(maskField){
+                if(!value){ value = 0; }
+                value = new libs.Decimal(value) ;
+                if(fieldType === "percent"){
+                    value = value.mul(100) ;
+                }
+                maskField._valueSet(value.toNumber()) ;
+                return;
+            }
+            input.value = value?""+value:"";
+        } ;
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
+        } ;
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
+
+        loadLib("Decimal", DECIMALJS_VERSION, DECIMALJS_LIB, function(err){
             if(err){ return callback(err) ;}
             loadInputMask(function(err){
                 if(err){ return callback(err) ;}
@@ -727,43 +767,7 @@
             }.bind(this)) ;
         }.bind(this)) ;
 
-        element.getValue = function(){
-            if(maskField){
-                var value = maskField._valueGet() ;
-                if(maskOptions){
-                    value = replaceAll(value, maskOptions.radixPoint, ".");
-                    value = replaceAll(value, maskOptions.groupSeparator, "");
-                    value = replaceAll(value, maskOptions.prefix, "");
-                    value = replaceAll(value, maskOptions.suffix, "");
-                }
-                value = value === "" ? new libs.Decimal(0) : new libs.Decimal(value);
-                if(fieldType === "percent"){
-                    value = value.div(100) ;
-                }
-                return value ;
-            }
-            return input.value ;
-        } ;
-        element.setValue = function(value){
-            if(maskField){
-                value = new libs.Decimal(value) ;
-                if(fieldType === "percent"){
-                    value = value.mul(100) ;
-                }
-                maskField._valueSet(value.toNumber()) ;
-                return;
-            }
-            input.value = value?""+value:"";
-        } ;
-        element.setReadOnly = function(readOnly){
-            setReadOnly(element, readOnly) ;
-        } ;
-        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
-            input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
-                element.dispatchEvent(cloneEv);
-            }) ;
-        }) ;
+        
     }
 
     /**

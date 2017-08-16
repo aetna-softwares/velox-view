@@ -67,16 +67,22 @@
                 callback() ;
             }
         }else{
-            this.listAutoActive = active ;
             var calls = [] ;
+            toggleRemoveEls.bind(this) ;
+            var hasSubViewWithListAuto = false;
             Object.keys(this.views).forEach(function(viewId){
                 var viewDef = this.views[viewId] ;
                 if(viewDef.el.hasAttribute("data-list-auto")){
+                    hasSubViewWithListAuto = true ;
                     calls.push(function(cb){
                         this.setListAuto(viewId, active, cb) ;
                     }.bind(this)) ;
                 }
             }.bind(this));
+            if(hasSubViewWithListAuto){
+                //activate list auto mode only if there is list auto sub view
+                this.listAutoActive = active ;
+            }
             this._asyncSeries(calls, callback) ;
         }
     } ;
@@ -91,6 +97,32 @@
         }
     } ;
 
+    /**
+     * Manage the visibility of remove elements
+     */
+    function toggleRemoveEls(){
+        var elsRemove = this.elementsHavingAttribute("data-list-remove");
+        if(this.listAutoActive){
+            var viewDef = this.parentView.views[this.viewId] ;
+            var listIndex = viewDef.instances.indexOf(this) ;
+            if(listIndex === viewDef.instances.length - 1){
+                //this instance is the last instance, don't allow to remove it
+                elsRemove.forEach(function(elRemove){
+                    elRemove.style.display = "none" ;
+                });
+            }else{
+                //this instance is not the last, allow to remove it
+                elsRemove.forEach(function(elRemove){
+                    elRemove.style.display = "" ;
+                });
+            }
+        }else{
+            //not active, hide all
+            elsRemove.forEach(function(elRemove){
+                elRemove.style.display = "none" ;
+            });
+        }
+    }
 
 
     /**
@@ -152,25 +184,11 @@
                             }.bind(this)) ;
                         }.bind(this)) ;
 
-                        var onParentChange = function(){
-                            //listener that will be called when the rendering of this list changed (full render or add/remove instance)
-                            var listIndex = viewDef.instances.indexOf(this) ;
-                            if(listIndex === viewDef.instances.length - 1){
-                                //this instance is the last instance, don't allow to remove it
-                                elsRemove.forEach(function(elRemove){
-                                    elRemove.style.display = "none" ;
-                                });
-                            }else{
-                                //this instance is not the last, allow to remove it
-                                elsRemove.forEach(function(elRemove){
-                                    elRemove.style.display = "" ;
-                                });
-                            }
-                        }.bind(this) ;
+                        
                         //listen to load (render), remove and add instance events in parent view
-                        this.parentView.on('load', onParentChange) ;
-                        this.parentView.on('viewInstanceRemoved', onParentChange) ;
-                        this.parentView.on('viewInstanceAdded', onParentChange) ;
+                        this.parentView.on('load', toggleRemoveEls.bind(this)) ;
+                        this.parentView.on('viewInstanceRemoved', toggleRemoveEls.bind(this)) ;
+                        this.parentView.on('viewInstanceAdded', toggleRemoveEls.bind(this)) ;
                     }.bind(this)) ;
 
                 }
