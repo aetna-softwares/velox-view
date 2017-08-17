@@ -1185,6 +1185,14 @@
                             listener(ev) ;
                         }); 
                     } ;
+                    //copy grid methods to the elements
+                    Object.keys(Object.getPrototypeOf(grid)).forEach(function(k){
+                        if(!element[k]){
+                            element[k] = function(){
+                                grid[k].apply(grid, arguments) ;
+                            };
+                        }
+                    }) ;
                     
                     callback() ;
                 }) ;

@@ -1170,6 +1170,7 @@
     };
     
     VeloxWebView.prototype._asyncSeries = asyncSeries ;
+    VeloxWebView._asyncSeries = asyncSeries ;
     /**
      * contains extensions
      */

@@ -83,8 +83,7 @@
 
                 if(schemaId[1] === "grid"){
                     element.setAttribute("data-field", "grid") ;
-                    prepareGrid(element, schemaId[0], tableDef) ;
-                    cb() ;
+                    prepareGrid(element, schemaId[0], tableDef, cb) ;
                 } else {
                     var colDef = null;
                     tableDef.columns.some(function(c){
@@ -262,51 +261,16 @@
                     callback() ;
                 }else if(colDef.values === "2one"){
                     //case where values are content of another table
-                    if(!apiClient){
-                        return callback("You must give the VeloxServiceClient VeloxWebView.fieldsSchema.configure options to use the selection 2one fields") ;
-                    }
-                    var otherTable = colDef.otherTable ;
-                    var valColumn = colDef.valFields ;
-                    if(!otherTable || !valColumn){
-                        //try to get in fk
-                        schema[table].fk.some(function(fk){
-                            if(fk.thisColumn === colDef.name){
-                                if(!otherTable){
-                                    otherTable = fk.targetTable;
-                                }
-                                if(!valColumn){ //if val column in other table not explicitelly given, use the FK target column
-                                    valColumn = fk.targetColumn;
-                                }
-                                return true ;
-                            }
-                        }) ;
-                    }
-                    if(!otherTable){
-                        return  callback("Can't find target table for "+table+"."+colDef.name+" you should define a FK or give option otherTable in col def") ;
-                    }
-                    if(!valColumn){
-                        //val column not given and not found in FK
-                        return  callback("Can't find target column value for "+table+"."+colDef.name+" you should define a FK or give option valField in col def") ;
-                    }
-                    var orderBy = colDef.orderBy ;
-                    if(!orderBy){
-                        schema[otherTable].pk.join(',') ;
-                    }
-                    
-                    apiClient.__velox_database[otherTable].search(colDef.search||{}, orderBy, function(err, results){
-                        if(err){ return callback(err); }
-                        results.forEach(function(r){
+                    getPossibleValues(table, colDef, function(err, values){
+                        if(err){ return callback(err);}
+                        Object.keys(values).forEach(function(k){
                             var option = document.createElement("OPTION") ;
-                            option.value = r[valColumn];
-                            var label = colDef.labelField || valColumn;
-                            schema[otherTable].columns.forEach(function(c){
-                                label = label.replace(c.name, r[c.name]) ;
-                            }) ;
-                            option.innerHTML = label ;
+                            option.value = k;
+                            option.innerHTML = values[k] ;
                             select.appendChild(option) ;
-                        }.bind(this)) ;
+                        });
                         callback() ;
-                    }.bind(this));
+                    }) ;
                 }
             }
         }else{
@@ -314,7 +278,53 @@
         }
     }
 
-    function prepareGrid(element, tableName,tableDef){
+    function getPossibleValues(table, colDef, callback){
+        if(!apiClient){
+            return callback("You must give the VeloxServiceClient VeloxWebView.fieldsSchema.configure options to use the selection 2one fields") ;
+        }
+        var otherTable = colDef.otherTable ;
+        var valColumn = colDef.valFields ;
+        if(!otherTable || !valColumn){
+            //try to get in fk
+            schema[table].fk.some(function(fk){
+                if(fk.thisColumn === colDef.name){
+                    if(!otherTable){
+                        otherTable = fk.targetTable;
+                    }
+                    if(!valColumn){ //if val column in other table not explicitelly given, use the FK target column
+                        valColumn = fk.targetColumn;
+                    }
+                    return true ;
+                }
+            }) ;
+        }
+        if(!otherTable){
+            return  callback("Can't find target table for "+table+"."+colDef.name+" you should define a FK or give option otherTable in col def") ;
+        }
+        if(!valColumn){
+            //val column not given and not found in FK
+            return  callback("Can't find target column value for "+table+"."+colDef.name+" you should define a FK or give option valField in col def") ;
+        }
+        var orderBy = colDef.orderBy ;
+        if(!orderBy){
+            schema[otherTable].pk.join(',') ;
+        }
+        
+        apiClient.__velox_database[otherTable].search(colDef.search||{}, orderBy, function(err, results){
+            if(err){ return callback(err); }
+            var values = {} ;
+            results.forEach(function(r){
+                var label = colDef.labelField || valColumn;
+                schema[otherTable].columns.forEach(function(c){
+                    label = label.replace(c.name, r[c.name]) ;
+                }) ;
+                values[r[valColumn]] = label ;
+            }.bind(this)) ;
+            callback(null, values) ;
+        }.bind(this));
+    }
+
+    function prepareGrid(element, tableName,tableDef, callback){
         var listTables = element.getElementsByTagName("TABLE") ;
         var table = null;
         if(listTables.length === 0){
@@ -325,6 +335,7 @@
         }
         
         var listTH = Array.prototype.slice.call(table.getElementsByTagName("TH")) ;
+        var calls = [] ;
         if(listTH.length === 0){
             listTH = [] ;
             var listThead = element.getElementsByTagName("THEAD") ;
@@ -339,23 +350,28 @@
 
             var tr = document.createElement("TR") ;
             thead.appendChild(tr) ;
+            
             tableDef.columns.forEach(function(colDef){
                 if(colDef.name.indexOf("velox_") === 0) { return ; }
                 
-                var th = document.createElement("TH") ;
-                tr.appendChild(th) ;
-                th.setAttribute("data-field-name", colDef.name) ;
-                if(VeloxWebView.i18n){
-                    th.innerHTML = VeloxWebView.i18n.tr("fields."+tableName+"."+colDef.name) ;
-                }else{
-                    th.innerHTML = colDef.label || colDef.name ;
-                }
-                th.setAttribute("data-field-type", colDef.type) ;
-                if(colDef.options){
-                    Object.keys(colDef.options).forEach(function(k){
-                        th.setAttribute("data-field-"+k, colDef.options[k]) ;
+                calls.push(function(cb){
+                    var th = document.createElement("TH") ;
+                    tr.appendChild(th) ;
+                    th.setAttribute("data-field-name", colDef.name) ;
+    
+                    prepareGridThInnerHTML(tableName, colDef, function(err, innerHTML){
+                        if(err){ return cb(err); }
+
+                        th.innerHTML = innerHTML ;
+                        th.setAttribute("data-field-type", colDef.type) ;
+                        if(colDef.options){
+                            Object.keys(colDef.options).forEach(function(k){
+                                th.setAttribute("data-field-"+k, colDef.options[k]) ;
+                            }) ;
+                        }
+                        cb() ;
                     }) ;
-                }
+                }.bind(this)) ;            
             }) ;
         }else{
             listTH.forEach(function(th){
@@ -368,26 +384,57 @@
                     }
                 }) ;
                 if(colDef){
-                    if(!th.getAttribute("data-field-type")){
-                        th.setAttribute("data-field-type", colDef.type) ;
-                    }
-                    if(!th.innerHTML){
-                        if(VeloxWebView.i18n){
-                            th.innerHTML = VeloxWebView.i18n.tr("fields."+tableName+"."+colDef.name) ;
-                        }else{
-                            th.innerHTML = colDef.label || colDef.name ;
+                    calls.push(function(cb){
+
+                        if(!th.getAttribute("data-field-type")){
+                            th.setAttribute("data-field-type", colDef.type) ;
                         }
-                    }
-                    if(colDef.options){
-                        Object.keys(colDef.options).forEach(function(k){
-                            if(!th.getAttribute("data-field-"+k)){
-                                th.setAttribute("data-field-"+k, colDef.options[k]) ;
-                            }
-                        }) ;
-                    }
+                        if(colDef.options){
+                            Object.keys(colDef.options).forEach(function(k){
+                                if(!th.getAttribute("data-field-"+k)){
+                                    th.setAttribute("data-field-"+k, colDef.options[k]) ;
+                                }
+                            }) ;
+                        }
+                        if(!th.innerHTML){
+                            prepareGridThInnerHTML(tableName, colDef, function(err, innerHTML){
+                                if(err){ return cb(err); }
+        
+                                th.innerHTML = innerHTML ;
+                                cb() ;
+                            }.bind(this));
+                        }else{
+                            cb() ;
+                        }
+                        
+                    }) ;
                 }
             }) ;
         }
+        VeloxWebView._asyncSeries(calls, callback) ;
+    }
+
+    function prepareGridThInnerHTML(table, colDef, callback){
+        var innerHTML = "" ;
+        if(VeloxWebView.i18n){
+            innerHTML = VeloxWebView.i18n.tr("fields."+table+"."+colDef.name) ;
+        }else{
+            innerHTML = colDef.label || colDef.name ;
+        }
+        
+        if(colDef.values === "2one"){
+            getPossibleValues(table, colDef, function(err, values){
+                if(err){ return callback(err);}
+                var script = "<script>";
+                script += "var values = "+JSON.stringify(values)+";";
+                script += "return values[record['"+colDef.name+"']] || '';" ;
+                script += "</script>" ;
+                innerHTML = script + innerHTML ;
+                callback(null, innerHTML) ;
+            }) ;
+        }else{
+            callback(null, innerHTML) ;
+        }           
     }
 
      /**
