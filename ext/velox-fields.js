@@ -787,6 +787,28 @@
         var input = appendInputHtml(element) ;
         var maskField = null;
         var pickrField = null;
+
+
+        element.getValue = function(){
+            var value = null;
+            if(pickrField && pickrField.selectedDates.length > 0){
+                value = pickrField.selectedDates[0] ;
+            }
+            return value ;
+        } ;
+        element.setValue = function(value){
+            pickrField.setDate(value, false) ;
+        } ;
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
+        } ;
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
+        
         loadLib("flatpickr", FLATPICKR_VERSION, FLATPICKR_LIB, function(err){
             if(err){ return callback(err) ;}
             loadInputMask(function(err){
@@ -855,25 +877,7 @@
             }.bind(this)) ;
         }.bind(this)) ;
 
-        element.getValue = function(){
-            var value = null;
-            if(pickrField && pickrField.selectedDates.length > 0){
-                value = pickrField.selectedDates[0] ;
-            }
-            return value ;
-        } ;
-        element.setValue = function(value){
-            pickrField.setDate(value, false) ;
-        } ;
-        element.setReadOnly = function(readOnly){
-            setReadOnly(element, readOnly) ;
-        } ;
-        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
-            input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
-                element.dispatchEvent(cloneEv);
-            }) ;
-        }) ;
+        
     }
 
     /**

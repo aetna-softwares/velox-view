@@ -238,7 +238,7 @@
                         option.value = val;
                         option.innerHTML = val ;
                         if(VeloxWebView.i18n){
-                            option.innerHTML = VeloxWebView.i18n.tr("fields."+table+"."+val) ;
+                            option.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+val) ;
                         }else{
                             option.innerHTML = val ;
                         }
