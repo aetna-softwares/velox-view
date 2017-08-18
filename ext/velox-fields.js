@@ -437,6 +437,8 @@
         } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
             fieldType==="double" || fieldType==="float" || fieldType==="currency" || fieldType==="percent"){
             createNumberField(element, fieldType, fieldSize, fieldOptions, callback) ;
+        } else if(fieldType === "email"){
+            createEmailField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "date" || fieldType==="datetime" || fieldType === "time"){
             createDateField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "selection" || fieldType === "select"){
@@ -573,11 +575,10 @@
             return input.value ;
         } ;
         element.setValue = function(value){
+            input.value = value?""+value:"";
             if(maskField){
                 maskField._valueSet(value) ;
-                return;
             }
-            input.value = value?""+value:"";
         } ;
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
@@ -696,16 +697,16 @@
             return input.value ;
         } ;
         element.setValue = function(value){
-            if(maskField){
-                if(!value){ value = 0; }
-                value = new libs.Decimal(value) ;
-                if(fieldType === "percent"){
-                    value = value.mul(100) ;
-                }
-                maskField._valueSet(value.toNumber()) ;
-                return;
+            if(!value){ value = 0; }
+            value = new libs.Decimal(value) ;
+            if(fieldType === "percent"){
+                value = value.mul(100) ;
             }
+            value = value.toNumber() ;
             input.value = value?""+value:"";
+            if(maskField){
+                maskField._valueSet(value) ;
+            }
         } ;
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
@@ -768,6 +769,52 @@
         }.bind(this)) ;
 
         
+    }
+
+    /**
+     * Create a input masked email field.
+     * 
+     * 
+     * @param {HTMLElement} element the HTML element to transform
+     * @param {string} fieldType the field type
+     * @param {string} fieldSize the field size
+     * @param {object} fieldOptions field options (from attributes)
+     * @param {function(Error)} callback called when field is created
+     */
+    function createEmailField(element, fieldType, fieldSize, fieldOptions, callback){
+        var input = appendInputHtml(element) ;
+        var maskField = null;
+
+        element.getValue = function(){
+            if(maskField){
+                return maskField._valueGet() ;
+            }
+            return input.value ;
+        } ;
+        element.setValue = function(value){
+            input.value = value?""+value:"";
+            if(maskField){
+                maskField._valueSet(value) ;
+            }
+        } ;
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
+        } ;
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
+
+        loadInputMask(function(err){
+            if(err){ return callback(err) ;}
+
+            
+            var im = new libs.Inputmask("email");
+            maskField = im.mask(input) ;
+            callback() ;
+        }.bind(this)) ;
     }
 
     /**

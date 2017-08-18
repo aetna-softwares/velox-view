@@ -323,15 +323,33 @@
      * @param {function(Error)} [callback] - Called when init is done
      */
     VeloxWebView.prototype.open = function (data, callback) {
-        if (this.initDone) {
-            //already init
-            return callback();
-        }
-
         if(typeof(data) === "function"){
             callback = data;
             data = null;
         }
+
+        if(!callback){ callback = function(){}; }
+
+        if (this.initDone) {
+            //already init
+
+            //check if the container is still around there
+            if(this.container && document.documentElement.contains(this.container)){
+                //OK the container is still here
+                return callback();
+            }else{
+                //the container has been wipped out (probably a parent DOM element has been removed)
+                //the view is in unstable state, it should have been closed with close() before being take out the DOM
+                //but it is quite common to forget it if the view is inserted in some other view so just consider that
+                //the view is closed and go to open it again
+                this.container = null;
+                this.close();
+            }
+            
+
+        }
+
+        
         this.container = this.options.container;
         this.bindObject = data || this.options.bindObject;
         this.bindPath = this.options.bindPath;
@@ -739,25 +757,52 @@
             }
 
             //reset the id has it will be parsed again when sub view will be instancied
-            var elementsSubViews = el.querySelectorAll('[data-original-id]');
-            for(var z=0; z<elementsSubViews.length; z++){
+            var elementsSubViews = Array.prototype.slice.apply(el.querySelectorAll('[data-original-id]'));
+            elementsSubViews.forEach(function(elInner, z){
                 var elInner = elementsSubViews[z] ;
                 elInner.id = elInner.getAttribute("data-original-id") ; 
-                elInner.setAttribute("data-original-id", "") ;
+                if(elInner.id){
 
-                //for the anonymous subviews, remember all internal id to give access in EL (because there is no explicit view to access to them)
-                this.innerViewIds.push({
-                    id: elInner.id,
-                    el :el,
-                    listeners: {},
-                    addEventListener: function(event, listener){
-                        if(!this.listeners[event]){
-                            this.listeners[event] = [] ;
+                    elInner.setAttribute("data-original-id", "") ;
+    
+                    //for the anonymous subviews, remember all internal id to give access in EL (because there is no explicit view to access to them)
+                    var fakeEl = {
+                        id : elInner.id,
+                        el: el,
+                        listeners: {},
+                        addEventListener: function(event, listener){
+                            if(!this.listeners[event]){
+                                this.listeners[event] = [] ;
+                            }
+                            this.listeners[event].push(listener) ;
                         }
-                        this.listeners[event].push(listener) ;
-                    }
-                }) ;
-            }
+                    } ;
+                    //create decorator around element properties and function
+                    Object.keys(Element.prototype).forEach(function(k){
+                        if(Object.keys(fakeEl).indexOf(k) === -1){
+                            if(typeof(elInner[k]) === "function"){
+                                fakeEl[k] = function(){
+                                    if(fakeEl.realEl){
+                                        return fakeEl.realEl[k].apply(fakeEl.realEl, arguments) ;
+                                    }
+                                } ;
+                            }else{
+                                Object.defineProperty(fakeEl, k, {
+                                    get: function(){
+                                        if(fakeEl.realEl){ return fakeEl.realEl[k] ;}
+                                        return null;
+                                    },
+                                    set : function(value){
+                                        if(fakeEl.realEl){ fakeEl.realEl[k] = value ;}
+                                    }
+                                }) ;
+                            }
+                        }
+                    }) ;
+                    this.innerViewIds.push(fakeEl) ;
+                }
+            }.bind(this)) ;
+            
             if(!isAlreadyInSubView){
                 //we reference only the direct subview, subviews of subviews will be handled by the subview
                 this._addSubView(el) ;
@@ -908,12 +953,10 @@
                 if(view.hideIf){
                     var hideIfData = pathExtract(baseData, view.hideIf) ;
                     shouldDisplay = false;
-                    if(hideIfData) {
-                        if(!Array.isArray(hideIfData)){
-                            shouldDisplay = true ; 
-                        } else if(hideIfData.length>0){
-                            shouldDisplay = true ; 
-                        }
+                    if(!hideIfData){
+                        shouldDisplay = true; //no data should display
+                    }else if(hideIfData && Array.isArray(hideIfData) && hideIfData.length === 0) {
+                        shouldDisplay = true; //empty array, should display
                     }
                 }
 
@@ -1026,6 +1069,7 @@
                 //propagate event listener from containing view to subview created elements
                 this.innerViewIds.forEach(function(innerViewId){
                     if(v.ids[innerViewId.id]){ //the ids belong to this view
+                        innerViewId.realEl = v.EL[innerViewId.id] ;
                         Object.keys(innerViewId.listeners).forEach(function(event){
                             innerViewId.listeners[event].forEach(function(l){
                                 v.EL[innerViewId.id].addEventListener(event, l) ;

@@ -159,7 +159,7 @@
      * @private
      */
     function doTranslateView(){
-        var elements = this.container.querySelectorAll('[data-i18n]');
+        var elements = this.elementsHavingAttribute("data-i18n");
         for(var i=0; i<elements.length; i++){
             var str = elements[i].getAttribute("data-i18n") ;
             elements[i].innerHTML = translate(str) ;
