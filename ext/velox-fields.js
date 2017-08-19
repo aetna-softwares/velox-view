@@ -1303,6 +1303,29 @@
         input.className = "velox-upload-input" ;
         input.multiple = !!fieldOptions.multiple ;
         
+        Object.defineProperty(element, "accept", { 
+            get: function () { 
+                return input.accept.split(","); 
+            },
+            
+            set: function (accept) { 
+                if(!Array.isArray(accept)){
+                    accept = accept.split(",") ;
+                }
+                accept = accept.slice() ;
+                accept.forEach(function(a, i){
+                    if(a[0] !== "."){
+                        accept[i] = "."+a;
+                    }
+                }) ;
+                input.accept = accept.join(',') ;
+            } 
+        });
+
+        if(fieldOptions.accept){
+            element.accept = fieldOptions.accept ;
+        }
+    
 
         element.addEventListener("dragover", fileDragHover, false);
         element.addEventListener("dragleave", fileDragHover, false);
@@ -1339,25 +1362,7 @@
             selectedFiles = e.target.files || e.dataTransfer.files;
         };
 
-        Object.defineProperty(element, "accept", { 
-            get: function () { 
-                return input.accept.split(","); 
-            },
-            
-            set: function (accept) { 
-                if(!Array.isArray(accept)){
-                    accept = accept.split(",") ;
-                }
-                accept = accept.splice() ;
-                accept.forEach(function(a, i){
-                    if(a[0] !== "."){
-                        accept[i] = "."+a;
-                    }
-                }) ;
-                input.accept = accept.join(',') ;
-            } 
-        });
-
+       
         element.getValue = function(){
             if(!selectedFiles){ return null; }
             if(input.multiple){
@@ -1372,6 +1377,9 @@
                 value = [value] ;
             }
             selectedFiles = value;
+            if(!value){
+                input.value = "" ;
+            }
             
             // var names = selectedFiles.map(function(f){ return f.name ;}) ;
             
