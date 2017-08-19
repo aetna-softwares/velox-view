@@ -23,10 +23,10 @@
      * Create an unique ID
      */
     function uuidv4() {
-        if(crypto && crypto.getRandomValues){
-        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
+        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
             (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-        ) ;
+        }) ;
         }else{
         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
             var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -281,8 +281,8 @@
                 if (!this.ids) {
                     throw "Try to access element before initialization, consider to use ensureInit()";
                 }
-                let els = this.elements;
-                let elFound = false;
+                var els = this.elements;
+                var elFound = false;
                 if (!els) {
                     els = {};
                     Object.keys(this.ids).forEach((function (id) {
@@ -1196,7 +1196,7 @@
         for (var i = 0; i < emitters.length; i++) {
             (function (i) {
                 var el = emitters[i];
-                let event = el.getAttribute("data-emit");
+                var event = el.getAttribute("data-emit");
                 if (!event) {
                     event = "click";
                 }

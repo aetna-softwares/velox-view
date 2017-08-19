@@ -110,6 +110,8 @@
     var SELECT2_VERSION = "4.0.3" ;
     var SELECTIZE_VERSION = "0.12.4" ;
     var W2UI_VERSION = "1.5.rc1" ;
+    var PDFOBJECT_VERSION = "latest" ;
+    var PDFJS_VERSION = "1.9.426" ;
 
     var JQUERY_LIB = {
         name: "jquery",
@@ -173,23 +175,6 @@
         }
     ];
 
-    var SELECT2_LIB = [
-        JQUERY_LIB,
-        {
-            name: "select2-css",
-            type: "css",
-            version: SELECT2_VERSION,
-            cdn: "https://cdnjs.cloudflare.com/ajax/libs/select2/$VERSION/css/select2.min.css",
-            bowerPath: "select2/dist/css/select2.min.css"
-        },
-        {
-            name: "select2-js",
-            type: "js",
-            version: SELECT2_VERSION,
-            cdn: "https://cdnjs.cloudflare.com/ajax/libs/select2/$VERSION/js/select2.min.js",
-            bowerPath: "select2/dist/js/select2.min.js"
-        }
-    ];
     
     var SELECTIZE_LIB = [
         JQUERY_LIB,
@@ -225,6 +210,16 @@
             version: W2UI_VERSION,
             cdn: "http://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.js",
             bowerPath: "w2ui/dist/w2ui.min.js"
+        }
+    ];
+
+    var PDFOBJECT_LIB = [
+        {
+            name: "pdfobject",
+            type: "js",
+            version: PDFOBJECT_VERSION,
+            cdn: "https://bowercdn.net/c/pdfobject2-$VERSION/pdfobject.min.js",
+            bowerPath: "pdfobject/pdfobject.min.js"
         }
     ];
 
@@ -453,6 +448,8 @@
             createGridField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "upload"){
             createUploadField(element, fieldType, fieldSize, fieldOptions, callback) ;
+        } else if(fieldType === "pdf"){
+            createPdfField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else {
             callback("Unknow field type "+fieldType) ; 
         }
@@ -1023,10 +1020,10 @@
      * Create an unique ID
      */
     function uuidv4() {
-        if(crypto && crypto.getRandomValues){
-            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+        if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
+            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c){
                 (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-            ) ;
+            }) ;
         }else{
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
                 var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
@@ -1442,6 +1439,56 @@
             }) ;
         }) ;
         callback() ;
+    }
+
+    /**
+     * Create the PDF field
+     * 
+     * @param {HTMLElement} element the HTML element to transform
+     * @param {"grid"} fieldType the field type
+     * @param {string} fieldSize the field size
+     * @param {object} fieldOptions the field options (from attributes)
+     * @param {function(Error)} callback called when field is created
+     */
+    function createPdfField(element, fieldType, fieldSize, fieldOptions, callback){
+        loadLib("PDFObject", PDFOBJECT_VERSION, PDFOBJECT_LIB, function(err){
+            if(err){ return callback(err); }
+
+            
+
+            var pdfEl = null;
+            var currentValue = null;
+            element.getValue = function(){
+                return currentValue ;
+            } ;
+            element.setValue = function(value){
+                currentValue = value;
+                if(pdfEl){
+                    element.removeChild(pdfEl) ;
+                }
+                pdfEl = document.createElement("div") ;
+                pdfEl.style.width = "100%";
+                pdfEl.style.height = "100%";
+                element.appendChild(pdfEl) ;
+                var options = {} ;
+                if(!libs.PDFObject.supportsPDFs){
+                    if(VeloxScriptLoader.options.policy === "cdn"){
+                        console.warn("This browser does not support PDF and PDF.js viewer cannot be load from CDN because it cannot run remotely")
+                    }else{
+                        options.PDFJS_URL = VeloxScriptLoader.options.bowerPath+"velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/viewer.html" ;
+                    }
+                }
+                
+                var embedEl = libs.PDFObject.embed(value, pdfEl, options);
+            } ;
+            element.showPDF = element.setValue ;
+                
+            element.setReadOnly = function(){
+                //not handled on PDF viewer
+            } ;
+
+            callback() ;
+        });
     }
 
     /**
