@@ -38,6 +38,10 @@
      * flag for CSS of switch widget
      */
     var switchCSSLoaded = false;
+    /**
+     * flag for CSS of upload widget
+     */
+    var uploadCSSLoaded = false;
 
     /**
      * called on view init
@@ -447,6 +451,8 @@
             createCheckboxField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "grid"){
             createGridField(element, fieldType, fieldSize, fieldOptions, callback) ;
+        } else if(fieldType === "upload"){
+            createUploadField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else {
             callback("Unknow field type "+fieldType) ; 
         }
@@ -1256,6 +1262,126 @@
             return null;
         }
         return type;
+    }
+
+
+    /**
+     * load the UPLOAD CSS
+     */
+    function loadUploadCSS(){
+        if(uploadCSSLoaded){ return ;}
+
+        var css = "";
+        css += ".velox-upload-hover { background: rgba(255, 255, 255, 0.45); }";
+
+        var head = document.getElementsByTagName('head')[0];
+        var s = document.createElement('style');
+        s.setAttribute('type', 'text/css');
+        if (s.styleSheet) {   // IE
+            s.styleSheet.cssText = css;
+        } else {                // the world
+            s.appendChild(document.createTextNode(css));
+        }
+        head.appendChild(s);
+        uploadCSSLoaded = true ;
+    }
+
+    /**
+     * Create the upload field
+     * 
+     * @param {HTMLElement} element the HTML element to transform
+     * @param {"grid"} fieldType the field type
+     * @param {string} fieldSize the field size
+     * @param {object} fieldOptions the field options (from attributes)
+     * @param {function(Error)} callback called when field is created
+     */
+    function createUploadField(element, fieldType, fieldSize, fieldOptions, callback){
+        loadUploadCSS() ;
+
+        var input = appendInputHtml(element) ;
+        input.type = "file";
+        input.className = "velox-upload-input" ;
+        input.multiple = !!fieldOptions.multiple ;
+        
+
+        element.addEventListener("dragover", fileDragHover, false);
+        element.addEventListener("dragleave", fileDragHover, false);
+        element.addEventListener("drop", fileSelectHandler, false);
+
+        input.addEventListener("change",function () {
+			element.setValue(this.files);
+		});
+		
+		input.addEventListener("click", function(){
+		    input.value = "" ;
+		}) ;
+
+        var fileDragHover = function(e) {
+            e.stopPropagation();
+            e.preventDefault();
+    
+            if(e.type === "dragover"){
+                if(!element.classList.contains("velox-upload-hover")){
+                    element.classList.add("velox-upload-hover");
+                }
+            }else{
+                element.classList.remove("velox-upload-hover");
+            }
+        };
+
+        var selectedFiles = [] ;
+
+        var fileSelectHandler = function(e) {
+            // cancel event and hover styling
+            fileDragHover(e);
+    
+            // fetch FileList object
+            selectedFiles = e.target.files || e.dataTransfer.files;
+        };
+
+        Object.defineProperty(element, "accept", { 
+            get: function () { 
+                return input.accept.split(","); 
+            },
+            
+            set: function (accept) { 
+                if(!Array.isArray(accept)){
+                    accept = accept.split(",") ;
+                }
+                accept = accept.splice() ;
+                accept.forEach(function(a, i){
+                    if(a[0] !== "."){
+                        accept[i] = "."+a;
+                    }
+                }) ;
+                input.accept = accept.join(',') ;
+            } 
+        });
+
+        element.getValue = function(){
+            if(!selectedFiles){ return null; }
+            if(input.multiple){
+                return selectedFiles ;
+            }else{
+                return selectedFiles.length>0?selectedFiles[0]:null ;
+            }
+        } ;
+        element.setValue = function(value){
+            
+            if(value && (!value instanceof FileList) && !Array.isArray(selectedFiles)){
+                value = [value] ;
+            }
+            selectedFiles = value;
+            
+            // var names = selectedFiles.map(function(f){ return f.name ;}) ;
+            
+            // fileNameEl.innerHTML = names.join(", ") ;
+        } ;
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
+        } ;
+
+        callback() ;
     }
 
     /**
