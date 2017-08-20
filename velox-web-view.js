@@ -24,14 +24,14 @@
      */
     function uuidv4() {
         if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
-        return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
-            (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-        }) ;
+            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
+                return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+            }) ;
         }else{
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
         }
     }
 
@@ -139,7 +139,7 @@
             //property name
             var p = pathArray.shift().trim();
             var index = null;
-            if (p.includes("[")) {
+            if (p.indexOf("[") != -1) {
                 //has index
                 index = p.substring(p.indexOf("[") + 1, p.indexOf("]")).trim();
                 p = p.substring(0, p.indexOf("[")).trim();
@@ -182,7 +182,7 @@
             //property name
             var p = pathArray.shift().trim();
             var index = null;
-            if (p.includes("[")) {
+            if (p.indexOf("[") !== -1) {
                 //has index
                 index = parseInt(p.substring(p.indexOf("[") + 1, p.indexOf("]")).trim(), 10);
                 p = p.substring(0, p.indexOf("[")).trim();
@@ -288,6 +288,13 @@
                     Object.keys(this.ids).forEach((function (id) {
                         els[id] = document.getElementById(this.ids[id]);
                         if (els[id]) {
+                            var view = this;
+                            els[id].addEventListener = function(event, listener){
+                                Element.prototype.addEventListener.call(els[id],event, function(ev){
+                                    ev.viewOfElement = view;
+                                    listener.bind(els[id])(ev) ;
+                                }) ;
+                            } ;
                             els[id].on = els[id].addEventListener ;
                             elFound = true;
                         }
@@ -501,6 +508,10 @@
                 this.render((function (err) {
                     if(err){ return callback(err) ;}
                     this.show();      
+                    if(this.mustHide){
+                        this.hide(); //hide has been called while init running
+                        this.mustHide = false ;
+                    }
                     callback();
                 }).bind(this));
             }).bind(this));
@@ -512,16 +523,23 @@
      * Hide the view in the DOM (display none)
      */
     VeloxWebView.prototype.hide = function(){
-        this.container.style.display = "none";
-        this.emit("hidden");      
+        
+        if(this.container){
+            this.container.style.display = "none";
+            this.emit("hidden");      
+        }else{
+            this.mustHide = true ;
+        }
     } ;
        
     /**
      * Show the view in the DOM (display empty)
      */
     VeloxWebView.prototype.show = function(){
-        this.container.style.display = ""; 
-        this.emit("displayed");      
+        if(this.container){
+            this.container.style.display = ""; 
+            this.emit("displayed");      
+        }
     } ;
 
     /**
@@ -778,7 +796,7 @@
                         }
                     } ;
                     //create decorator around element properties and function
-                    Object.keys(Element.prototype).forEach(function(k){
+                    Object.keys(Element.prototype).concat(Object.keys(HTMLElement.prototype)).forEach(function(k){
                         if(Object.keys(fakeEl).indexOf(k) === -1){
                             if(typeof(elInner[k]) === "function"){
                                 fakeEl[k] = function(){
@@ -916,6 +934,7 @@
                     value: bindData,
                     baseData: baseData,
                     bindPath: bindPath,
+                    view: this,
                     data: pathExtract(baseData, bindPath, true)
                 });
                 Object.keys(event.detail).forEach(function(k){
@@ -930,6 +949,7 @@
                 value: this.getBoundObject(),
                 baseData: this.bindObject,
                 bindPath: this.bindPath,
+                view: this,
                 data: pathExtract(this.bindObject, this.bindPath, true)
             });
             Object.keys(event.detail).forEach(function(k){

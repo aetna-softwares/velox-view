@@ -107,7 +107,6 @@
     var DECIMALJS_VERSION = "2.2.0" ;
     var FLATPICKR_VERSION = "3.0.5-1" ;
     var MOMENTJS_VERSION = "2.18.1" ;
-    var SELECT2_VERSION = "4.0.3" ;
     var SELECTIZE_VERSION = "0.12.4" ;
     var W2UI_VERSION = "1.5.rc1" ;
     var PDFOBJECT_VERSION = "latest" ;
@@ -1022,7 +1021,7 @@
     function uuidv4() {
         if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
             return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c){
-                (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
             }) ;
         }else{
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
