@@ -289,8 +289,9 @@
                         els[id] = document.getElementById(this.ids[id]);
                         if (els[id]) {
                             var view = this;
+                            var elAddEventListener = els[id].addEventListener ;
                             els[id].addEventListener = function(event, listener){
-                                Element.prototype.addEventListener.call(els[id],event, function(ev){
+                                elAddEventListener.call(els[id],event, function(ev){
                                     ev.viewOfElement = view;
                                     listener.bind(els[id])(ev) ;
                                 }) ;
@@ -342,8 +343,8 @@
 
             //check if the container is still around there
             if(this.container && document.documentElement.contains(this.container)){
-                //OK the container is still here
-                return callback();
+                //OK the container is still here, just refresh data
+                return this.render(data, callback) ;
             }else{
                 //the container has been wipped out (probably a parent DOM element has been removed)
                 //the view is in unstable state, it should have been closed with close() before being take out the DOM

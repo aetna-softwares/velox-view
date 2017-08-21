@@ -180,6 +180,75 @@
         window.jQuery("#w2ui-popup").css("box-shadow", "0 0 25px rgba(255, 48, 0, 0.75") ;
     } ;
 
+    /**
+     * @typedef VeloxPopupOptions
+     * @type {object}
+     * @property {boolean} [modal] indicates if modal (defaut false)
+     * @property {string} [title] Title (default '')
+     * @property {number} [width] width (pixels) (default 500)
+     * @property {number} [height] height (pixels) (default 300)
+     * @property {boolean} [closeWithEsc] close when user press ESC (default true)
+     */
+
+    /**
+     * Open the view in a popup
+     * 
+     * @param {VeloxPopupOptions} [options] popup options
+     * @param {function} callback called when opened
+     */
+    extension.extendsProto.openInPopup = function (options, callback) {
+        if(typeof(options) === "function"){
+            callback = options;
+            options = null ;
+        }
+        if(!options){options = {} ;}
+
+        if(!callback){ callback = function(){} ;}
+
+        options.keyboard = options.closeWithEsc ;
+        options.onOpen = callback ;
+        
+        this.container = document.createElement("DIV");
+        document.body.appendChild(this.container) ;
+        this.hide() ;//init in hide
+        this.open(function(err){
+            if(err){ return callback(err) ;}
+            window.jQuery(this.container).w2popup(options) ;
+        }.bind(this)) ;
+    } ;
+
+    /**
+     * Open HTML or an element in popup
+     * 
+     * @param {string|HTMLElement} htmlOrElement the HTML or element to display in popup
+     * @param {VeloxPopupOptions} [options] popup options
+     * @param {function} callback called when opened
+     */
+    extension.extendsProto.popup = function (htmlOrElement, options, callback) {
+        if(typeof(options) === "function"){
+            callback = options;
+            options = null ;
+        }
+        if(!options){options = {} ;}
+
+        if(!callback){ callback = function(){} ;}
+
+        options.keyboard = options.closeWithEsc ;
+        options.onOpen = callback ;
+        if(typeof(htmlOrElement) === "object"){
+            window.jQuery(htmlOrElement).w2popup(options) ;
+        }else{
+            var container = document.createElement("DIV");
+            document.body.appendChild(container) ;
+            var v = new VeloxWebView(null, null, {
+                container: container,
+                html: htmlOrElement,
+                css: ""
+            });
+            v.openInPopup(options, callback) ;
+        }
+    } ;
+
      /**
      * @typedef VeloxDialogConfirmOptions
      * @type {object}

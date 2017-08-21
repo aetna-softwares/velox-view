@@ -39,6 +39,10 @@
      */
     var switchCSSLoaded = false;
     /**
+     * flag for CSS of select widget
+     */
+    var selectCSSLoaded = false;
+    /**
      * flag for CSS of upload widget
      */
     var uploadCSSLoaded = false;
@@ -182,7 +186,7 @@
             type: "css",
             version: SELECTIZE_VERSION,
             cdn: "https://cdnjs.cloudflare.com/ajax/libs/selectize.js/$VERSION/css/selectize.css",
-            bowerPath: "bower_components/selectize/dist/css/selectize.css"
+            bowerPath: "selectize/dist/css/selectize.css"
         },
         {
             name: "selectize-js",
@@ -962,6 +966,27 @@
     }
 
     /**
+     * load the Select CSS
+     */
+    function loadSelectCSS(){
+        if(selectCSSLoaded){ return ;}
+
+        var css = ".selectize-input.locked { background: #eeeeee; }";
+        css += ".selectize-control.single .selectize-input.locked:after{ display: none }";
+        
+        var head = document.getElementsByTagName('head')[0];
+        var s = document.createElement('style');
+        s.setAttribute('type', 'text/css');
+        if (s.styleSheet) {   // IE
+            s.styleSheet.cssText = css;
+        } else {                // the world
+            s.appendChild(document.createTextNode(css));
+        }
+        head.appendChild(s);
+        switchCSSLoaded = true ;
+    }
+
+    /**
      * Create a select field
      * 
      * @param {HTMLElement} element the HTML element to transform
@@ -973,6 +998,37 @@
     function createSelectField(element, fieldType, fieldSize, fieldOptions, callback){
         loadLib("selectize", SELECTIZE_VERSION, SELECTIZE_LIB, function(err){
             if(err){ return callback(err); }
+
+            //get from https://github.com/selectize/selectize.js/pull/936
+            window.Selectize.prototype.positionDropdown = function () {
+                var $control = this.$control;
+                var offset = this.settings.dropdownParent === 'body' ? $control.offset() : $control.position();
+                var controlHeight = $control.outerHeight(true);
+                var dropdownHeight = this.$dropdown.outerHeight(true);
+        
+                var optDirection = "auto"; //this.settings.dropdownDirection;
+                if (optDirection === 'auto') {
+                    var dropdownBottom = $control.offset().top + controlHeight + dropdownHeight;
+                    var windowBottom = window.jQuery(window).height();
+                    optDirection = dropdownBottom < windowBottom ? 'down' : 'up';
+                }
+        
+                if (optDirection === 'down') {
+                    offset.top += controlHeight;
+                    self.isDropUp = false;
+                } else if (optDirection === 'up') {
+                    offset.top -= dropdownHeight;
+                    self.isDropUp = true;
+                }
+        
+                this.$dropdown.css({
+                    width : $control.outerWidth(),
+                    top   : offset.top,
+                    left  : offset.left
+                });
+            };
+
+            loadSelectCSS() ;
 
             var select = null ;
             if(element.tagName ===  "SELECT"){
@@ -1538,6 +1594,10 @@
             element.setReadOnly = function(){
                 //not handled on PDF viewer
             } ;
+
+            if(fieldOptions.pdfurl){
+                element.setValue(fieldOptions.pdfurl) ;
+            }
 
             callback() ;
         });

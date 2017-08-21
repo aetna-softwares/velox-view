@@ -178,6 +178,9 @@
                 if(fieldType === "grid"){ return ;}//ignore grids
                 var fieldDef = element.getAttribute("data-field-def") ;
                 if(!fieldDef){ return ; }
+                if(element.hasAttribute("data-field-nolabel")){
+                    return ;
+                }
                 
                 var label = document.createElement("LABEL") ;
                 var text = document.createTextNode(VeloxWebView.tr("fields."+fieldDef));
