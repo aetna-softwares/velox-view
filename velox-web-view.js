@@ -471,14 +471,9 @@
             this.prepareSubView() ;
 
             var calls = [];
-            VeloxWebView.extensions.sort(function(e1, e2){
-                //sort accordingly to mustRunBefore setting
-                if(e1.mustRunBefore && e1.mustRunBefore.indexOf(e2.name) !== -1){
-                    return -1;
-                }else {
-                    return 1 ;
-                }
-            }).forEach((function (extension) {
+
+            VeloxWebView.extensions.forEach((function (extension) {
+                console.log("init "+extension.name) ;
                 if (extension.init) {
                     calls.push((function (cb) {
                         if (extension.init.length === 0) {
@@ -524,10 +519,11 @@
      */
     VeloxWebView.prototype.hide = function(){
         
-        if(this.container){
+        if(this.container && this.initDone){
             this.container.style.display = "none";
             this.emit("hidden");      
         }else{
+            //init not done, add a flag to hide when init will be done
             this.mustHide = true ;
         }
     } ;
@@ -1252,6 +1248,7 @@
      * @param {object} extension - The extension to register
      */
     VeloxWebView.registerExtension = function (extension) {
+        
         VeloxWebView.extensions.push(extension);
 
         if (extension.extendsProto) {
@@ -1264,6 +1261,58 @@
                 VeloxWebView[key] = extension.extendsGlobal[key];
             });
         }
+
+        //sort extension following runBefore/runAfter rules
+
+        //first add to indexes map
+        var indexes = {};
+        VeloxWebView.extensions.forEach(function(ext, i){
+            indexes[ext.name] = i;
+        });
+
+        //transform runBefore rules to runAfter to less headaches
+        VeloxWebView.extensions.forEach(function(ext){
+            if(ext.mustRunBefore){
+                ext.mustRunBefore.forEach(function(other){
+                    VeloxWebView.extensions.forEach(function(extOther){
+                        if(extOther.name === other){
+                            if(!extOther.mustRunAfter){
+                                extOther.mustRunAfter = [] ;
+                            }
+                            extOther.mustRunAfter.push(ext.name) ;
+                        }
+                    }) ;
+                });
+            }
+        });
+
+        //compute new indexes 
+        var changed = true;
+        var security = 10 ;
+        while(changed){
+            changed = false ;
+            VeloxWebView.extensions.forEach(function(ext){
+                if(ext.mustRunAfter){
+                    ext.mustRunAfter.forEach(function(other){
+                        if(indexes[other] && indexes[ext.name] <= indexes[other]){
+                            indexes[ext.name] = indexes[other]+1 ;
+                            changed = true ;
+                        }
+                    });
+                }
+            });
+            security--;
+            if(security<=0){
+                //after many loop we still are modifying indexes, it is probably a too recursive rules somewhere, stop trying...
+                console.warn("There is a loop in extensions order before/after, the order is not guaranteed") ;
+                break;
+            }
+        }
+
+        //sort following computed indexes
+        VeloxWebView.extensions = VeloxWebView.extensions.sort(function(e1, e2){
+            return indexes[e1.name] - indexes[e2.name] ;
+        }) ;
     };
 
 

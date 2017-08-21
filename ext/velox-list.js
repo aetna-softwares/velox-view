@@ -16,6 +16,9 @@
     var extension = {} ;
     extension.name = "list" ;
 
+    //must run before fields extension
+    extension.mustRunAfter = ["fields"] ;
+
     /**
      * called on view init
      */

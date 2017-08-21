@@ -16,8 +16,8 @@
     var extension = {} ;
     extension.name = "fields" ;
 
-    //must run before fields extension
-    extension.mustRunBefore = ["list"] ;
+    //must run after i18n
+    extension.mustRunAfter = ["i18n"] ;
 
     /**
      * contains loaded libs
@@ -1021,7 +1021,7 @@
     function uuidv4() {
         if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
             return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c){
-                return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16) ;
             }) ;
         }else{
             return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -1048,6 +1048,13 @@
         var table = subSelects[0];
         var listThead = table.getElementsByTagName("THEAD") ;
         var thead = listThead.length>0?listThead[0]:null ;
+
+        var toolbar = table.querySelector("[data-toolbar]") ;
+        if(toolbar){
+            //remove it to avoid mix toolbar TH element with header column TH elements
+            toolbar.parentElement.removeChild(toolbar) ;
+        }
+
         var listTh = Array.prototype.slice.call(table.getElementsByTagName("TH")) ;
         if(listTh.length === 0){
             return callback("Your data field grid should have at least a TH tag") ;
@@ -1077,6 +1084,8 @@
                         searches : []
                     } ;
 
+
+
                     if(thead){
                         ["header", "toolbar","toolbarAdd", "toolbarEdit", "toolbarDelete","toolbarSave","footer", "lineNumbers", "selectColumn", "expandColumn"].forEach(function(showAttr){
                             var showValue = thead.getAttribute(showAttr);
@@ -1085,6 +1094,37 @@
                             }
                         }) ;
                     }
+
+                    
+
+                    if(toolbar){
+                        gridOptions.toolbar = {
+                            items: []
+                        };
+                        gridOptions.show.toolbar = true ;
+                        Array.prototype.slice.apply(toolbar.children).forEach(function(item){
+                            var toolbarItem = {
+                                id : item.getAttribute("data-original-id") ,
+                                text: item.innerHTML
+                            } ;
+                            ["type", "tooltip", "count", "img", "icon", "style", "group"].forEach(function(k){
+                                if(item.hasAttribute("data-"+k)){
+                                    toolbarItem[k] = item.getAttribute("data-"+k) ;
+                                }
+                            }) ;
+                            ["hidden", "hidden", "checked"].forEach(function(k){
+                                if(item.hasAttribute("data-"+k)){
+                                    toolbarItem[k] = item.getAttribute("data-"+k) !== "false" ;
+                                }
+                            }) ;
+                            if(toolbarItem.type === "html"){
+                                toolbarItem.html = toolbarItem.text ;
+                                delete toolbarItem.text ;
+                            }
+                            gridOptions.toolbar.items.push(toolbarItem) ;
+                        }.bind(this)) ;
+                    }
+
 
                     if(Object.keys(gridOptions.show).length === 0){
                         delete gridOptions.show;
@@ -1239,13 +1279,23 @@
                         }); 
                     } ;
                     //copy grid methods to the elements
-                    Object.keys(Object.getPrototypeOf(grid)).forEach(function(k){
+                    Object.keys(Object.getPrototypeOf(grid)).concat(Object.keys(grid)).forEach(function(k){
                         if(!element[k]){
-                            element[k] = function(){
-                                grid[k].apply(grid, arguments) ;
-                            };
+                            if(typeof(grid[k]) === "function"){
+                                element[k] = function(){
+                                    grid[k].apply(grid, arguments) ;
+                                };
+                            }else{
+                                Object.defineProperty(element, k, {
+                                    get: function(){
+                                        return grid[k] ;
+                                    }
+                                }) ;
+                            }
                         }
                     }) ;
+
+                    
                     
                     callback() ;
                 }) ;
@@ -1256,6 +1306,9 @@
     function createGridRenderer(type){
         if(["varchar", "text"].indexOf(type) !== -1){
             return null;
+        }
+        if(type === "date"){
+            return "date:"+window.w2utils.settings.dateFormat ;
         }
         return type;
     }

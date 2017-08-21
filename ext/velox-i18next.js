@@ -57,7 +57,7 @@
      * i18next extension definition
      */
     var extension = {} ;
-    extension.name = "i18next" ;
+    extension.name = "i18n" ;
 
     extension.init = function(cb){
         var view = this ;
