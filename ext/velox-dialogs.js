@@ -207,13 +207,32 @@
 
         options.keyboard = options.closeWithEsc ;
         options.onOpen = callback ;
-        
-        this.container = document.createElement("DIV");
-        document.body.appendChild(this.container) ;
+
+        // if(!options.width){
+        //     var windowWidth = window.innerWidth ;
+        //     if(windowWidth > 1000){
+        //         options.width = windowWidth/2;
+        //     }else if(windowWidth > 500){
+        //         options.width = windowWidth * 0.66;
+        //     }else{
+        //         options.width = windowWidth - 30;
+        //     }
+        // }
+
+        this.options.container = document.createElement("DIV");
+        //document.body.appendChild(this.options.container) ;
         this.hide() ;//init in hide
         this.open(function(err){
             if(err){ return callback(err) ;}
-            window.jQuery(this.container).w2popup(options) ;
+            options.body = '<div id="velox_popup_body"></div>' ;
+            options.onOpen = function(ev){
+                ev.onComplete = function(){
+                    document.getElementById("velox_popup_body").appendChild(this.options.container) ;
+                    callback() ;
+                }.bind(this) ;
+            }.bind(this) ;
+            w2popup.open(options);
+            //window.jQuery(this.container).w2popup(options) ;
         }.bind(this)) ;
     } ;
 
@@ -235,6 +254,23 @@
 
         options.keyboard = options.closeWithEsc ;
         options.onOpen = callback ;
+
+        if(!options.width){
+            var windowWidth = window.innerWidth ;
+            if(windowWidth > 1000){
+                options.width = windowWidth/2;
+            }else if(windowWidth > 500){
+                options.width = windowWidth * 0.66;
+            }else{
+                options.width = windowWidth - 30;
+            }
+        }
+
+        // if(!options.height){
+        //     var windowHeight = window.innerHeight ;
+        //     options.height = windowHeight/2;
+        // }
+        
         if(typeof(htmlOrElement) === "object"){
             window.jQuery(htmlOrElement).w2popup(options) ;
         }else{

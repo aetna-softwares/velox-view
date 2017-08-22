@@ -266,7 +266,7 @@
     function VeloxWebView(directory, name, options) {
         EventEmiter.call(this);
 
-        this.options = options;
+        this.options = options || {};
         this.directory = directory;
         this.name = name;
         this.views = {};

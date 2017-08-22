@@ -310,7 +310,7 @@
         }
         var orderBy = colDef.orderBy ;
         if(!orderBy){
-            schema[otherTable].pk.join(',') ;
+            orderBy = schema[otherTable].pk.join(',') ;
         }
         
         apiClient.__velox_database[otherTable].search(colDef.search||{}, orderBy, function(err, results){

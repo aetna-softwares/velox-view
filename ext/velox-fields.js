@@ -441,7 +441,7 @@
             createNumberField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "email"){
             createEmailField(element, fieldType, fieldSize, fieldOptions, callback) ;
-        } else if(fieldType === "date" || fieldType==="datetime" || fieldType === "time"){
+        } else if(fieldType === "date" || fieldType==="datetime" || fieldType === "time" || fieldType === "timestamp"){
             createDateField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "selection" || fieldType === "select"){
             createSelectField(element, fieldType, fieldSize, fieldOptions, callback) ;
@@ -873,7 +873,7 @@
 
                         var localeData = libs.moment.localeData(momentLocaleCode(currentLocale.lang)) ;
                         var localeDateFormat = localeData._longDateFormat.L ;
-                        if(fieldType === "datetime"){
+                        if(fieldType === "datetime" || fieldType === "timestamp"){
                             localeDateFormat = localeData._longDateFormat.L + " "+localeData._longDateFormat.LT ;
                         }else if(fieldType === "time"){
                             localeDateFormat = localeData._longDateFormat.LT ;
@@ -903,7 +903,7 @@
                         pickrField = libs.flatpickr(input, flatpickrOptions);
                         
                         var maskFormat = localeDateFormat.toLowerCase() ;
-                        if(fieldType === "datetime"){
+                        if(fieldType === "datetime" || fieldType === "timestamp"){
                             maskFormat = "datetime" ;
                             if(useAMPM){
                                 maskFormat = "datetime12" ;
@@ -1045,6 +1045,7 @@
             var $select = window.jQuery(select) ;
             $select.selectize();
             var selectize = $select[0].selectize;
+            selectize.setValue("") ;
             //element.style.visibility = "visible";
 
             element.getValue = function(){
@@ -1068,6 +1069,12 @@
                     element.dispatchEvent(event);
                 }) ;
             }) ;
+
+            element.setOptions = function(options){
+                selectize.clearOptions() ;
+                selectize.addOption(options) ;
+            } ;
+
             callback() ;
         }) ;
     }
