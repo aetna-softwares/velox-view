@@ -921,6 +921,32 @@
                     if (bindData === null || bindData === undefined) {
                         bindData = "";
                     }
+                    if(typeof(bindData) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(bindData)){
+                        //if is a date like "2017-07-24T22:00:00.000Z"
+                        bindData = new Date(bindData) ;
+                    }
+                    if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(bindData)){
+                        //if is a date like "2017-07-24"
+                        bindData = new Date(bindData) ;
+                    }
+                    if(bindData instanceof Date){
+                        //try to guess if it is a date or a date time
+                        if(bindData.getHours() === 0 && bindData.getMinutes() === 0 && bindData.getSeconds() === 0 && bindData.getMilliseconds() === 0){
+                            //the date is exactly midnight, assume it is date only data
+                            if(bindData.toLocaleDateString){
+                                bindData = bindData.toLocaleDateString() ;
+                            }else{
+                                bindData = bindData.toDateString() ; //IE10...
+                            }
+                        }else{
+                            //the date has a date with time information, it is probably a data/time
+                            if(bindData.toLocaleDateString){
+                                bindData = bindData.toLocaleDateString()+" "+bindData.toLocaleTimeString() ;
+                            }else{
+                                bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
+                            }
+                        }
+                    }
                     el.innerHTML = bindData;
                 }
 
