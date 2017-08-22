@@ -414,7 +414,7 @@
                 } else {
                     //add UUID
                     this.ids[id] = id + ID_SEP + uuidEl;
-                    htmlReplaced = htmlReplaced.replace('id="' + id + '"', 'id="' + id + '_-_' + uuidEl + '" data-original-id="' + id + '"');
+                    htmlReplaced = htmlReplaced.replace(new RegExp("\\sid=['\"]"+id+"['\"]"), ' id="' + id + '_-_' + uuidEl + '" data-original-id="' + id + '"');
                     htmlReplaced = htmlReplaced.replace(new RegExp('data-target="#' + id + '"', 'g'),
                         'data-target="#' + id + '_-_' + uuidEl + '"');
                     htmlReplaced = htmlReplaced.replace(new RegExp('href="#' + id + '"', 'g'),
@@ -718,7 +718,6 @@
                     hideIf: hideIfAttr,
                     instances: []
                 };
-                
             }
             
             el.innerHTML = "";
@@ -993,13 +992,20 @@
                     //not displayed, remove all instance
                     removedInstance = view.instances.splice(0);
                     removedInstance.forEach((function (instance) {
-                        el.removeChild(instance.container);
+                        if(view.showIf || view.hideIf){
+                            //el is the container, just empty it
+                            el.innerHTML = "";
+                        }else{
+                            //el is the parentContainer, remove container from it
+                            el.removeChild(instance.container);
+                        }
                     }).bind(this));
                 }
             }).bind(this));
 
             asyncSeries(calls, (function () {
                 this.emit("load");
+                this.emit("render");
                 callback();
             }).bind(this));
         }.bind(this));  
@@ -1036,7 +1042,13 @@
         
         //delete removed elements
         removedInstance.forEach((function (instance) {
-            el.removeChild(instance.container);
+            if(view.showIf || view.hideIf){
+                //el is the container, just empty it
+                el.innerHTML = "";
+            }else{
+                //el is the parentContainer, remove container from it
+                el.removeChild(instance.container);
+            }
         }).bind(this));
         asyncSeries(calls, (function () {
             callback();
@@ -1056,7 +1068,13 @@
         
         //delete removed elements
         removedInstance.forEach((function (instance) {
-            el.removeChild(instance.container);
+            if(view.showIf || view.hideIf){
+                //el is the container, just empty it
+                el.innerHTML = "";
+            }else{
+                //el is the parentContainer, remove container from it
+                el.removeChild(instance.container);
+            }
         }).bind(this));
         this.emit("viewInstanceRemoved", {viewId: viewId, index : index}) ;
     } ;
@@ -1071,13 +1089,20 @@
         var el = view.el;
         var bindPath = view.bindPath || "";
 
-        var v = new VeloxWebView(view.dir, view.file, {
+        var viewOptions = {
             containerParent: el,
             html: view.html,
             css: view.html?"":undefined,
             bindObject: this.bindObject,
             bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + view.instances.length + "]")
-        });
+        } ;
+
+        if(view.showIf || view.hideIf){
+            //this is not a multi-instance sub view, use the element as container
+            viewOptions.container = el;
+        }
+
+        var v = new VeloxWebView(view.dir, view.file, viewOptions);
         v.viewId = viewId;
         v.parentView = this ;
         view.instances.push(v);

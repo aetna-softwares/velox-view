@@ -241,7 +241,7 @@
                         option.value = val;
                         option.innerHTML = val ;
                         if(VeloxWebView.i18n){
-                            option.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+val) ;
+                            option.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+colDef.name+"."+val) ;
                         }else{
                             option.innerHTML = val ;
                         }
@@ -255,7 +255,7 @@
                         option.value = val;
                         option.innerHTML = colDef.values[val] ;
                         if(VeloxWebView.i18n){
-                            option.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+colDef.values[val]) ;
+                            option.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+colDef.name+"."+colDef.values[val]) ;
                         }else{
                             option.innerHTML = colDef.values[val] ;
                         }
@@ -407,6 +407,16 @@
                                 cb() ;
                             }.bind(this));
                         }else{
+                            if(th.children.length === 1 && th.children[0].tagName === "SCRIPT"){
+                                //only a script renderer but no label
+                                var label = document.createElement("LABEL") ;
+                                if(VeloxWebView.i18n){
+                                    label.innerHTML = VeloxWebView.i18n.tr("fields."+tableName+"."+colDef.name) ;
+                                }else{
+                                    label.innerHTML = colDef.label || colDef.name ;
+                                }
+                                th.appendChild(label) ;
+                            }
                             cb() ;
                         }
                         
@@ -438,7 +448,7 @@
         }else if(Array.isArray(colDef.values)){
             var script = "<script>";
             if(VeloxWebView.i18n){
-                script += 'return VeloxWebView.i18n.tr("fields.values.'+table+'."+record["'+colDef.name+'"]) ;'
+                script += 'return VeloxWebView.i18n.tr("fields.values.'+table+'.'+colDef.name+'."+record["'+colDef.name+'"]) ;'
             }else{
                 script += "return record['"+colDef.name+"'] ;" ;
             }
@@ -449,7 +459,7 @@
             var script = "<script>";
             script += 'var values = '+JSON.stringify(colDef.values) +" ;" ;
             if(VeloxWebView.i18n){
-                script += 'return VeloxWebView.i18n.tr("fields.values.'+table+'."+values[record["'+colDef.name+'"]]) ;'
+                script += 'return VeloxWebView.i18n.tr("fields.values.'+table+'.'+colDef.name+'."+values[record["'+colDef.name+'"]]) ;'
             }else{
                 script += "return values[record['"+colDef.name+"']] ;" ;
             }

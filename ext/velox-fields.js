@@ -1048,7 +1048,8 @@
             //element.style.visibility = "visible";
 
             element.getValue = function(){
-                return selectize.getValue() ;
+                var value = selectize.getValue()  ;
+                return value||null ;
             } ;
             element.setValue = function(value){
                 return selectize.setValue(value) ;
