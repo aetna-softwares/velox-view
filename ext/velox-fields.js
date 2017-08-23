@@ -1074,6 +1074,9 @@
                 selectize.clearOptions() ;
                 selectize.addOption(options) ;
             } ;
+            element.getOptions = function(){
+                return selectize.options;
+            } ;
 
             callback() ;
         }) ;
@@ -1344,7 +1347,7 @@
                     } ;
                     //copy grid methods to the elements
                     Object.keys(Object.getPrototypeOf(grid)).concat(Object.keys(grid)).forEach(function(k){
-                        if(!element[k]){
+                        if(element[k] === undefined){
                             if(typeof(grid[k]) === "function"){
                                 element[k] = function(){
                                     grid[k].apply(grid, arguments) ;

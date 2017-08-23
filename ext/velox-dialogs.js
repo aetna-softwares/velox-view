@@ -208,6 +208,13 @@
         options.keyboard = options.closeWithEsc ;
         options.onOpen = callback ;
 
+        var popup = null;
+        this.closePopup = function(){
+            if(popup){
+                popup.close() ;
+            }
+        } ;
+
         // if(!options.width){
         //     var windowWidth = window.innerWidth ;
         //     if(windowWidth > 1000){
@@ -220,18 +227,32 @@
         // }
 
         this.options.container = document.createElement("DIV");
-        //document.body.appendChild(this.options.container) ;
-        this.hide() ;//init in hide
         this.open(function(err){
             if(err){ return callback(err) ;}
             options.body = '<div id="velox_popup_body"></div>' ;
+
+            if(!options.width){
+                //no width given, use the view width
+                options.width = window.jQuery(this.options.container).width() ;
+            }
+            if(!options.height){
+                //no height given, use the view height + 32 (title bar height)
+                options.height = window.jQuery(this.options.container).height() + 32 ;
+            }
+            if(!options.title){
+                //add an empty title to have the close button
+                options.title = "&nbsp;" ;
+            }
+
             options.onOpen = function(ev){
                 ev.onComplete = function(){
+                    //append the view in the opened popup
                     document.getElementById("velox_popup_body").appendChild(this.options.container) ;
                     callback() ;
                 }.bind(this) ;
             }.bind(this) ;
-            w2popup.open(options);
+            popup = w2popup.open(options);
+            
             //window.jQuery(this.container).w2popup(options) ;
         }.bind(this)) ;
     } ;

@@ -266,6 +266,12 @@
     function VeloxWebView(directory, name, options) {
         EventEmiter.call(this);
 
+        if(typeof(directory) === "object"){
+            options = directory;
+            directory=null;
+            name = null;
+        }
+
         this.options = options || {};
         this.directory = directory;
         this.name = name;
@@ -286,7 +292,12 @@
                 if (!els) {
                     els = {};
                     Object.keys(this.ids).forEach((function (id) {
-                        els[id] = document.getElementById(this.ids[id]);
+                        //use querySelector and not document.getElementById because the container maybe not yet inserted in the document
+                        if(this.container.id === this.ids[id]){
+                            els[id] = this.container;
+                        }else{
+                            els[id] = this.container.querySelector("#"+this.ids[id]);
+                        }
                         if (els[id]) {
                             var view = this;
                             var elAddEventListener = els[id].addEventListener ;
@@ -789,7 +800,8 @@
                                 this.listeners[event] = [] ;
                             }
                             this.listeners[event].push(listener) ;
-                        }
+                        },
+                        isFake: true
                     } ;
                     //create decorator around element properties and function
                     Object.keys(Element.prototype).concat(Object.keys(HTMLElement.prototype)).forEach(function(k){
@@ -869,29 +881,33 @@
         if (!callback) {
             callback = function () { };
         }
+
+
+        if (!this.boundElements) {
+            this.boundElements = [];
+
+            var elements = Array.prototype.slice.apply(this.container.querySelectorAll('[data-bind]'));
+            if(this.container.hasAttribute("data-bind")){//add the container himself if it has data-bind attribute
+                elements.push(this.container) ;
+            }
+            for (var i = 0; i < elements.length; i++) {
+                var el = elements[i];
+                var bindPath = el.getAttribute("data-bind");
+                if (!bindPath.replace(/\s/g, "").match(/\[\]$/)) {
+                    this.boundElements.push({
+                        el: el,
+                        bindPath: bindPath
+                    });
+                }
+            }
+        }
+
         if (!this.bindObject) { return callback(); }
 
         this._transformData(function(err){
             if(err){ return callback(err); }
 
-            if (!this.boundElements) {
-                this.boundElements = [];
-
-                var elements = Array.prototype.slice.apply(this.container.querySelectorAll('[data-bind]'));
-                if(this.container.hasAttribute("data-bind")){//add the container himself if it has data-bind attribute
-                    elements.push(this.container) ;
-                }
-                for (var i = 0; i < elements.length; i++) {
-                    var el = elements[i];
-                    var bindPath = el.getAttribute("data-bind");
-                    if (!bindPath.replace(/\s/g, "").match(/\[\]$/)) {
-                        this.boundElements.push({
-                            el: el,
-                            bindPath: bindPath
-                        });
-                    }
-                }
-            }
+            
 
             var baseData = this.bindObject;
             if (this.bindPath) {
@@ -1119,7 +1135,7 @@
             containerParent: el,
             html: view.html,
             css: view.html?"":undefined,
-            bindObject: this.bindObject,
+            bindObject: null,
             bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + view.instances.length + "]")
         } ;
 
@@ -1132,21 +1148,7 @@
         v.viewId = viewId;
         v.parentView = this ;
         view.instances.push(v);
-        if(view.html){ //anonymous subview
-            v.on("initDone", function(){
-                //propagate event listener from containing view to subview created elements
-                this.innerViewIds.forEach(function(innerViewId){
-                    if(v.ids[innerViewId.id]){ //the ids belong to this view
-                        innerViewId.realEl = v.EL[innerViewId.id] ;
-                        Object.keys(innerViewId.listeners).forEach(function(event){
-                            innerViewId.listeners[event].forEach(function(l){
-                                v.EL[innerViewId.id].addEventListener(event, l) ;
-                            }) ;
-                        }) ;  
-                    }
-                }) ;
-            }.bind(this)) ;
-        }
+            
         //the emitted event are propagated to this view
         var _emit = v.emit ;
         v.emit = function(event, data){
@@ -1155,10 +1157,37 @@
         }.bind(this) ;
         v.open(function(err){
             if(err){return callback(err);}
-            callback() ;
-            this.emit("viewInstanceAdded", {viewId: viewId, index : view.instances.length-1}) ;
+            if(view.html){ //anonymous subview
+                //propagate event listener from containing view to subview created elements
+                var parents = [] ;
+                var loopV = v;
+                while(loopV.parentView){
+                    parents.push(loopV.parentView) ;
+                    loopV = loopV.parentView ;
+                }
+                parents.forEach(function(parent){
+                    parent.innerViewIds.forEach(function(innerViewId){
+                        if(v.ids[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
+                            innerViewId.realEl = v.EL[innerViewId.id] ;
+                            Object.keys(innerViewId.listeners).forEach(function(event){
+                                innerViewId.listeners[event].forEach(function(l){
+                                    v.EL[innerViewId.id].addEventListener(event, l) ;
+                                }) ;
+                            }) ;  
+                        }
+                    }) ;
+                }.bind(this)) ;
+            }
+            //render after propagate event to be sure bound listener are called
+            v.render( this.bindObject, function(err){
+                if(err){return callback(err);}
+                callback() ;
+                this.emit("viewInstanceAdded", {viewId: viewId, index : view.instances.length-1}) ;
+            }.bind(this));
         }.bind(this)) ;
     } ;
+
+    
 
     /**
      * Redo the render from the previously rendered object
@@ -1180,7 +1209,9 @@
         if (dataObject === undefined) {
             dataObject = this.bindObject;
         }
-
+        if(!dataObject){
+            dataObject = {} ;
+        }
         var baseData = dataObject;
         if (this.bindPath) {
             baseData = pathExtract(dataObject, this.bindPath);

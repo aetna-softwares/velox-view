@@ -150,15 +150,16 @@
             //I am a view 'item' of a list
             var indexBracket = this.bindPath.lastIndexOf("[") ;
             if(indexBracket !== -1){
-                //get the list array from data
-                this.list = this.pathExtract(this.bindObject, this.bindPath.substring(0, indexBracket)) ;
                 //get my view definition from parent
                 var viewDef = this.parentView.views[this.viewId] ;
-                if(this.list){
-                    //if the list exists
-
-                    this.once("load", function(){
-                        //first time render on this item, search for all fields to listen on changes
+                
+                this.once("load", function(){
+                    //first time render on this item, search for all fields to listen on changes
+                    
+                    //get the list array from data
+                    this.list = this.pathExtract(this.bindObject, this.bindPath.substring(0, indexBracket)) ;
+                    if(this.list){
+                        //if the list exists
 
                         var elements = this.elementsHavingAttribute("data-field");
                         elements.forEach(function(element){
@@ -191,10 +192,9 @@
                         //listen to load (render), remove and add instance events in parent view
                         this.parentView.on('load', toggleRemoveEls.bind(this)) ;
                         this.parentView.on('viewInstanceRemoved', toggleRemoveEls.bind(this)) ;
-                        this.parentView.on('viewInstanceAdded', toggleRemoveEls.bind(this)) ;
-                    }.bind(this)) ;
-
-                }
+                        this.parentView.on('viewInstanceAdded', toggleRemoveEls.bind(this)) ;    
+                    }
+                }.bind(this)) ;
             }
         }
     }
