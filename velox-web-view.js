@@ -12,7 +12,7 @@
     /**
      * Regexp to find id attribute
      */
-    var REGEXP_ID = /id="([^"]*)"/g;
+    var REGEXP_ID = /\sid=['"]([^'"]*)['"]/g;
 
     /**
      * Dictionnary of all loaded CSS
@@ -266,7 +266,7 @@
     function VeloxWebView(directory, name, options) {
         EventEmiter.call(this);
 
-        if(typeof(directory) === "object"){
+        if(directory && typeof(directory) === "object"){
             options = directory;
             directory=null;
             name = null;
@@ -393,7 +393,11 @@
         this.getHTML((function (html) {
             this.ids = {};
 
-            var htmlReplaced = html;
+            
+
+            var html = html.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
+
+            var htmlReplaced = html ;
 
             var functionInView = null;
             var indexScript = htmlReplaced.toLowerCase().indexOf("<script") ;
@@ -467,7 +471,54 @@
                         this.containerParent = document.getElementById(this.containerParent);
                     }
                     this.container.style.display = "none"; //hide during init
-                    this.containerParent.appendChild(this.container);
+                    var nextElement = null;
+                    var previousElement = null;
+                    if(this.options.insertBefore || this.options.insertAfter){
+                        var children = Array.prototype.slice.apply(this.containerParent.children) ;
+                        if(this.options.insertBefore){
+                            //must be inserted before another element in parent
+                            var afterChain = this.options.insertBefore ;
+                            if(!Array.isArray(afterChain)){
+                                afterChain = [afterChain] ;
+                            }else{
+                                afterChain = afterChain.slice() ;
+                            }
+                            while(nextElement === null && afterChain.length>0){
+                                var afterId = afterChain.shift() ;
+                                children.some(function(child){
+                                    if(child.getAttribute("data-vieworder-id") === afterId){
+                                        nextElement = child;
+                                        return true;
+                                    }
+                                }.bind(this)) ;
+                            }
+                        }
+                        if(this.options.insertAfter){
+                            //must be inserted after another element in parent
+                            var beforeChain = this.options.insertAfter ;
+                            if(!Array.isArray(beforeChain)){
+                                beforeChain = [beforeChain] ;
+                            }else{
+                                beforeChain = beforeChain.slice() ;
+                            }
+                            while(previousElement === null && beforeChain.length>0){
+                                var beforeId = beforeChain.shift() ;
+                                children.some(function(child){
+                                    if(child.getAttribute("data-vieworder-id") === beforeId){
+                                        previousElement = child;
+                                        return true;
+                                    }
+                                }.bind(this)) ;
+                            }
+                        }
+                    }
+                    if(nextElement){
+                        this.containerParent.insertBefore(this.container, nextElement);
+                    } else if(previousElement){
+                        this.containerParent.insertBefore(this.container, previousElement.nextSibling);
+                    }else{
+                        this.containerParent.appendChild(this.container);
+                    }
                 } else {
                     throw this.containerId + " is not found";
                 }
@@ -475,6 +526,7 @@
                 this.container.style.display = "none"; //hide during init
                 this.container.innerHTML = htmlReplaced;
             }
+
 
             
 
@@ -485,7 +537,6 @@
             var calls = [];
 
             VeloxWebView.extensions.forEach((function (extension) {
-                console.log("init "+extension.name) ;
                 if (extension.init) {
                     calls.push((function (cb) {
                         if (extension.init.length === 0) {
@@ -692,11 +743,29 @@
 
         var viewId = el.getAttribute("data-view-id");
         if (!viewId) {
-            viewId = el.getAttribute("data-original-id");
+            viewId = el.id; //el.getAttribute("data-original-id");
             if (!viewId) {
-                viewId = uuidv4();
+                viewId = "v_"+uuidv4();
             }
             el.setAttribute("data-view-id", viewId);
+        }
+        var nextElementInParent = el.nextElementSibling ;
+        var nextElementIds = [];
+        while(nextElementInParent){
+            if(!nextElementInParent.hasAttribute("data-vieworder-id")){
+                nextElementInParent.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+            }
+            nextElementIds.push(nextElementInParent.getAttribute("data-vieworder-id")) ;
+            nextElementInParent = nextElementInParent.nextElementSibling ;
+        }
+        var previousElementInParent = el.previousElementSibling ;
+        var previousElementIds = [];
+        while(previousElementInParent){
+            if(!previousElementInParent.hasAttribute("data-vieworder-id")){
+                previousElementInParent.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+            }
+            previousElementIds.push(previousElementInParent.getAttribute("data-vieworder-id")) ;
+            previousElementInParent = previousElementInParent.previousElementSibling ;
         }
         if (!this.views[viewId]) {
             var viewAttr = el.getAttribute("data-view");
@@ -712,7 +781,10 @@
                     file= viewAttr.substring(lastSlash+1) ;
                 }
                 this.views[viewId] = {
+                    elParent: el.parentElement,
                     el: el,
+                    isBefore : nextElementIds.length>0?nextElementIds:null,
+                    isAfter : previousElementIds.length>0?previousElementIds:null,
                     bindPath: bindAttr,
                     dir: dir,
                     file: file,
@@ -720,18 +792,31 @@
                     hideIf: hideIfAttr,
                     instances: []
                 };
+            }else if(showIfAttr || hideIfAttr){
+                this.views[viewId] = {
+                    elParent: el.parentElement,
+                    el: el,
+                    isBefore :  nextElementIds.length>0?nextElementIds:null,
+                    isAfter : previousElementIds.length>0?previousElementIds:null,
+                    bindPath: bindAttr,
+                    html: el.outerHTML,
+                    showIf: showIfAttr,
+                    hideIf: hideIfAttr,
+                    instances: []
+                };
             }else{
                 this.views[viewId] = {
+                    elParent: el.parentElement,
                     el: el,
+                    isBefore :  nextElementIds.length>0?nextElementIds:null,
+                    isAfter : previousElementIds.length>0?previousElementIds:null,
                     bindPath: bindAttr,
-                    html: el.innerHTML,
+                    html: el.outerHTML,
                     showIf: showIfAttr,
                     hideIf: hideIfAttr,
                     instances: []
                 };
             }
-            
-            el.innerHTML = "";
         }
     } ;
 
@@ -783,6 +868,9 @@
 
             //reset the id has it will be parsed again when sub view will be instancied
             var elementsSubViews = Array.prototype.slice.apply(el.querySelectorAll('[data-original-id]'));
+            if(el.hasAttribute("data-original-id")){
+                elementsSubViews.push(el) ;
+            }
             elementsSubViews.forEach(function(elInner, z){
                 var elInner = elementsSubViews[z] ;
                 elInner.id = elInner.getAttribute("data-original-id") ; 
@@ -835,6 +923,13 @@
             }
         }
 
+        //remove element after all views are defined because we need the el position each other in all view definition
+        //because we need to know which view is before/after which view in a parent when 2 views are in the same parent
+        //to put them at the right place we create instances on render
+        Object.keys(this.views).forEach(function(viewId){
+            this.views[viewId].elParent.removeChild(this.views[viewId].el) ;
+        }.bind(this)) ;
+        
     };
 
     VeloxWebView.prototype._transformData = function (callback) {
@@ -1034,13 +1129,7 @@
                     //not displayed, remove all instance
                     removedInstance = view.instances.splice(0);
                     removedInstance.forEach((function (instance) {
-                        if(view.showIf || view.hideIf){
-                            //el is the container, just empty it
-                            el.innerHTML = "";
-                        }else{
-                            //el is the parentContainer, remove container from it
-                            el.removeChild(instance.container);
-                        }
+                        instance.container.parentElement.removeChild(instance.container);
                     }).bind(this));
                 }
             }).bind(this));
@@ -1084,13 +1173,7 @@
         
         //delete removed elements
         removedInstance.forEach((function (instance) {
-            if(view.showIf || view.hideIf){
-                //el is the container, just empty it
-                el.innerHTML = "";
-            }else{
-                //el is the parentContainer, remove container from it
-                el.removeChild(instance.container);
-            }
+            instance.container.parentElement.removeChild(instance.container);
         }).bind(this));
         asyncSeries(calls, (function () {
             callback();
@@ -1105,18 +1188,11 @@
      */
     VeloxWebView.prototype.removeViewInstance = function (viewId, index) {
         var view = this.views[viewId];
-        var el = view.el;
         var removedInstance = view.instances.splice(index, 1);
         
         //delete removed elements
         removedInstance.forEach((function (instance) {
-            if(view.showIf || view.hideIf){
-                //el is the container, just empty it
-                el.innerHTML = "";
-            }else{
-                //el is the parentContainer, remove container from it
-                el.removeChild(instance.container);
-            }
+            instance.container.parentElement.removeChild(instance.container);
         }).bind(this));
         this.emit("viewInstanceRemoved", {viewId: viewId, index : index}) ;
     } ;
@@ -1128,22 +1204,18 @@
      */
     VeloxWebView.prototype.addViewInstance = function (viewId, callback) {
         var view = this.views[viewId];
-        var el = view.el;
         var bindPath = view.bindPath || "";
 
         var viewOptions = {
-            containerParent: el,
+            containerParent: view.elParent,
+            insertBefore : view.isBefore,
+            insertAfter : view.isAfter,
             html: view.html,
             css: view.html?"":undefined,
             bindObject: null,
             bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + view.instances.length + "]")
         } ;
-
-        if(view.showIf || view.hideIf){
-            //this is not a multi-instance sub view, use the element as container
-            viewOptions.container = el;
-        }
-
+        
         var v = new VeloxWebView(view.dir, view.file, viewOptions);
         v.viewId = viewId;
         v.parentView = this ;
@@ -1167,7 +1239,7 @@
                 }
                 parents.forEach(function(parent){
                     parent.innerViewIds.forEach(function(innerViewId){
-                        if(v.ids[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
+                        if(v.ids[innerViewId.id] && v.EL[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
                             innerViewId.realEl = v.EL[innerViewId.id] ;
                             Object.keys(innerViewId.listeners).forEach(function(event){
                                 innerViewId.listeners[event].forEach(function(l){
@@ -1288,10 +1360,8 @@
      * @private
      */
     VeloxWebView.prototype.initAutoEmit = function () {
-        var emitters = Array.prototype.slice.call(this.container.querySelectorAll("[data-emit]"));
-        if(this.container.hasAttribute("data-emit")){
-            emitters.push(this.container) ;
-        }
+        var emitters = this.elementsHavingAttribute("data-emit");
+        
         for (var i = 0; i < emitters.length; i++) {
             (function (i) {
                 var el = emitters[i];
