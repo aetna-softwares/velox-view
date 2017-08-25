@@ -111,6 +111,23 @@
         }
     };
 
+    function evalExpr(currentData, expr){
+        if(currentData){
+            var argNames = [] ;
+            var argValues = [] ;
+            Object.keys(currentData).forEach(function(k){
+                argNames.push(k);
+                argValues.push(currentData[k]);
+            }) ;
+            try{
+                return new Function(argNames.join(","), "return "+expr).apply(null, argValues) ;
+            }catch(e){
+                console.error("Error while evaluing expr "+expr, e) ;
+                return false;
+            }
+        }
+    }
+
     /**
      * Extract a sub object use a path
      * 
@@ -271,6 +288,8 @@
             directory=null;
             name = null;
         }
+
+        this.uid = uuidv4() ;
 
         this.options = options || {};
         this.directory = directory;
@@ -548,14 +567,16 @@
                                 cb(err) ;
                             }
                         } else {
-                            extension.init.bind(this)(cb);
+                            extension.init.bind(this)(function(err){
+                                cb(err) ;
+                            }.bind(this));
                         }
                     }).bind(this));
                 }
             }).bind(this));
 
             asyncSeries(calls, (function (err) {
-                if(err){ return callback(err) ;}
+                if(err){  return callback(err) ; }
 
                 if(functionInView){
                     functionInView(this) ;
@@ -808,8 +829,8 @@
                 this.views[viewId] = {
                     elParent: el.parentElement,
                     el: el,
-                    isBefore :  nextElementIds.length>0?nextElementIds:null,
-                    isAfter : previousElementIds.length>0?previousElementIds:null,
+                    // isBefore :  nextElementIds.length>0?nextElementIds:null,
+                    // isAfter : previousElementIds.length>0?previousElementIds:null,
                     bindPath: bindAttr,
                     html: el.outerHTML,
                     showIf: showIfAttr,
@@ -964,209 +985,211 @@
      * @param {function} [callback] - Called when render is done
      */
     VeloxWebView.prototype.render = function (bindObject, callback) {
-        this.elements = null; //clear EL collection to force recompute as some sub element may change on render
+        this.ensureInit(function(){
+            //ensure init because we can arrive here while init is running (for example a new view refresh is called while a first one is not yet done)
 
-        if (typeof (bindObject) === "function") {
-            callback = bindObject;
-            bindObject = undefined;
-        }
-        if (bindObject !== undefined) {
-            this.bindObject = bindObject;
-        }
-        if (!callback) {
-            callback = function () { };
-        }
-
-
-        if (!this.boundElements) {
-            this.boundElements = [];
-
-            var elements = Array.prototype.slice.apply(this.container.querySelectorAll('[data-bind]'));
-            if(this.container.hasAttribute("data-bind")){//add the container himself if it has data-bind attribute
-                elements.push(this.container) ;
+            this.elements = null; //clear EL collection to force recompute as some sub element may change on render
+            
+            if (typeof (bindObject) === "function") {
+                callback = bindObject;
+                bindObject = undefined;
             }
-            for (var i = 0; i < elements.length; i++) {
-                var el = elements[i];
-                var bindPath = el.getAttribute("data-bind");
-                if (!bindPath.replace(/\s/g, "").match(/\[\]$/)) {
-                    this.boundElements.push({
-                        el: el,
-                        bindPath: bindPath
-                    });
+            if (bindObject !== undefined) {
+                this.bindObject = bindObject;
+            }
+            if (!callback) {
+                callback = function () { };
+            }
+    
+    
+            if (!this.boundElements) {
+                this.boundElements = [];
+    
+                var elements = Array.prototype.slice.apply(this.container.querySelectorAll('[data-bind]'));
+                if(this.container.hasAttribute("data-bind")){//add the container himself if it has data-bind attribute
+                    elements.push(this.container) ;
+                }
+                for (var i = 0; i < elements.length; i++) {
+                    var el = elements[i];
+                    var bindPath = el.getAttribute("data-bind");
+                    if (!bindPath.replace(/\s/g, "").match(/\[\]$/)) {
+                        this.boundElements.push({
+                            el: el,
+                            bindPath: bindPath
+                        });
+                    }
                 }
             }
-        }
-
-        if (!this.bindObject) { return callback(); }
-
-        this._transformData(function(err){
-            if(err){ return callback(err); }
-
-            
-
-            var baseData = this.bindObject;
-            if (this.bindPath) {
-                baseData = pathExtract(this.bindObject, this.bindPath);
-            }
-
-
-            //set simple elements
-            this.boundElements.forEach((function (boundEl) {
-                var el = boundEl.el;
-                var bindPath = boundEl.bindPath;
-                var bindData = pathExtract(baseData, bindPath);
+    
+            if (!this.bindObject) { return callback(); }
+    
+            this._transformData(function(err){
+                if(err){ return callback(err); }
+    
                 
-                if (el.setValue){
-                    el.setValue(bindData) ;
-                }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-                    if(el.tagName === "INPUT" && el.type === "checkbox"){
-                        el.checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
-                    }else{
+    
+                var baseData = this.bindObject;
+                if (this.bindPath) {
+                    baseData = pathExtract(this.bindObject, this.bindPath);
+                }
+    
+    
+                //set simple elements
+                this.boundElements.forEach((function (boundEl) {
+                    var el = boundEl.el;
+                    var bindPath = boundEl.bindPath;
+                    var bindData = pathExtract(baseData, bindPath);
+                    
+                    if (el.setValue){
+                        el.setValue(bindData) ;
+                    }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
+                        if(el.tagName === "INPUT" && el.type === "checkbox"){
+                            el.checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
+                        }else{
+                            if (bindData === null || bindData === undefined) {
+                                bindData = "";
+                            }
+                            el.value = bindData;
+                        }
+                        
+                    } else {
                         if (bindData === null || bindData === undefined) {
                             bindData = "";
                         }
-                        el.value = bindData;
-                    }
-                    
-                } else {
-                    if (bindData === null || bindData === undefined) {
-                        bindData = "";
-                    }
-                    if(typeof(bindData) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(bindData)){
-                        //if is a date like "2017-07-24T22:00:00.000Z"
-                        bindData = new Date(bindData) ;
-                    }
-                    if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(bindData)){
-                        //if is a date like "2017-07-24"
-                        bindData = new Date(bindData) ;
-                    }
-                    if(bindData instanceof Date){
-                        //try to guess if it is a date or a date time
-                        if(bindData.getHours() === 0 && bindData.getMinutes() === 0 && bindData.getSeconds() === 0 && bindData.getMilliseconds() === 0){
-                            //the date is exactly midnight, assume it is date only data
-                            if(bindData.toLocaleDateString){
-                                bindData = bindData.toLocaleDateString() ;
+                        if(typeof(bindData) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(bindData)){
+                            //if is a date like "2017-07-24T22:00:00.000Z"
+                            bindData = new Date(bindData) ;
+                        }
+                        if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(bindData)){
+                            //if is a date like "2017-07-24"
+                            bindData = new Date(bindData) ;
+                        }
+                        if(bindData instanceof Date){
+                            //try to guess if it is a date or a date time
+                            if(bindData.getHours() === 0 && bindData.getMinutes() === 0 && bindData.getSeconds() === 0 && bindData.getMilliseconds() === 0){
+                                //the date is exactly midnight, assume it is date only data
+                                if(bindData.toLocaleDateString){
+                                    bindData = bindData.toLocaleDateString() ;
+                                }else{
+                                    bindData = bindData.toDateString() ; //IE10...
+                                }
                             }else{
-                                bindData = bindData.toDateString() ; //IE10...
-                            }
-                        }else{
-                            //the date has a date with time information, it is probably a data/time
-                            if(bindData.toLocaleDateString){
-                                bindData = bindData.toLocaleDateString()+" "+bindData.toLocaleTimeString() ;
-                            }else{
-                                bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
+                                //the date has a date with time information, it is probably a data/time
+                                if(bindData.toLocaleDateString){
+                                    bindData = bindData.toLocaleDateString()+" "+bindData.toLocaleTimeString() ;
+                                }else{
+                                    bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
+                                }
                             }
                         }
+                        el.innerHTML = bindData;
                     }
-                    el.innerHTML = bindData;
-                }
-
-                //dispatch bound event on this element
+    
+                    //dispatch bound event on this element
+                    var event = document.createEvent('CustomEvent');
+                    event.initCustomEvent('bound', false, true, {
+                        value: bindData,
+                        baseData: baseData,
+                        bindPath: bindPath,
+                        view: this,
+                        data: pathExtract(baseData, bindPath, true)
+                    });
+                    Object.keys(event.detail).forEach(function(k){
+                        event[k] = event.detail[k] ;
+                    });
+                    el.dispatchEvent(event);
+                }).bind(this));
+    
+                //dispatch bound event on container element
                 var event = document.createEvent('CustomEvent');
                 event.initCustomEvent('bound', false, true, {
-                    value: bindData,
-                    baseData: baseData,
-                    bindPath: bindPath,
+                    value: this.getBoundObject(),
+                    baseData: this.bindObject,
+                    bindPath: this.bindPath,
                     view: this,
-                    data: pathExtract(baseData, bindPath, true)
+                    data: pathExtract(this.bindObject, this.bindPath, true)
                 });
                 Object.keys(event.detail).forEach(function(k){
                     event[k] = event.detail[k] ;
                 });
-                el.dispatchEvent(event);
-            }).bind(this));
-
-            //dispatch bound event on container element
-            var event = document.createEvent('CustomEvent');
-            event.initCustomEvent('bound', false, true, {
-                value: this.getBoundObject(),
-                baseData: this.bindObject,
-                bindPath: this.bindPath,
-                view: this,
-                data: pathExtract(this.bindObject, this.bindPath, true)
-            });
-            Object.keys(event.detail).forEach(function(k){
-                event[k] = event.detail[k] ;
-            });
-            this.container.dispatchEvent(event);
-
-            //set sub views
-            var calls = [];
-            Object.keys(this.views).forEach((function (viewId) {
-                var view = this.views[viewId];
-                var el = view.el;
-                var bindPath = view.bindPath || "";
-                var shouldDisplay = true;
-                if(view.showIf){
-                    var showIfData = pathExtract(baseData, view.showIf) ;
-                    if(!showIfData || (Array.isArray(showIfData) && showIfData.length === 0)){
-                        shouldDisplay = false ; 
-                    }
-                }
-                if(view.hideIf){
-                    var hideIfData = pathExtract(baseData, view.hideIf) ;
-                    shouldDisplay = false;
-                    if(!hideIfData){
-                        shouldDisplay = true; //no data should display
-                    }else if(hideIfData && Array.isArray(hideIfData) && hideIfData.length === 0) {
-                        shouldDisplay = true; //empty array, should display
-                    }
-                }
-
-                var bindData = pathExtract(baseData, bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
-                if(bindPath.length >0 && bindPath[bindPath.length - 1] === "]" && !bindData){
-                    //array binding but array is null
-                    shouldDisplay = false;
-                }
-
-
-                var removedInstance = [] ;
-                if(shouldDisplay){
+                this.container.dispatchEvent(event);
+    
+                //set sub views
+                var calls = [];
+                Object.keys(this.views).forEach((function (viewId) {
                     calls.push(function(cb){
+                        var view = this.views[viewId];
+                        var bindPath = view.bindPath || "";
+                        var shouldDisplay = true;
+                        if(view.showIf){
+                            var showIfData = evalExpr(baseData, view.showIf) ;
+                            if(!showIfData || (Array.isArray(showIfData) && showIfData.length === 0)){
+                                shouldDisplay = false ; 
+                            }
+                        }
+                        if(view.hideIf){
+                            var hideIfData = evalExpr(baseData, view.hideIf) ;
+                            shouldDisplay = false;
+                            if(!hideIfData){
+                                shouldDisplay = true; //no data should display
+                            }else if(hideIfData && Array.isArray(hideIfData) && hideIfData.length === 0) {
+                                shouldDisplay = true; //empty array, should display
+                            }
+                        }
+    
+                        var bindData = pathExtract(baseData, bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
+                        if(bindPath.length >0 && bindPath[bindPath.length - 1] === "]" && !bindData){
+                            //array binding but array is null
+                            shouldDisplay = false;
+                        }
+    
+    
+                        var removedInstance = [] ;
+                        if(shouldDisplay){
                             this.renderOneView(viewId, bindData, cb) ;
+                        }else{
+                            //not displayed, remove all instance
+                            removedInstance = view.instances.splice(0);
+                            removedInstance.forEach((function (instance) {
+                                instance.container.parentElement.removeChild(instance.container);
+                            }).bind(this));
+                            cb() ;
+                        }
                     }.bind(this)) ;
-                }else{
-                    //not displayed, remove all instance
-                    removedInstance = view.instances.splice(0);
-                    removedInstance.forEach((function (instance) {
-                        instance.container.parentElement.removeChild(instance.container);
-                    }).bind(this));
-                }
-            }).bind(this));
-
-            asyncSeries(calls, (function () {
-                this.emit("load");
-                this.emit("render");
-                callback();
-            }).bind(this));
-        }.bind(this));  
+                }).bind(this));
+    
+                asyncSeries(calls, (function () {
+                    this.emit("load");
+                    this.emit("render");
+                    callback();
+                }).bind(this));
+            }.bind(this));  
+        }.bind(this)) ;
+        
     };
 
 
     VeloxWebView.prototype.renderOneView = function (viewId, bindData, callback) {
         var view = this.views[viewId];
-        var el = view.el;
         if(!Array.isArray(bindData)){
             bindData = [bindData] ;
         }
         var calls = [];
-        bindData.forEach((function (d, y) {
-            if (!view.instances[y]) {
-                //this instance does not exist yet, create it
-                calls.push(function(cb){
+        bindData.forEach(function (d, y) {
+            calls.push(function(cb){
+                if (!view.instances[y]) {
+                    //this instance does not exist yet, create it
                     this.addViewInstance(viewId, cb) ;
-                }.bind(this)) ;
-            } else {
-                //this instance already exist, just reload data in it
-                calls.push(function(cb){
+                } else {
+                    //this instance already exist, just reload data in it
                     if(view.instances[y].bindPath && view.instances[y].bindPath[view.instances[y].bindPath.length-1] === "]"){
                         //update bind path because the index in array may have change with user remove line in list auto
                         view.instances[y].bindPath = view.instances[y].bindPath.substring(0, view.instances[y].bindPath.lastIndexOf("[")+1)+y+"]" ;
                     }
                     view.instances[y].render(this.bindObject, cb) ;
-                }.bind(this)) ;
-            }
-        }).bind(this));
+                }
+            }.bind(this));
+        }.bind(this)) ;
 
         
         var removedInstance = view.instances.splice(bindData.length);

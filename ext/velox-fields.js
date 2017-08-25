@@ -441,7 +441,7 @@
             createNumberField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "email"){
             createEmailField(element, fieldType, fieldSize, fieldOptions, callback) ;
-        } else if(fieldType === "date" || fieldType==="datetime" || fieldType === "time" || fieldType === "timestamp"){
+        } else if(["date", "datetime", "time", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
             createDateField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "selection" || fieldType === "select"){
             createSelectField(element, fieldType, fieldSize, fieldOptions, callback) ;
@@ -873,7 +873,7 @@
 
                         var localeData = libs.moment.localeData(momentLocaleCode(currentLocale.lang)) ;
                         var localeDateFormat = localeData._longDateFormat.L ;
-                        if(fieldType === "datetime" || fieldType === "timestamp"){
+                        if(["datetime", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
                             localeDateFormat = localeData._longDateFormat.L + " "+localeData._longDateFormat.LT ;
                         }else if(fieldType === "time"){
                             localeDateFormat = localeData._longDateFormat.LT ;
@@ -903,7 +903,7 @@
                         pickrField = libs.flatpickr(input, flatpickrOptions);
                         
                         var maskFormat = localeDateFormat.toLowerCase() ;
-                        if(fieldType === "datetime" || fieldType === "timestamp"){
+                        if(fieldType === "datetime" || fieldType === "timestamp" || fieldType === "timestamptz"){
                             maskFormat = "datetime" ;
                             if(useAMPM){
                                 maskFormat = "datetime12" ;
@@ -971,7 +971,7 @@
     function loadSelectCSS(){
         if(selectCSSLoaded){ return ;}
 
-        var css = ".selectize-input.locked { background: #eeeeee; }";
+        var css = ".selectize-input.locked, .selectize-control.single .selectize-input.input-active.locked { background: #eeeeee; }";
         css += ".selectize-control.single .selectize-input.locked:after{ display: none }";
         
         var head = document.getElementsByTagName('head')[0];
@@ -983,7 +983,7 @@
             s.appendChild(document.createTextNode(css));
         }
         head.appendChild(s);
-        switchCSSLoaded = true ;
+        selectCSSLoaded = true ;
     }
 
     /**
@@ -1252,7 +1252,7 @@
                         }
                         var type = th.getAttribute("data-field-type") ;
                         if(!colDef.render && type){
-                            colDef.render = createGridRenderer(type) ;
+                            colDef.render = createGridRenderer(type, colDef.field) ;
                         }
                         gridOptions.columns.push(colDef) ;
                     }) ;
@@ -1370,12 +1370,42 @@
         }) ;
     }
 
-    function createGridRenderer(type){
+    function createGridRenderer(type, colName){
         if(["varchar", "text"].indexOf(type) !== -1){
             return null;
         }
         if(type === "date"){
-            return "date:"+window.w2utils.settings.dateFormat ;
+            return function(record){
+                var dt = record[colName] ;
+                if(typeof(dt) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(dt)){
+                    //if is a date like "2017-07-24T22:00:00.000Z"
+                    dt = new Date(dt) ;
+                }
+                if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(dt)){
+                    //if is a date like "2017-07-24"
+                    dt = new Date(dt) ;
+                }
+                if(dt instanceof Date){
+                    //try to guess if it is a date or a date time
+                    if(dt.getHours() === 0 && dt.getMinutes() === 0 && dt.getSeconds() === 0 && dt.getMilliseconds() === 0){
+                        //the date is exactly midnight, assume it is date only data
+                        if(dt.toLocaleDateString){
+                            dt = dt.toLocaleDateString() ;
+                        }else{
+                            dt = dt.toDateString() ; //IE10...
+                        }
+                    }else{
+                        //the date has a date with time information, it is probably a data/time
+                        if(dt.toLocaleDateString){
+                            dt = dt.toLocaleDateString()+" "+dt.toLocaleTimeString() ;
+                        }else{
+                            dt = dt.toDateString()+" "+dt.toTimeString() ; //IE10...
+                        }
+                    }
+                }
+                return dt ;
+            } ;
+            //return "date:"+window.w2utils.settings.dateFormat ;
         }
         return type;
     }

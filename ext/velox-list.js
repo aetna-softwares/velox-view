@@ -94,7 +94,7 @@
 
     extension.extendsObj._updateDataFromView = function (viewId, baseData, dataObject) {
         var viewData = VeloxWebView.prototype._updateDataFromView.call(this, viewId, baseData, dataObject);
-        if(this.listAutoActive){
+        if(this.listAutoActive && Array.isArray(viewData)){
             //remove the last entry of the array because it is always an empty line if list auto is active
             viewData.splice(viewData.length - 1, 1) ;
         }
