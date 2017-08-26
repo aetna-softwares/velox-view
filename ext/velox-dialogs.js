@@ -144,7 +144,9 @@
      * @param {function} [callback] called when user close message
      */
     extension.extendsProto.info = function (message, callback) {
-        w2alert(message, '&nbsp;', callback);
+        loadW2ui(function(){
+            w2alert(message, '&nbsp;', callback);
+        }.bind(this)) ;
     } ;
 
     /**
@@ -171,13 +173,15 @@
 			}
         }
         
-        w2alert(message, '&nbsp;', function(){
-            window.jQuery("#w2ui-popup").css("box-shadow", "0 0 25px #555");
-            if(callback){
-                callback();
-            }
+        loadW2ui(function(){
+            w2alert(message, '&nbsp;', function(){
+                window.jQuery("#w2ui-popup").css("box-shadow", "0 0 25px #555");
+                if(callback){
+                    callback();
+                }
+            });
+            window.jQuery("#w2ui-popup").css("box-shadow", "0 0 25px rgba(255, 48, 0, 0.75") ;
         });
-        window.jQuery("#w2ui-popup").css("box-shadow", "0 0 25px rgba(255, 48, 0, 0.75") ;
     } ;
 
     /**
@@ -251,7 +255,10 @@
                     callback() ;
                 }.bind(this) ;
             }.bind(this) ;
-            popup = w2popup.open(options);
+
+            loadW2ui(function(){
+                popup = w2popup.open(options);
+            });
             
             //window.jQuery(this.container).w2popup(options) ;
         }.bind(this)) ;
@@ -293,7 +300,9 @@
         // }
         
         if(typeof(htmlOrElement) === "object"){
-            window.jQuery(htmlOrElement).w2popup(options) ;
+            loadW2ui(function(){
+                window.jQuery(htmlOrElement).w2popup(options) ;
+            });
         }else{
             var container = document.createElement("DIV");
             document.body.appendChild(container) ;
@@ -343,22 +352,24 @@
             labelNo = VeloxWebView.tr?VeloxWebView.tr("global.no"):"No";
         }
 
-        w2confirm({
-            msg : message,
-            title : "&nbsp;",
-            focus_to_no : options.focusToNoButton,
-            btn_yes: {
-                text: labelYes,
-                callback: function(){
-                    callback(true) ;
+        loadW2ui(function(){
+            w2confirm({
+                msg : message,
+                title : "&nbsp;",
+                focus_to_no : options.focusToNoButton,
+                btn_yes: {
+                    text: labelYes,
+                    callback: function(){
+                        callback(true) ;
+                    }
+                },
+                btn_no: {
+                    text: labelNo,
+                    callback: function(){
+                        callback(false) ;
+                    }
                 }
-            },
-            btn_no: {
-                text: labelNo,
-                callback: function(){
-                    callback(false) ;
-                }
-            }
+            }) ;
         }) ;
     } ;
 
@@ -427,13 +438,17 @@
     };
       
     function showWaiter(message){
-        w2utils.lock(document.body, message, true) ;
+        loadW2ui(function(){
+            w2utils.lock(document.body, message, true) ;
+        });
     } ;
-
     
-
+    
+    
     function hideWaiter() {
-        w2utils.unlock(document.body) ;
+        loadW2ui(function(){
+            w2utils.unlock(document.body) ;
+        });
     };
 
             

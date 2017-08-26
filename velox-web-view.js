@@ -122,6 +122,11 @@
             try{
                 return new Function(argNames.join(","), "return "+expr).apply(null, argValues) ;
             }catch(e){
+                if(e.name === "ReferenceError" && /\w/.test(expr)){
+                    //just one word givien ReferenceError it is a data path returning nothing, return false is the expected behaviour
+                    return false;
+                }
+                //other case, log a console error as it likely to be a programmation error
                 console.error("Error while evaluing expr "+expr, e) ;
                 return false;
             }
