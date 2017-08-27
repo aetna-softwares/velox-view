@@ -439,7 +439,9 @@
       
     function showWaiter(message){
         loadW2ui(function(){
-            w2utils.lock(document.body, message, true) ;
+            if(waitCount > 0){
+                w2utils.lock(document.body, message, true) ;
+            }
         });
     } ;
     
@@ -447,7 +449,9 @@
     
     function hideWaiter() {
         loadW2ui(function(){
-            w2utils.unlock(document.body) ;
+            if (waitCount === 0) {
+                w2utils.unlock(document.body) ;
+            }
         });
     };
 
