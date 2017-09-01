@@ -359,13 +359,13 @@
                 focus_to_no : options.focusToNoButton,
                 btn_yes: {
                     text: labelYes,
-                    callback: function(){
+                    callBack: function(){
                         callback(true) ;
                     }
                 },
                 btn_no: {
                     text: labelNo,
-                    callback: function(){
+                    callBack: function(){
                         callback(false) ;
                     }
                 }

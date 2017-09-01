@@ -39,55 +39,66 @@
         this.setListAuto(viewId, false, callback) ;
     } ;
 
-    extension.extendsProto.setListAuto = function(viewId, active, callback){
-        if(typeof(viewId) === "boolean"){
-            callback = active;
-            active = viewId;
-            viewId = null;
-        }
+    extension.extendsProto.setListAuto = function(active, callback){
         if(!callback){ callback = function(){}; }
-        if(viewId){
-            this.views[viewId].instances.forEach(function(v){
-                v.listAutoActive = active ;
-            }) ;
-            this.views[viewId].listAutoActive = active ;
-            if(active){
-                var mustAddLine = false; 
-                if(this.views[viewId].instances.length === 0){
-                    mustAddLine = true ;
-                }else{
-                    var lastObj = this.views[viewId].instances[this.views[viewId].instances.length-1].getBoundObject()
-                    if(lastObj && JSON.stringify(lastObj) !== "{}"){
-                        mustAddLine = true;
-                    }
-                }
-                
-                if(mustAddLine){
-                    //add an instance to start input
-                    this.addViewInstance(viewId, callback) ;
-                }
-            }else{
-                callback() ;
-            }
-        }else{
-            var calls = [] ;
-            toggleRemoveEls.bind(this) ;
-            var hasSubViewWithListAuto = false;
-            Object.keys(this.views).forEach(function(viewId){
+
+        if(this.isListAuto){
+            //if this view is a list auto view, set its active flag
+            this.listAutoActive = active ;
+        }
+        var calls = [] ;
+        //apply on sub views if there is any one of them that may be a list auto
+        Object.keys(this.views).forEach(function(viewId){
+            calls.push(function(cb){
                 var viewDef = this.views[viewId] ;
                 if(viewDef.el.hasAttribute("data-list-auto")){
-                    hasSubViewWithListAuto = true ;
-                    calls.push(function(cb){
-                        this.setListAuto(viewId, active, cb) ;
-                    }.bind(this)) ;
+                    viewDef.listAutoActive = active ;
                 }
-            }.bind(this));
-            if(hasSubViewWithListAuto){
-                //activate list auto mode only if there is list auto sub view
-                this.listAutoActive = active ;
-            }
-            this._asyncSeries(calls, callback) ;
-        }
+
+                var instancesCalls = [];
+
+                this.views[viewId].instances.forEach(function(subView){
+                    instancesCalls.push(function(cbInstance){
+                        subView.setListAuto(active, cbInstance) ;
+                    }) ;
+                }) ;
+                this._asyncSeries(instancesCalls, function(err){
+                    if(err){ return cb(err) ;}
+                    if(active){
+                        if(viewDef.el.hasAttribute("data-list-auto")){
+                            var mustAddLine = false; 
+                            if(this.views[viewId].instances.length === 0){
+                                //no line at all
+                                mustAddLine = true ;
+                            }else{
+                                var lastObj = this.views[viewId].instances[this.views[viewId].instances.length-1].getBoundObject() ;
+                                if(lastObj && JSON.stringify(lastObj) !== "{}"){
+                                    //last line is not an empty line
+                                    mustAddLine = true;
+                                }
+                            }
+                            if(mustAddLine){
+                                //add an instance to start input
+                                this.addViewInstance(viewId, cb) ;
+                            }else{
+                                cb() ;
+                            }
+                        }else{
+                            cb() ;
+                        }
+                    }else{
+                        cb() ;
+                    }
+                }.bind(this)) ;
+            }.bind(this)) ;
+        }.bind(this));
+
+        this._asyncSeries(calls, function(err){
+            if(err){ return callback(err); }
+            toggleRemoveEls.bind(this)() ;
+            callback() ;
+        }.bind(this)) ;
+
     } ;
 
     extension.extendsObj = {} ;
@@ -152,6 +163,10 @@
             if(indexBracket !== -1){
                 //get my view definition from parent
                 var viewDef = this.parentView.views[this.viewId] ;
+
+                if(viewDef.el.hasAttribute("data-list-auto")){
+                    this.isListAuto = true ;
+                }
                 
                 this.once("load", function(){
                     //first time render on this item, search for all fields to listen on changes
