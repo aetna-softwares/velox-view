@@ -589,6 +589,11 @@
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+
+        element.focus = function(){
+            input.focus() ;
+        };
+
         // ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
         //     input.addEventListener(eventName, function(ev){
         //         var cloneEv = new ev.constructor(ev.type, ev);
