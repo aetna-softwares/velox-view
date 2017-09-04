@@ -266,7 +266,7 @@
                     //case where values are content of another table
                     getPossibleValues(table, colDef, function(err, values){
                         if(err){ return callback(err);}
-                        Object.keys(values).sort(function(k1, k2){return values[k1]<values[k2] ;}).forEach(function(k){
+                        Object.keys(values).forEach(function(k){
                             var option = document.createElement("OPTION") ;
                             option.value = k;
                             option.innerHTML = values[k] ;
@@ -308,8 +308,27 @@
             //val column not given and not found in FK
             return  callback("Can't find target column value for "+table+"."+colDef.name+" you should define a FK or give option valField in col def") ;
         }
+        
         var orderBy = colDef.orderBy ;
+
+        if(!orderBy && colDef.labelField){
+            //no order by specified, get columns from label
+            var orderFields = [] ;
+            schema[otherTable].columns.forEach(function(c){
+                if(colDef.labelField.indexOf(c.name) !== -1){
+                    orderFields.push(c.name) ;
+                }
+            }) ;
+            if(orderFields.length>0){
+                orderBy = orderFields.sort(function(f1, f2){
+                    //sort in the order it appear in label
+                    return colDef.labelField.indexOf(f1) - colDef.labelField.indexOf(f2) ;
+                }).join(",") ;
+            }
+        } 
+
         if(!orderBy){
+            //still not order by, use pk
             orderBy = schema[otherTable].pk.join(',') ;
         }
         
