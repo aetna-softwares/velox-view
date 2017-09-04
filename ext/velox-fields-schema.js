@@ -266,7 +266,7 @@
                     //case where values are content of another table
                     getPossibleValues(table, colDef, function(err, values){
                         if(err){ return callback(err);}
-                        Object.keys(values).forEach(function(k){
+                        Object.keys(values).sort(function(k1, k2){return values[k1]<values[k2] ;}).forEach(function(k){
                             var option = document.createElement("OPTION") ;
                             option.value = k;
                             option.innerHTML = values[k] ;
