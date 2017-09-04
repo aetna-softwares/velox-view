@@ -6,7 +6,8 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "echo \"Run in browser\" && exit 1"
+    "test": "echo \"Run in browser\" && exit 1",
+    "start": "httpserver 9753 localhost"
   },
   "repository": {
     "type": "git",
@@ -20,6 +21,7 @@
   "homepage": "https://github.com/aetna-softwares/velox-view#readme",
   "devDependencies": {
     "chai": "^4.1.1",
+    "httpserver": "^0.3.0",
     "mocha": "^3.5.0"
   }
 }

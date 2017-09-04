@@ -1011,20 +1011,30 @@
             if (!this.boundElements) {
                 this.boundElements = [];
     
-                var elements = Array.prototype.slice.apply(this.container.querySelectorAll('[data-bind]'));
-                if(this.container.hasAttribute("data-bind")){//add the container himself if it has data-bind attribute
-                    elements.push(this.container) ;
-                }
-                for (var i = 0; i < elements.length; i++) {
-                    var el = elements[i];
+                var allElements = Array.prototype.slice.apply(this.container.getElementsByTagName("*")) ;
+                allElements.push(this.container) ;
+                allElements.forEach(function(el){
                     var bindPath = el.getAttribute("data-bind");
-                    if (!bindPath.replace(/\s/g, "").match(/\[\]$/)) {
-                        this.boundElements.push({
-                            el: el,
-                            bindPath: bindPath
-                        });
+                    var bindEl = {el: el} ;
+                    if(bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
+                        bindEl.bindPath = bindPath;
                     }
-                }
+                    var attributes = el.attributes ;
+                    var boundAttributes = {} ;
+                    var hasBoundAttribute = false ;
+                    for(var i=0; i<attributes.length; i++){
+                        if(attributes[i].value.indexOf("{") !== -1 && attributes[i].value.indexOf("}") !== -1){
+                            boundAttributes[attributes[i].name] = attributes[i].value ;
+                            hasBoundAttribute = true ;
+                        }
+                    }
+                    if(hasBoundAttribute){
+                        bindEl.boundAttributes = boundAttributes;
+                    }
+                    if(bindEl.bindPath || bindEl.boundAttributes){
+                        this.boundElements.push(bindEl);
+                    }
+                }.bind(this)) ;
             }
     
             if (!this.bindObject) { return callback(); }
@@ -1032,63 +1042,81 @@
             this._transformData(function(err){
                 if(err){ return callback(err); }
     
-                
-    
                 var baseData = this.bindObject;
                 if (this.bindPath) {
                     baseData = pathExtract(this.bindObject, this.bindPath);
                 }
     
-    
                 //set simple elements
                 this.boundElements.forEach((function (boundEl) {
                     var el = boundEl.el;
                     var bindPath = boundEl.bindPath;
-                    var bindData = pathExtract(baseData, bindPath);
-                    
-                    if (el.setValue){
-                        el.setValue(bindData) ;
-                    }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-                        if(el.tagName === "INPUT" && el.type === "checkbox"){
-                            el.checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
-                        }else{
+                    if(bindPath){
+                        var bindData = pathExtract(baseData, bindPath);
+                        
+                        if (el.setValue){
+                            el.setValue(bindData) ;
+                        }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
+                            if(el.tagName === "INPUT" && el.type === "checkbox"){
+                                el.checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
+                            }else{
+                                if (bindData === null || bindData === undefined) {
+                                    bindData = "";
+                                }
+                                el.value = bindData;
+                            }
+                            
+                        } else {
                             if (bindData === null || bindData === undefined) {
                                 bindData = "";
                             }
-                            el.value = bindData;
-                        }
-                        
-                    } else {
-                        if (bindData === null || bindData === undefined) {
-                            bindData = "";
-                        }
-                        if(typeof(bindData) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(bindData)){
-                            //if is a date like "2017-07-24T22:00:00.000Z"
-                            bindData = new Date(bindData) ;
-                        }
-                        if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(bindData)){
-                            //if is a date like "2017-07-24"
-                            bindData = new Date(bindData) ;
-                        }
-                        if(bindData instanceof Date){
-                            //try to guess if it is a date or a date time
-                            if(bindData.getHours() === 0 && bindData.getMinutes() === 0 && bindData.getSeconds() === 0 && bindData.getMilliseconds() === 0){
-                                //the date is exactly midnight, assume it is date only data
-                                if(bindData.toLocaleDateString){
-                                    bindData = bindData.toLocaleDateString() ;
+                            if(typeof(bindData) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(bindData)){
+                                //if is a date like "2017-07-24T22:00:00.000Z"
+                                bindData = new Date(bindData) ;
+                            }
+                            if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(bindData)){
+                                //if is a date like "2017-07-24"
+                                bindData = new Date(bindData) ;
+                            }
+                            if(bindData instanceof Date){
+                                //try to guess if it is a date or a date time
+                                if(bindData.getHours() === 0 && bindData.getMinutes() === 0 && bindData.getSeconds() === 0 && bindData.getMilliseconds() === 0){
+                                    //the date is exactly midnight, assume it is date only data
+                                    if(bindData.toLocaleDateString){
+                                        bindData = bindData.toLocaleDateString() ;
+                                    }else{
+                                        bindData = bindData.toDateString() ; //IE10...
+                                    }
                                 }else{
-                                    bindData = bindData.toDateString() ; //IE10...
-                                }
-                            }else{
-                                //the date has a date with time information, it is probably a data/time
-                                if(bindData.toLocaleDateString){
-                                    bindData = bindData.toLocaleDateString()+" "+bindData.toLocaleTimeString() ;
-                                }else{
-                                    bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
+                                    //the date has a date with time information, it is probably a data/time
+                                    if(bindData.toLocaleDateString){
+                                        bindData = bindData.toLocaleDateString()+" "+bindData.toLocaleTimeString() ;
+                                    }else{
+                                        bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
+                                    }
                                 }
                             }
+                            el.innerHTML = bindData;
                         }
-                        el.innerHTML = bindData;
+                    }
+
+                    if(boundEl.boundAttributes){
+                        Object.keys(boundEl.boundAttributes).forEach(function(name){
+                            var originalValue = boundEl.boundAttributes[name] ;
+                            var value = originalValue ;
+                            while(value.indexOf("{") !== -1){
+                                var indexStart = value.indexOf("{") ;
+                                var indexEnd = value.indexOf("}") ;
+                                if(indexEnd < indexStart){ 
+                                    console.error("Wrong syntax in "+originalValue) ;
+                                    break;
+                                }
+                                var expr = value.substring(indexStart+1, indexEnd) ;
+                                var exprValue = evalExpr(baseData, expr) ;
+                                value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
+                            }
+                            boundEl.el.setAttribute(name, value) ;
+                        }.bind(this)) ;
                     }
     
                     //dispatch bound event on this element
