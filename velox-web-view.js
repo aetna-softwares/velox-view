@@ -304,6 +304,7 @@
         this.bindObject = null;
         this.bindPath = null;
         this.innerViewIds = [] ;
+        this.waitCount = 0;
 
         Object.defineProperty(this, "EL", {
             get: (function () {
@@ -1407,6 +1408,160 @@
                     });
                 }).bind(this));
             }).bind(this)(i);
+        }
+    };
+
+    /**
+	 * Start wait animation
+     * 
+     * @param {string} [message] the message to display
+	 */
+	VeloxWebView.prototype.startWait = function (message) {
+        if(!message){
+            message = this.options.defaultWaitMessage ;
+        }
+       
+		if (this.waitCount === 0) {
+			this.showWaiterTimeout = setTimeout(function () {//don't display waiter if less than 300ms
+				this._showWaiter(message);
+			}.bind(this), this.options.waiterDelay || 300);
+		}
+		this.waitCount++;
+    };
+
+    /**
+	* End wait animation
+	*/
+	VeloxWebView.prototype.startWait.endWait = function () {
+		this.waitCount--;
+		if (this.waitCount === 0) {
+			clearTimeout(this.showWaiterTimeout);
+			this._hideWaiter();
+		}
+    };
+
+    /**
+	* Close all waiters
+	*/
+	VeloxWebView.prototype.closeAllWaiters = function () {
+		if(this.waitCount>0){
+            this.waitCount = 0;
+			clearTimeout(this.showWaiterTimeout);
+			this._hideWaiter();
+		}
+    };
+    
+    /**
+     * Display info box
+     * 
+     * @param {string} message the message to display
+     * @param {function} [callback] called when user close message
+     */
+    VeloxWebView.prototype.info = function (message, callback) {
+        window.alert(message) ;
+        callback() ;
+    } ;
+
+    /**
+     * Display error box
+     * 
+     * @param {string} message the message to display
+     * @param {function} [callback] called when user close message
+     */
+    VeloxWebView.prototype.error = VeloxWebView.prototype.info ;
+
+    /**
+     * Display error box and stop waiter
+     * 
+     * @example
+     * view.startWait()
+     * api.callMyServer(function(err){
+     *  if(err){ return view.endWaitError(err); }
+     *  //OK
+     *   view.endWait() ;
+     * }) ;
+     * 
+     * @param {string} message the message to display
+     * @param {function} [callback] called when user close message
+     */
+    VeloxWebView.prototype.endWaitError = function (message, callback) {
+        this.endWait() ;
+        this.error(message, callback) ;
+    };
+
+    /**
+     * Start a long task, it will display the waiter until finish
+     * 
+     * It can be use both with function(callback) style or Promise
+     * 
+     * @example
+     * //callback style
+     * view.longTask(function(cb){
+     *      api.callMyServer(function(err){
+     *          if(err){ cb(err); } //waiter will be hide and error message displayed
+     *          ... do something on success ...
+     *          cb() ;//long task finished, waiter will be hide
+     *      });
+     * });
+     * 
+     * //promise style
+     * view.longTask(new Promise((resolve, reject)=>{
+     *         myServerPromiseCall.then(resolve).catch(reject) ;
+     * }).then(()=>{
+     *         ... do something on success ...
+     * })) ;
+     * 
+     * @param {function(done)} doTask the function that do the task and call done on finish
+     * @param {function(err)} [callback] called when the long task is done
+     */
+    VeloxWebView.prototype.longTask = function (doTask, callback) {
+        if(!callback){ callback = function(){} ;}
+        this.startWait() ;
+        if(typeof(doTask) === "function"){
+            doTask(function(error){
+                if(error){ this.endWaitError(error) ; return callback(error) ;}
+                this.endWait() ;
+                callback() ;
+            }.bind(this)) ;
+        }else if(doTask.constructor && doTask.constructor.name === "Promise"){
+            doTask.then(function(){
+                this.endWait() ;
+                callback() ;
+            }.bind(this)).catch(function(error){
+                this.endWaitError(error) ;
+                callback(error) ;
+            }.bind(this)) ;
+        }
+    };
+      
+    VeloxWebView.prototype._showWaiter = function(message){
+        //credit : https://stephanwagner.me/only-css-loading-spinner
+        this.loadStaticCss(
+            "@keyframes velox_spinner { to {transform: rotate(360deg);} }" +
+            ".velox_spinner:before { "+
+            "    content: '';"+
+            "    box-sizing: border-box;"+
+            "    position: absolute;"+
+            "    top: 50%;"+
+            "    left: 50%;"+
+            "    width: 20px;"+
+            "    height: 20px;"+
+            "    margin-top: -10px;"+
+            "    margin-left: -10px;"+
+            "    border-radius: 50%;"+
+            "    border: 2px solid #ccc;"+
+            "    border-top-color: #333;"+
+            "    animation: spinner .6s linear infinite;"+
+            "  }"
+        ) ;
+        this.waiterDiv = document.createElement("div") ;
+        this.waiterDiv.className = "velox_spinner" ;
+        document.body.appendChild(this.waiterDiv) ;
+    } ;
+    
+    VeloxWebView.prototype._hideWaiter = function() {
+        if(this.waiterDiv){
+            document.body.removeChild(this.waiterDiv) ;
         }
     };
     
