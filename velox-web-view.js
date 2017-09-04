@@ -1432,7 +1432,7 @@
     /**
 	* End wait animation
 	*/
-	VeloxWebView.prototype.startWait.endWait = function () {
+	VeloxWebView.prototype.endWait = function () {
 		this.waitCount--;
 		if (this.waitCount === 0) {
 			clearTimeout(this.showWaiterTimeout);
