@@ -465,7 +465,7 @@
         this.getHTML((function (html) {
             this.ids = {};
 
-            
+
 
             var html = html.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
 
@@ -1462,6 +1462,7 @@
                     
                     this.emit(id, {
                         data: this.getBoundObject(),
+                        currentData: this.getBoundObject(),
                         parentData: pathExtract(this.bindObject, this.bindPath, true),
                         view: this
                     });
