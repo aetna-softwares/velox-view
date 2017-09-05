@@ -530,8 +530,8 @@
                 if (this.containerParent) {
                     //automatically create container in parent if not exist
                     var div = document.createElement("DIV");
-                    div.innerHTML = htmlReplaced;
-                    if(div.childElementCount === 1){
+                    div.innerHTML = htmlReplaced.trim();
+                    if(div.childNodes.length === 1){
                         //only 1 root element in view, use it as container
                         this.container = div.children[0] ;
                     }else{
@@ -1269,17 +1269,17 @@
         var bindPath = view.bindPath || "";
 
         var parentEl = view.elParent; //default parent
-
+        var container = null;
         if(view.file){
             //in case of nested view, the view file contains the view innerHTML but not
             //the outer element like for inline sub view. We must add the outer element as container
-            var parentEl = view.el.cloneNode() ;
-            insertChild(view.elParent, parentEl, view.isBefore, view.isAfter) ;
-            view.elParent.appendChild(parentEl) ;
+            container = view.el.cloneNode() ;
+            insertChild(view.elParent, container, view.isBefore, view.isAfter) ;
         }
 
         var viewOptions = {
             containerParent: parentEl,
+            container: container,
             insertBefore : view.isBefore,
             insertAfter : view.isAfter,
             html: view.html,
