@@ -267,6 +267,57 @@
         });
     }
 
+    function insertChild(parentElement, element, insertBefore, insertAfter){
+        var nextElement = null;
+        var previousElement = null;
+        if(insertBefore || insertAfter){
+            var children = Array.prototype.slice.apply(parentElement.children) ;
+            if(insertBefore){
+                //must be inserted before another element in parent
+                var afterChain = insertBefore ;
+                if(!Array.isArray(afterChain)){
+                    afterChain = [afterChain] ;
+                }else{
+                    afterChain = afterChain.slice() ;
+                }
+                while(nextElement === null && afterChain.length>0){
+                    var afterId = afterChain.shift() ;
+                    children.some(function(child){
+                        if(child.getAttribute("data-vieworder-id") === afterId){
+                            nextElement = child;
+                            return true;
+                        }
+                    }) ;
+                }
+            }
+            if(insertAfter){
+                //must be inserted after another element in parent
+                var beforeChain = insertAfter ;
+                if(!Array.isArray(beforeChain)){
+                    beforeChain = [beforeChain] ;
+                }else{
+                    beforeChain = beforeChain.slice() ;
+                }
+                while(previousElement === null && beforeChain.length>0){
+                    var beforeId = beforeChain.shift() ;
+                    children.some(function(child){
+                        if(child.getAttribute("data-vieworder-id") === beforeId){
+                            previousElement = child;
+                            return true;
+                        }
+                    }) ;
+                }
+            }
+        }
+        if(nextElement){
+            parentElement.insertBefore(element, nextElement);
+        } else if(previousElement){
+            parentElement.insertBefore(element, previousElement.nextSibling);
+        }else{
+            parentElement.appendChild(element);
+        }
+    }
+
 
     /**
      * The Velox Web View class
@@ -496,54 +547,8 @@
                         this.containerParent = document.getElementById(this.containerParent);
                     }
                     this.container.style.display = "none"; //hide during init
-                    var nextElement = null;
-                    var previousElement = null;
-                    if(this.options.insertBefore || this.options.insertAfter){
-                        var children = Array.prototype.slice.apply(this.containerParent.children) ;
-                        if(this.options.insertBefore){
-                            //must be inserted before another element in parent
-                            var afterChain = this.options.insertBefore ;
-                            if(!Array.isArray(afterChain)){
-                                afterChain = [afterChain] ;
-                            }else{
-                                afterChain = afterChain.slice() ;
-                            }
-                            while(nextElement === null && afterChain.length>0){
-                                var afterId = afterChain.shift() ;
-                                children.some(function(child){
-                                    if(child.getAttribute("data-vieworder-id") === afterId){
-                                        nextElement = child;
-                                        return true;
-                                    }
-                                }.bind(this)) ;
-                            }
-                        }
-                        if(this.options.insertAfter){
-                            //must be inserted after another element in parent
-                            var beforeChain = this.options.insertAfter ;
-                            if(!Array.isArray(beforeChain)){
-                                beforeChain = [beforeChain] ;
-                            }else{
-                                beforeChain = beforeChain.slice() ;
-                            }
-                            while(previousElement === null && beforeChain.length>0){
-                                var beforeId = beforeChain.shift() ;
-                                children.some(function(child){
-                                    if(child.getAttribute("data-vieworder-id") === beforeId){
-                                        previousElement = child;
-                                        return true;
-                                    }
-                                }.bind(this)) ;
-                            }
-                        }
-                    }
-                    if(nextElement){
-                        this.containerParent.insertBefore(this.container, nextElement);
-                    } else if(previousElement){
-                        this.containerParent.insertBefore(this.container, previousElement.nextSibling);
-                    }else{
-                        this.containerParent.appendChild(this.container);
-                    }
+                    insertChild(this.containerParent, this.container, this.options.insertBefore, this.options.insertAfter) ;
+                    
                 } else {
                     throw this.containerId + " is not found";
                 }
@@ -1269,6 +1274,7 @@
             //in case of nested view, the view file contains the view innerHTML but not
             //the outer element like for inline sub view. We must add the outer element as container
             var parentEl = view.el.cloneNode() ;
+            insertChild(view.elParent, parentEl, view.isBefore, view.isAfter) ;
             view.elParent.appendChild(parentEl) ;
         }
 
