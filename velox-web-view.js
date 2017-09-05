@@ -901,6 +901,27 @@
             }
         }
 
+        //do a first loop to prepare the order ids. Because containers of conditinal subviews
+        //are removed from DOM, we must add id to all elements and remember the positions
+        //of each others. This loop initialize order ids before creating view definition
+        //to be sure that we have id on all when get HTML of views
+        elementsSubs.forEach(function(el){
+            var nextElementInParent = el.nextElementSibling ;
+            while(nextElementInParent){
+                if(!nextElementInParent.hasAttribute("data-vieworder-id")){
+                    nextElementInParent.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+                }
+                nextElementInParent = nextElementInParent.nextElementSibling ;
+            }
+            var previousElementInParent = el.previousElementSibling ;
+            while(previousElementInParent){
+                if(!previousElementInParent.hasAttribute("data-vieworder-id")){
+                    previousElementInParent.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+                }
+                previousElementInParent = previousElementInParent.previousElementSibling ;
+            }
+        }) ;
+
         for (i = 0; i < elementsSubs.length; i++) {
             el = elementsSubs[i] ;
             //check if it is a sub element of a subview

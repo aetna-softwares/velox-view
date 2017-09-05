@@ -144,4 +144,58 @@ describe("render", function() {
     }) ;
     
   });
+  
+  describe("Nested and visibility", function() {
+    var view = new VeloxWebView("views", "nested_visibility", {container: "container"}) ;
+    
+    var data = {
+      tosave : animals.slice(),
+      saved : []
+    } ;
+
+    view.on("save", function(ev){
+      var clickedLine = ev.data.currentData ;
+      data.saved.push(clickedLine) ;
+      data.tosave.splice(data.tosave.indexOf(clickedLine), 1) ;
+      view.render() ;
+    }) ;
+
+    it("should open without error", function(done) {
+      view.open(data, function(err){
+        expect(err).to.not.exist ;
+        done() ;
+      }) ;
+    }) ;
+
+    it("should have "+animals.length+" animals", function() {
+      expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length);
+      expect(view.container.querySelector('[data-hide-if="tosave"]')).to.not.exist ;;
+      expect(view.container.querySelector('[data-show-if="saved"]')).to.not.exist ;;
+    }) ;
+
+    it("should have 1 saved animals", function() {
+      view.container.querySelector("[data-original-id='save']").click() ;
+      expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length-1);
+      expect(view.container.querySelectorAll('[data-bind="saved[]"]').length).to.equal(1);
+    }) ;
+    
+    it("should have saved animals displayed after to save animals", function() {
+      expect(view.container.querySelector('[data-show-if="saved"]')).to.exist ;
+      expect(view.container.querySelector('[data-show-if="tosave"]').nextElementSibling).to.equal(view.container.querySelector('[data-show-if="saved"]')) ;
+    });
+
+    it("should have no more animals to save", function() {
+      view.container.querySelector("[data-original-id='save']").click() ;
+      view.container.querySelector("[data-original-id='save']").click() ;
+      view.container.querySelector("[data-original-id='save']").click() ;
+      view.container.querySelector("[data-original-id='save']").click() ;
+      view.container.querySelector("[data-original-id='save']").click() ;
+      view.container.querySelector("[data-original-id='save']").click() ;
+      view.container.querySelector("[data-original-id='save']").click() ;
+      expect(view.container.querySelector('[data-show-if="tosave"]')).to.not.exist ;
+      expect(view.container.querySelector('[data-hide-if="tosave"]')).to.exist ;
+      expect(view.container.querySelector('[data-hide-if="tosave"]').nextElementSibling).to.equal(view.container.querySelector('[data-show-if="saved"]')) ;
+    }) ;
+    
+  });
 });

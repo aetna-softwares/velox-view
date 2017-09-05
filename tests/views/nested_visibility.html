@@ -1,0 +1,19 @@
+<label>Animals to save</label>
+<ul data-show-if="tosave">
+    <!-- Show if there is something in todo -->
+    <li data-bind="tosave[]" data-view="nested_visibility_item"></li>
+</ul>
+
+<div data-hide-if="tosave">
+    <!-- Hide if there is something in todo -->
+    Nothing to save
+</div>
+<div data-show-if="saved">
+    <!-- Show if there is something in done -->
+    <label>Saved</label>
+    <ul>
+        <li data-bind="saved[]">
+            <span data-bind="name"></span> 
+        </li>
+    </ul>
+</div
