@@ -1,0 +1,14 @@
+<!-- Nest an header view -->
+<div data-view="nested_title" data-bind="title"></div>
+<!-- don't process that -->
+<div data-dont-process> 
+    <ul>
+        <li data-bind="animals[]" data-view="nested_one_line" id="dontProcessInner"></li>
+    </ul>
+</div>
+<!-- process this normally  -->
+<ul id="processMe" class="processed">
+    <li data-bind="animals[]">
+        <span data-bind="name"></span> 
+    </li>
+</ul>

@@ -460,10 +460,6 @@
             }
         }; }
 
-        
-        
-
-
         this.loadCSS();
 
         this.getHTML((function (html) {
@@ -556,9 +552,6 @@
                 this.container.style.display = "none"; //hide during init
                 this.container.innerHTML = htmlReplaced;
             }
-
-
-            
 
             this.initAutoEmit();
 
@@ -856,6 +849,8 @@
         var elementsSubs = [] ;
         var i, el, bindPath;
         
+        
+
         //views linked to data-show-if
         var elementsShowIf = this.container.querySelectorAll('[data-show-if]');
         for (i = 0; i < elementsShowIf.length; i++) {
@@ -883,6 +878,25 @@
         var elementsView = this.container.querySelectorAll('[data-view]');
         for (i = 0; i < elementsView.length; i++) {
             elementsSubs.push(elementsView[i]) ;
+        }
+
+        if(elementsSubs.length>0){
+            //remove the elements contained in data-dont-process block
+            var blockToIgnore = this.container.querySelectorAll('[data-dont-process]');
+            
+            if(blockToIgnore.length>0){
+                elementsSubs = elementsSubs.filter(function(el){
+                    var toIgnore = false ;
+                    for(var y=0; y<blockToIgnore.length; y++){
+                        var bl = blockToIgnore[y] ;
+                        if (bl === el || bl.contains(el)) {
+                            toIgnore = true ;
+                            break;
+                        }
+                    }
+                    return !toIgnore ;
+                }) ;
+            }
         }
 
         for (i = 0; i < elementsSubs.length; i++) {

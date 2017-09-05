@@ -82,18 +82,34 @@ describe("render", function() {
     it(animals[3].name+" is not in zoo", function() {
       expect(view.container.querySelectorAll('[data-bind="saved[]"]')[1].querySelector('[data-show-if="inZoo"]')).to.not.exist;
     }) ;
-        
+  });
 
+  describe("Don't process flag", function() {
+    var view = new VeloxWebView("views", "dont_process", {container: "container"}) ;
+    
+    it("should open without error", function(done) {
+      view.open({
+        title: {color: "red", label: "Animals"},
+        animals : animals
+      }, function(err){
+        expect(err).to.not.exist ;
+        done() ;
+      }) ;
+    }) ;
 
-    // it("should do a second render", function(done) {
-    //   view.render(animals[3], function(err){
-    //     expect(err).to.not.exist ;
+    it("should have nested title as first child", function() {
+      expect(view.container.children[0].getAttribute("data-view")).to.equal("nested_title");
+    }) ;
+    it("should have rendered the title", function() {
+      expect(view.container.querySelector('h3').innerHTML).to.equal("Animals");
+    }) ;
+    it("should have block dont process untouched", function() {
+      expect(view.container.querySelectorAll('[data-dont-process] li').length).to.equal(1);
+    }) ;
 
-    //     expect(view.EL.animal.style.color).to.equal(animals[3].color);
-    //     expect(view.EL.family.innerHTML).to.equal(animals[3].family);
-    //     expect(view.EL.name.innerHTML).to.equal(animals[3].name);
-    //     done() ;
-    //   }) ;
-    // });
+    it("should have "+animals.length+" animals processed", function() {
+      expect(view.container.querySelectorAll('.processed [data-bind="animals[]"]').length).to.equal(animals.length);
+    }) ;
+    
   });
 });
