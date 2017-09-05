@@ -460,8 +460,6 @@
             }
         }; }
 
-        this.loadCSS();
-
         this.getHTML((function (html) {
             this.ids = {};
 
@@ -471,6 +469,7 @@
 
             var htmlReplaced = html ;
 
+            var css = this.staticCSS ;
             var functionInView = null;
             var indexScript = htmlReplaced.toLowerCase().indexOf("<script") ;
             if(indexScript === 0){
@@ -485,119 +484,134 @@
 
                 functionInView = new Function("view", scriptBody) ;
                 
-                htmlReplaced = htmlReplaced.substring(0, indexScript)+htmlReplaced.substring(indexEndScript+"</script>".length) ;
+                htmlReplaced = htmlReplaced.substring(0, indexScript)+htmlReplaced.substring(indexEndScript+"</script>".length).trim() ;
             }
-
-            var match;
-            while ((match = REGEXP_ID.exec(html)) !== null) {
-                var id = match[1];
-                var uuidEl = uuidv4();
-
-                if (id[0] === "#") {
-                    //force keep this id
-                    id = id.substring(1);
-                    this.ids[id] = id;
-                    htmlReplaced = htmlReplaced.replace('id="#' + id + '"', 'id="' + id + '"');
-                } else {
-                    //add UUID
-                    this.ids[id] = id + ID_SEP + uuidEl;
-                    htmlReplaced = htmlReplaced.replace(new RegExp("\\sid=['\"]"+id+"['\"]"), ' id="' + id + '_-_' + uuidEl + '" data-original-id="' + id + '"');
-                    htmlReplaced = htmlReplaced.replace(new RegExp('data-target="#' + id + '"', 'g'),
-                        'data-target="#' + id + '_-_' + uuidEl + '"');
-                    htmlReplaced = htmlReplaced.replace(new RegExp('href="#' + id + '"', 'g'),
-                        'href="#' + id + '_-_' + uuidEl + '"');
-                    htmlReplaced = htmlReplaced.replace(new RegExp('aria-controls="' + id + '"', 'g'),
-                        'aria-controls="' + id + '_-_' + uuidEl + '"');
-                    htmlReplaced = htmlReplaced.replace(new RegExp('for="' + id + '"', 'g'),
-                        'for="' + id + '_-_' + uuidEl + '"');
+            var indexStyle = htmlReplaced.toLowerCase().indexOf("<style") ;
+            if(indexStyle === 0){
+                var indexBodyStyle = htmlReplaced.indexOf(">", indexStyle) ;
+                var indexEndStyle = htmlReplaced.toLowerCase().indexOf("</style>") ;
+                if(indexEndStyle === -1){
+                    return callback("can't find closing </style> in view") ;
                 }
+                var styleBody = htmlReplaced.substring(indexBodyStyle+1, indexEndStyle) ;
+                
+                css = styleBody ;
+                
+                htmlReplaced = htmlReplaced.substring(0, indexStyle)+htmlReplaced.substring(indexEndStyle+"</style>".length).trim() ;
             }
 
-            htmlReplaced = htmlReplaced.replace(/__dir__/g, this.directory);
-
-
-
-            if (typeof (this.container) === "string") {
-                this.containerId = this.container;
-                this.container = document.getElementById(this.container);
-            }
-
-            if (!this.container) {
-                if (this.containerParent) {
-                    //automatically create container in parent if not exist
-                    var div = document.createElement("DIV");
-                    div.innerHTML = htmlReplaced.trim();
-                    if(div.childNodes.length === 1){
-                        //only 1 root element in view, use it as container
-                        this.container = div.children[0] ;
-                    }else{
-                        //many root element in the view, use the div as container
-                        this.container = div ;
+            this._loadCSS(css, function(){
+                var match;
+                while ((match = REGEXP_ID.exec(html)) !== null) {
+                    var id = match[1];
+                    var uuidEl = uuidv4();
+    
+                    if (id[0] === "#") {
+                        //force keep this id
+                        id = id.substring(1);
+                        this.ids[id] = id;
+                        htmlReplaced = htmlReplaced.replace('id="#' + id + '"', 'id="' + id + '"');
+                    } else {
+                        //add UUID
+                        this.ids[id] = id + ID_SEP + uuidEl;
+                        htmlReplaced = htmlReplaced.replace(new RegExp("\\sid=['\"]"+id+"['\"]"), ' id="' + id + '_-_' + uuidEl + '" data-original-id="' + id + '"');
+                        htmlReplaced = htmlReplaced.replace(new RegExp('data-target="#' + id + '"', 'g'),
+                            'data-target="#' + id + '_-_' + uuidEl + '"');
+                        htmlReplaced = htmlReplaced.replace(new RegExp('href="#' + id + '"', 'g'),
+                            'href="#' + id + '_-_' + uuidEl + '"');
+                        htmlReplaced = htmlReplaced.replace(new RegExp('aria-controls="' + id + '"', 'g'),
+                            'aria-controls="' + id + '_-_' + uuidEl + '"');
+                        htmlReplaced = htmlReplaced.replace(new RegExp('for="' + id + '"', 'g'),
+                            'for="' + id + '_-_' + uuidEl + '"');
                     }
-
-                    if (this.containerId) {
-                        this.container.id = this.containerId;
-                    }
-
-                    if (typeof (this.containerParent) === "string") {
-                        this.containerParent = document.getElementById(this.containerParent);
-                    }
-                    this.container.style.display = "none"; //hide during init
-                    insertChild(this.containerParent, this.container, this.options.insertBefore, this.options.insertAfter) ;
-                    
-                } else {
-                    throw this.containerId + " is not found";
                 }
-            } else {
-                this.container.style.display = "none"; //hide during init
-                this.container.innerHTML = htmlReplaced;
-            }
-
-            this.initAutoEmit();
-
-            this.prepareSubView() ;
-
-            var calls = [];
-
-            VeloxWebView.extensions.forEach((function (extension) {
-                if (extension.init) {
-                    calls.push((function (cb) {
-                        if (extension.init.length === 0) {
-                            //no callback
-                            try{
-                                extension.init.bind(this)();
-                                cb() ;
-                            }catch(err){
-                                cb(err) ;
-                            }
-                        } else {
-                            extension.init.bind(this)(function(err){
-                                cb(err) ;
-                            }.bind(this));
+    
+                htmlReplaced = htmlReplaced.replace(/__dir__/g, this.directory);
+    
+    
+    
+                if (typeof (this.container) === "string") {
+                    this.containerId = this.container;
+                    this.container = document.getElementById(this.container);
+                }
+    
+                if (!this.container) {
+                    if (this.containerParent) {
+                        //automatically create container in parent if not exist
+                        var div = document.createElement("DIV");
+                        div.innerHTML = htmlReplaced.trim();
+                        if(div.childNodes.length === 1){
+                            //only 1 root element in view, use it as container
+                            this.container = div.children[0] ;
+                        }else{
+                            //many root element in the view, use the div as container
+                            this.container = div ;
                         }
-                    }).bind(this));
-                }
-            }).bind(this));
-
-            asyncSeries(calls, (function (err) {
-                if(err){  return callback(err) ; }
-
-                if(functionInView){
-                    functionInView(this) ;
-                }
-                this.initDone = true;
-                this.emit("initDone");
-
-                this.render((function (err) {
-                    if(err){ return callback(err) ;}
-                    this.show();      
-                    if(this.mustHide){
-                        this.hide(); //hide has been called while init running
-                        this.mustHide = false ;
+    
+                        if (this.containerId) {
+                            this.container.id = this.containerId;
+                        }
+    
+                        if (typeof (this.containerParent) === "string") {
+                            this.containerParent = document.getElementById(this.containerParent);
+                        }
+                        this.container.style.display = "none"; //hide during init
+                        insertChild(this.containerParent, this.container, this.options.insertBefore, this.options.insertAfter) ;
+                        
+                    } else {
+                        throw this.containerId + " is not found";
                     }
-                    callback();
+                } else {
+                    this.container.style.display = "none"; //hide during init
+                    this.container.innerHTML = htmlReplaced;
+                }
+    
+                this.initAutoEmit();
+    
+                this.prepareSubView() ;
+    
+                var calls = [];
+    
+                VeloxWebView.extensions.forEach((function (extension) {
+                    if (extension.init) {
+                        calls.push((function (cb) {
+                            if (extension.init.length === 0) {
+                                //no callback
+                                try{
+                                    extension.init.bind(this)();
+                                    cb() ;
+                                }catch(err){
+                                    cb(err) ;
+                                }
+                            } else {
+                                extension.init.bind(this)(function(err){
+                                    cb(err) ;
+                                }.bind(this));
+                            }
+                        }).bind(this));
+                    }
                 }).bind(this));
-            }).bind(this));
+    
+                asyncSeries(calls, (function (err) {
+                    if(err){  return callback(err) ; }
+    
+                    if(functionInView){
+                        functionInView(this) ;
+                    }
+                    this.initDone = true;
+                    this.emit("initDone");
+    
+                    this.render((function (err) {
+                        if(err){ return callback(err) ;}
+                        this.show();      
+                        if(this.mustHide){
+                            this.hide(); //hide has been called while init running
+                            this.mustHide = false ;
+                        }
+                        callback();
+                    }).bind(this));
+                }).bind(this));
+            }.bind(this)) ;
         }).bind(this));
         return this;
     };
@@ -694,18 +708,6 @@
         }
     };
 
-    /**
-     * Load CSS of the view
-     * @private
-     */
-    VeloxWebView.prototype.loadCSS = function () {
-        if(this.staticCSS){
-            this.loadStaticCss(this.staticCSS) ;
-        }else if(this.name){
-            this.loadCSSFile();
-        }
-    };
-
     VeloxWebView.prototype.loadStaticCss = function(css){
         if (!loadedCss[css]) {
             var head = document.getElementsByTagName('head')[0];
@@ -721,28 +723,57 @@
         }
     } ;
 
+    VeloxWebView.prototype._loadCSS = function (css, callback) {
+        if(css !== null && css !== undefined){
+            this.loadStaticCss(css) ;
+            callback() ;
+        }else if(this.name){
+            this.loadCSSFile(callback);
+        }
+    } ;
+
+
     /**
      * Load CSS from file
      * @private
      */
-    VeloxWebView.prototype.loadCSSFile = function () {
+    VeloxWebView.prototype.loadCSSFile = function (callback) {
         if (!loadedCss[this.directory + "_" + this.name]) {
             var cssUrl = this.directory + "/" + this.name + ".css";
+            
+            //we must do an XHR to handle error case
             var xhr = new XMLHttpRequest();
-            xhr.open('HEAD', cssUrl);
-            xhr.onload = (function () {
-                if (xhr.status !== 404) {
-                    var link = document.createElement("link");
-                    link.rel = "stylesheet";
-                    link.type = "text/css";
-                    link.href = cssUrl;
-		
-                    document.getElementsByTagName("head")[0].appendChild(link);
+            xhr.open('GET', cssUrl);
+            xhr.onreadystatechange = (function () {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    if(xhr.status !== 404){
+                        //TODO : check if it is better to put in a <style> element
+                        var link = document.createElement("link");
+                        link.rel = "stylesheet";
+                        link.type = "text/css";
+                        link.href = cssUrl;
+    
+                        link.addEventListener('load', function() {
+                            callback();
+                        }, false);
+    
+                        document.getElementsByTagName("head")[0].appendChild(link);
+                    }else{
+                        callback() ;
+                    }
                 }
             }).bind(this);
+            xhr.onabort = function(){
+                callback() ;
+            } ;
+            xhr.onerror = function(){
+                callback() ;
+            } ;
             xhr.send();
             //$('head').append('<link rel="stylesheet" href="'+cssUrl+'" type="text/css" />');
             loadedCss[this.directory + "_" + this.name] = true;
+        }else{
+            callback() ;
         }
     };
 
