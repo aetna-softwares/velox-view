@@ -58,6 +58,9 @@ describe("render", function() {
     it("should have nested title as first child", function() {
       expect(view.container.children[0].getAttribute("data-view")).to.equal("nested_title");
     }) ;
+    it("should have rendered the title", function() {
+      expect(view.container.querySelector('h3').innerHTML).to.equal("Save the animals !");
+    }) ;
     it("should have text 'You must save' on all animals to save", function() {
       expect(view.container.querySelector('[data-bind="tosave[]"]').innerHTML).to.startWith("You must save");
     }) ;

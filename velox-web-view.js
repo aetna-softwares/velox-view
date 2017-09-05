@@ -1021,7 +1021,9 @@
                 allElements.forEach(function(el){
                     var bindPath = el.getAttribute("data-bind");
                     var bindEl = {el: el} ;
-                    if(bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
+                    if(
+                        el !== this.container && //on container we only allow attribute binding, it makes no sense to replace inner content from binding. it will erase the view content...
+                        bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
                         bindEl.bindPath = bindPath;
                     }
                     var attributes = el.attributes ;
