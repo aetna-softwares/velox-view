@@ -1,7 +1,7 @@
 <!-- Nest an header view -->
 <div data-view="nested_title" data-bind="title"></div>
 <label>Animals to save</label>
-<ul>
+<ul data-show-if="tosave">
     <!-- Repeat a view for all element in todo array -->
     <li data-bind="tosave[]" data-view="nested_one_line"></li>
 </ul>

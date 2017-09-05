@@ -797,9 +797,9 @@
             var bindAttr = el.getAttribute("data-bind");
             var showIfAttr = el.getAttribute("data-show-if");
             var hideIfAttr = el.getAttribute("data-hide-if");
+            var dir = this.directory ;
             if(viewAttr){
                 var lastSlash = viewAttr.lastIndexOf("/") ;
-                var dir = this.directory ;
                 var file = viewAttr ;
                 if(lastSlash !== -1){
                     dir = viewAttr.substring(0, lastSlash) ;
@@ -824,6 +824,7 @@
                     isBefore :  nextElementIds.length>0?nextElementIds:null,
                     isAfter : previousElementIds.length>0?previousElementIds:null,
                     bindPath: bindAttr,
+                    dir: dir,
                     html: el.outerHTML,
                     showIf: showIfAttr,
                     hideIf: hideIfAttr,
@@ -836,6 +837,7 @@
                     // isBefore :  nextElementIds.length>0?nextElementIds:null,
                     // isAfter : previousElementIds.length>0?previousElementIds:null,
                     bindPath: bindAttr,
+                    dir: dir,
                     html: el.outerHTML,
                     showIf: showIfAttr,
                     hideIf: hideIfAttr,
