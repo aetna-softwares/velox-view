@@ -1626,11 +1626,16 @@
      * })) ;
      * 
      * @param {function(done)} doTask the function that do the task and call done on finish
+     * @param {string} [message] message to display
      * @param {function(err)} [callback] called when the long task is done
      */
-    VeloxWebView.prototype.longTask = function (doTask, callback) {
+    VeloxWebView.prototype.longTask = function (doTask, message, callback) {
+        if(typeof(message) === "function"){
+            callback = message ;
+            message = null;
+        }
         if(!callback){ callback = function(){} ;}
-        this.startWait() ;
+        this.startWait(message) ;
         if(typeof(doTask) === "function"){
             doTask(function(error){
                 if(error){ this.endWaitError(error) ; return callback(error) ;}
@@ -1652,6 +1657,23 @@
         //credit : https://stephanwagner.me/only-css-loading-spinner
         this.loadStaticCss(
             "@keyframes velox_spinner { to {transform: rotate(360deg);} }" +
+            ".velox_overlay { "+
+            "    position: fixed; "+
+            "    top: 0; "+
+            "    left: 0; "+
+            "    right: 0; "+
+            "    bottom: 0; "+
+            "    background-color: rgba(0, 0, 0, 0.61); "+
+            "    z-index: 999999; "+
+            "  }"+
+            ".velox_waitmsg { "+
+            "    color: white; "+
+            "    position: absolute;"+
+            "    top: calc(50% + 30px);"+
+            "    left: 0;"+
+            "    width: 100%;"+
+            "    text-align: center;"+
+            "  }"+
             ".velox_spinner:before { "+
             "    content: '';"+
             "    box-sizing: border-box;"+
@@ -1665,11 +1687,20 @@
             "    border-radius: 50%;"+
             "    border: 2px solid #ccc;"+
             "    border-top-color: #333;"+
-            "    animation: spinner .6s linear infinite;"+
+            "    animation: velox_spinner .6s linear infinite;"+
             "  }"
         ) ;
         this.waiterDiv = document.createElement("div") ;
-        this.waiterDiv.className = "velox_spinner" ;
+        this.waiterDiv.className = "velox_overlay" ;
+        var spinnerDiv = document.createElement("div") ;
+        spinnerDiv.className = "velox_spinner" ;
+        this.waiterDiv.appendChild(spinnerDiv) ;
+        if(message){
+            var msgDiv = document.createElement("div") ;
+            msgDiv.className = "velox_waitmsg" ;
+            msgDiv.innerHTML = message ;
+            this.waiterDiv.appendChild(msgDiv) ;
+        }
         document.body.appendChild(this.waiterDiv) ;
     } ;
     
