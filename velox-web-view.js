@@ -1263,8 +1263,17 @@
         var view = this.views[viewId];
         var bindPath = view.bindPath || "";
 
+        var parentEl = view.elParent; //default parent
+
+        if(view.file){
+            //in case of nested view, the view file contains the view innerHTML but not
+            //the outer element like for inline sub view. We must add the outer element as container
+            var parentEl = view.el.cloneNode() ;
+            view.elParent.appendChild(parentEl) ;
+        }
+
         var viewOptions = {
-            containerParent: view.elParent,
+            containerParent: parentEl,
             insertBefore : view.isBefore,
             insertAfter : view.isAfter,
             html: view.html,
@@ -1487,7 +1496,7 @@
      */
     VeloxWebView.prototype.info = function (message, callback) {
         window.alert(message) ;
-        callback() ;
+        if(callback){ callback() ; }
     } ;
 
     /**
