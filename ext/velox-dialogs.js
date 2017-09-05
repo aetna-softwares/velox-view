@@ -54,13 +54,8 @@
     var w2confirm = window.w2confirm ;
     var w2prompt = window.w2prompt ;
     var w2popup = window.w2popup ;
-    var defaultWaitMessage = "";
     var confirmNoLabel = null;
-    var confirmYesLabel = null;
-    var waitCount = 0;
-	var showTimeout = null;
-    var waiterDelay = 300;
-    
+    var confirmYesLabel = null; 
     
     /**
      * waiter extension definition
@@ -97,46 +92,7 @@
         }
     }
 
-    /**
-	 * Start wait animation
-     * 
-     * @param {string} [message] the message to display
-	 */
-	extension.extendsProto.startWait = function (message) {
-        if(!message){
-            message = defaultWaitMessage ;
-        }
-       
-		if (waitCount === 0) {
-			showTimeout = setTimeout(function () {//don't display waiter if less than 300ms
-				showWaiter(message);
-			}.bind(this), waiterDelay);
-		}
-		waitCount++;
-    };
     
-    /**
-	* End wait animation
-	*/
-	extension.extendsProto.endWait = function () {
-		waitCount--;
-		if (waitCount === 0) {
-			clearTimeout(showTimeout);
-			hideWaiter();
-		}
-	};
- 
-    /**
-	* Close all waiters
-	*/
-	extension.extendsProto.closeAllWaiters = function () {
-		if(waitCount>0){
-            waitCount = 0;
-			clearTimeout(showTimeout);
-			hideWaiter();
-		}
-	};
-
     /**
      * Display info box
      * 
@@ -372,88 +328,6 @@
             }) ;
         }) ;
     } ;
-
-    /**
-     * Display error box and stop waiter
-     * 
-     * @example
-     * view.startWait()
-     * api.callMyServer(function(err){
-     *  if(err){ return view.endWaitError(err); }
-     *  //OK
-     *   view.endWait() ;
-     * }) ;
-     * 
-     * @param {string} message the message to display
-     * @param {function} [callback] called when user close message
-     */
-    extension.extendsProto.endWaitError = function (message, callback) {
-        this.endWait() ;
-        this.error(message, callback) ;
-    };
-
-    /**
-     * Start a long task, it will display the waiter until finish
-     * 
-     * It can be use both with function(callback) style or Promise
-     * 
-     * @example
-     * //callback style
-     * view.longTask(function(cb){
-     *      api.callMyServer(function(err){
-     *          if(err){ cb(err); } //waiter will be hide and error message displayed
-     *          ... do something on success ...
-     *          cb() ;//long task finished, waiter will be hide
-     *      });
-     * });
-     * 
-     * //promise style
-     * view.longTask(new Promise((resolve, reject)=>{
-     *         myServerPromiseCall.then(resolve).catch(reject) ;
-     * }).then(()=>{
-     *         ... do something on success ...
-     * })) ;
-     * 
-     * @param {function(done)} doTask the function that do the task and call done on finish
-     * @param {function(err)} [callback] called when the long task is done
-     */
-    extension.extendsProto.longTask = function (doTask, callback) {
-        if(!callback){ callback = function(){} ;}
-        this.startWait() ;
-        if(typeof(doTask) === "function"){
-            doTask(function(error){
-                if(error){ this.endWaitError(error) ; return callback(error) ;}
-                this.endWait() ;
-                callback() ;
-            }.bind(this)) ;
-        }else if(doTask.constructor && doTask.constructor.name === "Promise"){
-            doTask.then(function(){
-                this.endWait() ;
-                callback() ;
-            }.bind(this)).catch(function(error){
-                this.endWaitError(error) ;
-                callback(error) ;
-            }.bind(this)) ;
-        }
-    };
-      
-    function showWaiter(message){
-        loadW2ui(function(){
-            if(waitCount > 0){
-                w2utils.lock(document.body, message, true) ;
-            }
-        });
-    } ;
-    
-    
-    
-    function hideWaiter() {
-        loadW2ui(function(){
-            if (waitCount === 0) {
-                w2utils.unlock(document.body) ;
-            }
-        });
-    };
 
             
     extension.extendsGlobal = {} ;
