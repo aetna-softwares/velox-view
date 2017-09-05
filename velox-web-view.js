@@ -922,7 +922,7 @@
                 elInner.id = elInner.getAttribute("data-original-id") ; 
                 if(elInner.id){
 
-                    elInner.setAttribute("data-original-id", "") ;
+                    elInner.removeAttribute("data-original-id") ;
     
                     //for the anonymous subviews, remember all internal id to give access in EL (because there is no explicit view to access to them)
                     var fakeEl = {

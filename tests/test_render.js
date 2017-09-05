@@ -112,4 +112,36 @@ describe("render", function() {
     }) ;
     
   });
+  
+  describe("Event propagation", function() {
+    var view = new VeloxWebView("views", "event_propagation", {container: "container"}) ;
+    
+    it("should open without error", function(done) {
+      view.open({
+        animals : animals
+      }, function(err){
+        expect(err).to.not.exist ;
+        done() ;
+      }) ;
+    }) ;
+
+    it("should have "+animals.length+" animals", function() {
+      expect(view.container.querySelectorAll('[data-bind="animals[]"]').length).to.equal(animals.length);
+    }) ;
+    
+    it("should have 3 proud dogs", function() {
+      expect(view.container.querySelectorAll('[data-original-id="proud"]').length).to.equal(3);
+    }) ;
+
+    it("should receive inner event", function(done) {
+      view.on("proud", function(ev){
+        expect(ev.data.currentData).to.exist ;
+        expect(ev.data.currentData.name).to.equal("Wolf") ;
+        done() ;
+      }) ;
+      view.container.querySelectorAll('[data-original-id="proud"]')[1].click();
+
+    }) ;
+    
+  });
 });
