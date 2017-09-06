@@ -174,6 +174,10 @@
                 popup.close() ;
             }
         } ;
+        this.close = function(){
+            VeloxWebView.prototype.close.apply(this) ;
+            this.closePopup() ;
+        } ;
 
         // if(!options.width){
         //     var windowWidth = window.innerWidth ;
