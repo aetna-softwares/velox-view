@@ -708,7 +708,7 @@
         }
     };
 
-    VeloxWebView.prototype.loadStaticCss = function(css){
+    VeloxWebView.loadStaticCss = function(css){
         if (!loadedCss[css]) {
             var head = document.getElementsByTagName('head')[0];
             var s = document.createElement('style');
@@ -722,6 +722,7 @@
             loadedCss[css] = true;
         }
     } ;
+    VeloxWebView.prototype.loadStaticCss = VeloxWebView.loadStaticCss ;
 
     VeloxWebView.prototype._loadCSS = function (css, callback) {
         if(css !== null && css !== undefined){
@@ -1530,23 +1531,25 @@
      * 
      * @param {string} [message] the message to display
 	 */
-	VeloxWebView.prototype.startWait = function (message) {
+	VeloxWebView.startWait = function (message) {
         if(!message){
-            message = this.options.defaultWaitMessage ;
+            message = this.options?this.options.defaultWaitMessage:null ;
         }
-       
-		if (this.waitCount === 0) {
-			this.showWaiterTimeout = setTimeout(function () {//don't display waiter if less than 300ms
-				this._showWaiter(message);
-			}.bind(this), this.options.waiterDelay || 300);
-		}
-		this.waitCount++;
+        
+		if (!this.waitCount) {
+            this.showWaiterTimeout = setTimeout(function () {//don't display waiter if less than 300ms
+                this._showWaiter(message);
+            }.bind(this), (this.options && this.options.waiterDelay)?this.options.waiterDelay : 300);
+        }
+        if(!this.waitCount){ this.waitCount = 0 ;}
+        this.waitCount++;
     };
+    VeloxWebView.prototype.startWait = VeloxWebView.startWait ;
 
     /**
 	* End wait animation
 	*/
-	VeloxWebView.prototype.endWait = function () {
+	VeloxWebView.endWait = function () {
 		this.waitCount--;
 		if (this.waitCount === 0) {
 			clearTimeout(this.showWaiterTimeout);
@@ -1554,16 +1557,20 @@
 		}
     };
 
+    VeloxWebView.prototype.endWait = VeloxWebView.endWait ;
+
     /**
 	* Close all waiters
 	*/
-	VeloxWebView.prototype.closeAllWaiters = function () {
+	VeloxWebView.closeAllWaiters = function () {
 		if(this.waitCount>0){
             this.waitCount = 0;
 			clearTimeout(this.showWaiterTimeout);
 			this._hideWaiter();
 		}
     };
+
+    VeloxWebView.prototype.closeAllWaiters = VeloxWebView.closeAllWaiters ;
     
     /**
      * Display info box
@@ -1571,10 +1578,12 @@
      * @param {string} message the message to display
      * @param {function} [callback] called when user close message
      */
-    VeloxWebView.prototype.info = function (message, callback) {
+    VeloxWebView.info = function (message, callback) {
         window.alert(message) ;
         if(callback){ callback() ; }
     } ;
+
+    VeloxWebView.prototype.info = VeloxWebView.info ;
 
     /**
      * Display error box
@@ -1582,6 +1591,8 @@
      * @param {string} message the message to display
      * @param {function} [callback] called when user close message
      */
+    VeloxWebView.error = VeloxWebView.info ;
+    
     VeloxWebView.prototype.error = VeloxWebView.prototype.info ;
 
     /**
@@ -1598,10 +1609,12 @@
      * @param {string} message the message to display
      * @param {function} [callback] called when user close message
      */
-    VeloxWebView.prototype.endWaitError = function (message, callback) {
+    VeloxWebView.endWaitError = function (message, callback) {
         this.endWait() ;
         this.error(message, callback) ;
     };
+
+    VeloxWebView.prototype.endWaitError = VeloxWebView.endWaitError ;
 
     /**
      * Start a long task, it will display the waiter until finish
@@ -1629,7 +1642,7 @@
      * @param {string} [message] message to display
      * @param {function(err)} [callback] called when the long task is done
      */
-    VeloxWebView.prototype.longTask = function (doTask, message, callback) {
+    VeloxWebView.longTask = function (doTask, message, callback) {
         if(typeof(message) === "function"){
             callback = message ;
             message = null;
@@ -1652,8 +1665,10 @@
             }.bind(this)) ;
         }
     };
+
+    VeloxWebView.prototype.longTask = VeloxWebView.longTask ;
       
-    VeloxWebView.prototype._showWaiter = function(message){
+    VeloxWebView._showWaiter = function(message){
         //credit : https://stephanwagner.me/only-css-loading-spinner
         this.loadStaticCss(
             "@keyframes velox_spinner { to {transform: rotate(360deg);} }" +
@@ -1703,12 +1718,15 @@
         }
         document.body.appendChild(this.waiterDiv) ;
     } ;
+
+    VeloxWebView.prototype._showWaiter = VeloxWebView._showWaiter ;
     
-    VeloxWebView.prototype._hideWaiter = function() {
+    VeloxWebView._hideWaiter = function() {
         if(this.waiterDiv){
             document.body.removeChild(this.waiterDiv) ;
         }
     };
+    VeloxWebView.prototype._hideWaiter = VeloxWebView._hideWaiter ;
     
     VeloxWebView.prototype._asyncSeries = asyncSeries ;
     VeloxWebView._asyncSeries = asyncSeries ;

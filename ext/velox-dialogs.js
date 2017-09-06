@@ -22,7 +22,7 @@
         name: "jquery",
         type: "js",
         version: JQUERY_VERSION,
-        cdn: "http://code.jquery.com/jquery-$VERSION.min.js",
+        cdn: "//code.jquery.com/jquery-$VERSION.min.js",
         bowerPath: "jquery/dist/jquery.min.js"
     } ;
 
@@ -33,14 +33,14 @@
             type: "css",
             version: W2UI_VERSION,
             
-            cdn: "http://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.css",
+            cdn: "//rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.css",
             bowerPath: "w2ui/dist/w2ui.min.css"
         },
         {
             name: "w2ui-js",
             type: "js",
             version: W2UI_VERSION,
-            cdn: "http://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.js",
+            cdn: "//rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.js",
             bowerPath: "w2ui/dist/w2ui.min.js"
         }
     ];
@@ -371,19 +371,14 @@
         if(options.w2confirm){ w2confirm = options.w2confirm ; }
         if(options.w2prompt){ w2prompt = options.w2prompt ; }
         if(options.w2popup){ w2popup = options.w2popup ; }
-        if(options.defaultWaitMessage){ defaultWaitMessage = options.defaultWaitMessage ; }
         if(options.confirmYesLabel){ confirmYesLabel = options.confirmYesLabel ; }
         if(options.confirmNoLabel){ confirmNoLabel = options.confirmNoLabel ; }
-        if(options.waiterDelay){ waiterDelay = options.waiterDelay ; }
     } ;
     
     extension.extendsGlobal.info = extension.extendsProto.info ;
     extension.extendsGlobal.error = extension.extendsProto.error ;
-    extension.extendsGlobal.startWait = extension.extendsProto.startWait ;
-    extension.extendsGlobal.endWait = extension.extendsProto.endWait ;
-    extension.extendsGlobal.endWaitError = extension.extendsProto.endWaitError ;
-    extension.extendsGlobal.closeAllWaiters = extension.extendsProto.closeAllWaiters ;
-    extension.extendsGlobal.longTask = extension.extendsProto.longTask ;
+    extension.extendsGlobal.confirm = extension.extendsProto.confirm ;
+    extension.extendsGlobal.popup = extension.extendsProto.popup ;
 
    
     return extension ;

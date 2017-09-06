@@ -290,5 +290,39 @@ describe("Long task", function() {
       expect(document.querySelector(".velox_overlay")).to.not.exist;
     }) ;
   });
+
+  describe("Use global object", function() {
+    var view = new VeloxWebView("views", "longtask", {container: "container"}) ;
+    
+    it("should open without error", function(done) {
+      view.open(function(err){
+        expect(err).to.not.exist ;
+        done() ;
+      }) ;
+    }) ;
+
+    it("should display waiting spinner", function(done) {
+      view.on("bt", function(){
+        VeloxWebView.longTask(function(done){
+            setTimeout(function(){
+                done() ; 
+            }, 1000) ;
+        }, "please be patient", done) ;
+      }) ;
+      view.EL.bt.click() ;
+      //check display only after 300ms
+      expect(document.querySelector(".velox_overlay")).to.not.exist;
+      setTimeout(function(){
+        expect(document.querySelector(".velox_overlay")).to.not.exist;
+      }, 200) ;
+      setTimeout(function(){
+        expect(document.querySelector(".velox_overlay")).to.exist;
+      }, 400) ;
+    }) ;
+
+    it("should hide waiting spinner", function() {
+      expect(document.querySelector(".velox_overlay")).to.not.exist;
+    }) ;
+  });
   
 });
