@@ -270,8 +270,40 @@ describe("Style", function() {
 
     
   });
-});
+  describe("Style and script", function() {
+    var view = new VeloxWebView("views", "style_style_and_script", {container: "container"}) ;
+    
+    it("should open without error", function(done) {
+      view.open(function(err){
+        expect(err).to.not.exist ;
+        done() ;
+      }) ;
+    }) ;
 
+    it("should have blue background", function() {
+      expect(window.getComputedStyle(view.container.querySelector(".yellow")).backgroundColor).to.equal("rgb(255, 255, 0)");
+    }) ;
+
+    
+  });
+  describe("Script and style", function() {
+    var view = new VeloxWebView("views", "style_script_and_style", {container: "container"}) ;
+    
+    it("should open without error", function(done) {
+      view.open(function(err){
+        expect(err).to.not.exist ;
+        done() ;
+      }) ;
+    }) ;
+
+    it("should have blue background", function() {
+      expect(window.getComputedStyle(view.container.querySelector(".purple")).backgroundColor).to.equal("rgb(128, 0, 128)");
+    }) ;
+
+    
+  });
+});
+ 
 
 
 describe("Long task", function() {

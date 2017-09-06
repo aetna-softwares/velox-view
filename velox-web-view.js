@@ -179,7 +179,18 @@
         return dataObject;
     }
 
-    
+    function convertRelativeToAbsolutePath(base, relative) {
+        var path = base.split("/").concat(relative.split("/")) ;
+        var finalPath = [] ;
+        path.forEach(function(p){
+            if(p === ".."){
+                finalPath.pop() ;
+            } else if(p !== "."){
+                finalPath.push(p) ;
+            }
+        }) ;
+        return finalPath.join("/") ;
+    }
 
     /**
      * Set a value inside the object following a path
@@ -470,11 +481,17 @@
             var htmlReplaced = html ;
 
             var css = this.staticCSS ;
+            var cssFile = null;
             var functionInView = null;
-            var indexScript = htmlReplaced.toLowerCase().indexOf("<script") ;
-            if(indexScript === 0){
+            var htmlLower = htmlReplaced.toLowerCase();
+            var indexScript = htmlLower.indexOf("<script") ;
+            var indexStyle = htmlLower.indexOf("<style") ;
+            
+            if(indexScript === 0 /*script is first tag*/
+                || (indexScript !== -1 && indexStyle === 0 && indexScript < htmlLower.indexOf("</style>")+10) /*script follow style that is first tag */
+            ){
                 var indexBodyScript = htmlReplaced.indexOf(">", indexScript) ;
-                var indexEndScript = htmlReplaced.toLowerCase().indexOf("</script>") ;
+                var indexEndScript = htmlLower.indexOf("</script>") ;
                 if(indexEndScript === -1){
                     return callback("can't find closing </script> in view") ;
                 }
@@ -486,21 +503,30 @@
                 
                 htmlReplaced = htmlReplaced.substring(0, indexScript)+htmlReplaced.substring(indexEndScript+"</script>".length).trim() ;
             }
-            var indexStyle = htmlReplaced.toLowerCase().indexOf("<style") ;
+
+            htmlLower = htmlReplaced.toLowerCase();
+            indexStyle = htmlLower.indexOf("<style") ;
+            
             if(indexStyle === 0){
                 var indexBodyStyle = htmlReplaced.indexOf(">", indexStyle) ;
-                var indexEndStyle = htmlReplaced.toLowerCase().indexOf("</style>") ;
+                var indexEndStyle = htmlLower.indexOf("</style>") ;
                 if(indexEndStyle === -1){
                     return callback("can't find closing </style> in view") ;
                 }
-                var styleBody = htmlReplaced.substring(indexBodyStyle+1, indexEndStyle) ;
-                
-                css = styleBody ;
-                
+
+                var matchFile;
+                if((matchFile = /data-file=['"]([^'"]*)['"]/.exec(htmlLower)) !== null){
+                    //an external file is given
+                    cssFile = matchFile[1];
+                } else{
+                    var styleBody = htmlReplaced.substring(indexBodyStyle+1, indexEndStyle) ;
+                    css = styleBody ;
+                }
+
                 htmlReplaced = htmlReplaced.substring(0, indexStyle)+htmlReplaced.substring(indexEndStyle+"</style>".length).trim() ;
             }
 
-            this._loadCSS(css, function(){
+            this._loadCSS(css, cssFile, function(){
                 var match;
                 while ((match = REGEXP_ID.exec(html)) !== null) {
                     var id = match[1];
@@ -724,12 +750,12 @@
     } ;
     VeloxWebView.prototype.loadStaticCss = VeloxWebView.loadStaticCss ;
 
-    VeloxWebView.prototype._loadCSS = function (css, callback) {
+    VeloxWebView.prototype._loadCSS = function (css, cssFile, callback) {
         if(css !== null && css !== undefined){
             this.loadStaticCss(css) ;
             callback() ;
-        }else if(this.name){
-            this.loadCSSFile(callback);
+        }else if(cssFile){
+            this.loadCSSFile(cssFile, callback);
         }else{
             callback() ;
         }
@@ -740,9 +766,9 @@
      * Load CSS from file
      * @private
      */
-    VeloxWebView.prototype.loadCSSFile = function (callback) {
-        if (!loadedCss[this.directory + "_" + this.name]) {
-            var cssUrl = this.directory + "/" + this.name + ".css";
+    VeloxWebView.prototype.loadCSSFile = function (file, callback) {
+        var cssUrl = convertRelativeToAbsolutePath(this.directory , file);
+        if (!loadedCss[cssUrl]) {
             
             //we must do an XHR to handle error case
             var xhr = new XMLHttpRequest();
@@ -774,7 +800,7 @@
             } ;
             xhr.send();
             //$('head').append('<link rel="stylesheet" href="'+cssUrl+'" type="text/css" />');
-            loadedCss[this.directory + "_" + this.name] = true;
+            loadedCss[cssUrl] = true;
         }else{
             callback() ;
         }
