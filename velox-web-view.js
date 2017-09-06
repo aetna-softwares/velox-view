@@ -730,6 +730,8 @@
             callback() ;
         }else if(this.name){
             this.loadCSSFile(callback);
+        }else{
+            callback() ;
         }
     } ;
 

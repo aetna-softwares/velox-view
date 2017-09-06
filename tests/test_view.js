@@ -202,6 +202,24 @@ describe("render", function() {
 
 });
 
+describe("Inline content", function() {
+  describe("Inline HTML", function() {
+    var view = new VeloxWebView({html: "<p class='inlinehtml'>I am inline</p>", container: "container"}) ;
+    
+    it("should open without error", function(done) {
+      view.open(function(err){
+        expect(err).to.not.exist ;
+        done() ;
+      }) ;
+    }) ;
+
+    it("should be displayed", function() {
+      expect(document.querySelector(".inlinehtml")).to.exist;
+    }) ;
+
+    
+  });
+});
 
 describe("Style", function() {
   describe("Inline", function() {
