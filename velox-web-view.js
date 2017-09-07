@@ -1480,20 +1480,22 @@
         }
         //set simple elements
         this.boundElements.forEach((function (boundEl) {
-            var el = boundEl.el;
-            var bindPath = boundEl.bindPath;
-            var value = undefined;
-            if (el.getValue){
-                value = el.getValue();
-            }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-                if(el.tagName === "INPUT" && el.type === "checkbox"){
-                    value = el.checked ;
-                }else{
-                    value = el.value;
+            if(boundEl.bindPath){
+                var el = boundEl.el;
+                var bindPath = boundEl.bindPath;
+                var value = undefined;
+                if (el.getValue){
+                    value = el.getValue();
+                }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
+                    if(el.tagName === "INPUT" && el.type === "checkbox"){
+                        value = el.checked ;
+                    }else{
+                        value = el.value;
+                    }
                 }
-            }
-            if(value !== undefined){
-                pathSetValue(baseData, bindPath, value);
+                if(value !== undefined){
+                    pathSetValue(baseData, bindPath, value);
+                }
             }
             
         }).bind(this));
