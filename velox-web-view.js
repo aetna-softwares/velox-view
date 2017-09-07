@@ -1477,6 +1477,14 @@
     };
 
     /**
+     * Get data object from value inputed in view
+     * 
+     */
+    VeloxWebView.prototype.getData = function () {
+        return this.updateData({}) ;
+    } ;
+    
+    /**
      * Update data object from value inputed in view
      * 
      * @param {object} [dataObject] - The data object to update. If not given the object used for render is updated
