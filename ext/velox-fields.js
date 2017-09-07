@@ -1100,7 +1100,7 @@
                     selectize.unlock();
                 }
             } ;
-            ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            ["focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
                 $select.on(eventName, function(ev){
                     var event = new Event(ev.type);
                     //var cloneEv = new ev.constructor(ev.type, ev);
