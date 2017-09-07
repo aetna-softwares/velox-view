@@ -1483,7 +1483,7 @@
     VeloxWebView.prototype.getData = function () {
         return this.updateData({}) ;
     } ;
-    
+
     /**
      * Update data object from value inputed in view
      * 
@@ -1794,7 +1794,10 @@
     
     VeloxWebView._hideWaiter = function() {
         if(this.waiterDiv){
-            document.body.removeChild(this.waiterDiv) ;
+            if(this.waiterDiv.parentElement){
+                this.waiterDiv.parentElement.removeChild(this.waiterDiv.parentElement) ;
+            }
+            this.waiterDiv = null ;
         }
     };
     VeloxWebView.prototype._hideWaiter = VeloxWebView._hideWaiter ;
