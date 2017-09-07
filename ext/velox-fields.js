@@ -1100,15 +1100,11 @@
                     selectize.unlock();
                 }
             } ;
-            ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
-                $select.on(eventName, function(ev){
-                    if(ev.velox_redispatched){ return ; } //already redispatched, stop
-                    var event = new Event(ev.type);
-                    event.velox_redispatched = true ;
-                    //var cloneEv = new ev.constructor(ev.type, ev);
-                    element.dispatchEvent(event);
-                }) ;
-            }) ;
+            element.addEventListener = function(event, listener){
+                $select.on(event, function(ev){
+                    listener(ev) ;
+                }); 
+            } ;
 
             element.setOptions = function(options){
                 selectize.clearOptions() ;
