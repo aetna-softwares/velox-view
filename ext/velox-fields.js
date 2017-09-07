@@ -92,6 +92,10 @@
          */
         createField: function(element, fieldType, fieldSize, fieldOptions, callback){
             createField(element, fieldType, fieldSize, fieldOptions, callback) ;
+        },
+
+        resetLocale: function(){
+            currentLocale=null;
         }
     } ;
 
@@ -694,6 +698,7 @@
                         console.debug("Locales reloaded") ;
                     });
                 });
+                fillLocales(callback) ;
             }else{
                 fillLocales(callback) ;
             }
