@@ -1,0 +1,78 @@
+<p>Masked input : <span data-field="text" data-field-mask="(999) 999-9999"></span></p>
+<p>Integer : <span data-field="int"></span></p>
+<p>Double : <span data-field="double"></span></p>
+<p>Percent : <span data-field="percent"></span></p>
+<p>Email : <span data-field="email"></span></p>
+<p>Date : <span data-field="date"></span></p>
+<p>Date & time : <span data-field="datetime"></span></p>
+<p>Select : 
+    <span data-field="select">
+        <select>
+            <option value="js">Javascript</option>
+            <option value="html">HTML</option>
+            <option value="css">CSS</option>
+        </select>
+    </span>
+</p>
+<p>Checkbox : <span data-field="checkbox"></span></p>
+<p>Toggle : <span data-field="toggle"></span></p>
+<p>Upload : <span data-field="upload"></span></p>
+<p>Grid :  
+    <div data-field="grid" style="height: 100px">
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th data-field-type="double">Height</th>
+                    <th data-field-type="date">Date of birth</th>
+                    <th data-field-name="status">
+                        <label>Status</label>
+                        <script>
+                            var color= "white"
+                            if(record.status === "hello_done"){
+                                color= "green" ;
+                            }else if(record.status === "hello_todo"){
+                                color= "red" ;
+                            }else if(record.status === "hello_missed"){
+                                color= "grey" ;
+                            }
+                            return '<span style="color: '+color+'">'+record.status+"</span>" ;
+                        </script>
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Bob</td>
+                    <td>1.82</td>
+                    <td>1973-02-23</td>
+                    <td>hello_done</td>
+                </tr>
+                <tr>
+                    <td>Alice</td>
+                    <td>1.69</td>
+                    <td>1979-08-12</td>
+                    <td>hello_todo</td>
+                </tr>
+                <tr>
+                    <td>John</td>
+                    <td>1.78</td>
+                    <td>1984-05-02</td>
+                    <td>hello_missed</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</p>
+<p>PDF :
+    <div style="width: 100%; height: 100px" data-field="pdf" data-field-pdfurl="pdf/Edgar+Allan+Poe+-+The+Murders+in+the+Rue+Morgue.pdf"></div>
+</p>
+<p data-dont-process>Ignore this : 
+        <span data-field="select">
+            <select>
+                <option value="js">Javascript</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+            </select>
+        </span>
+    </p>

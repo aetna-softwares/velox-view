@@ -671,11 +671,30 @@
      * This will also return the container if it has the attribute
      * 
      * @param {string} attributeName the attribute name
+     * @param {boolean} withIgnore return the element contains in ignore blocks
      */
-    VeloxWebView.prototype.elementsHavingAttribute = function(attributeName){
+    VeloxWebView.prototype.elementsHavingAttribute = function(attributeName, withIgnore){
         var elements = Array.prototype.slice.apply(this.container.querySelectorAll('['+attributeName+']'));
         if(this.container.hasAttribute(attributeName)){//add the container himself if it has this attribute
             elements.push(this.container) ;
+        }
+        if(elements.length>0){
+            //remove the elements contained in data-dont-process block
+            var blockToIgnore = this.container.querySelectorAll('[data-dont-process]');
+            
+            if(blockToIgnore.length>0){
+                elements = elements.filter(function(el){
+                    var toIgnore = false ;
+                    for(var y=0; y<blockToIgnore.length; y++){
+                        var bl = blockToIgnore[y] ;
+                        if (bl === el || bl.contains(el)) {
+                            toIgnore = true ;
+                            break;
+                        }
+                    }
+                    return !toIgnore ;
+                }) ;
+            }
         }
         return elements;
     } ;

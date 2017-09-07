@@ -1,0 +1,26 @@
+<html>
+    <head>
+        <link href="../node_modules/mocha/mocha.css" rel="stylesheet" />        
+        <title>Velox View Tests</title>
+    </head>
+    <body>
+
+        <div id="container"></div>
+        
+        <div id="mocha"></div>
+    
+        <script src="https://cdn.rawgit.com/aetna-softwares/velox-loader/master/VeloxScriptLoader.js"></script>
+
+        <script src="../velox-web-view.js"></script>
+        <script src="../ext/velox-fields.js"></script>
+        <script src="../node_modules/mocha/mocha.js"></script>
+        <script src="../node_modules/chai/chai.js"></script>
+        <script src="../node_modules/chai-string/chai-string.js"></script>
+        
+        <script>mocha.setup('bdd')</script>
+        <script src="test_fields.js"></script>
+        <script>
+        mocha.run();
+        </script>
+    </body>
+</html>

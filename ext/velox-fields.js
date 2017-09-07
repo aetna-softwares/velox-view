@@ -402,6 +402,12 @@
             }) ;
         });
         series(calls, callback) ;
+        this.on("displayed", function(){
+            var grids = this.container.querySelectorAll("[data-field=grid]");
+            for(var i=0; i<grids.length; i++){
+                grids[i].render() ;
+            }
+        }.bind(this)) ;
     }
 
     /**
@@ -434,7 +440,7 @@
      * @param {function(Error)} callback called when the field is created
      */
     function _createField(element, fieldType, fieldSize, fieldOptions, callback){
-        if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
+        if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
             createTextField(element, fieldType, fieldSize, fieldOptions, callback) ;
         } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
             fieldType==="double" || fieldType==="float" || fieldType==="currency" || fieldType==="percent"){
@@ -621,7 +627,7 @@
      * @param {function(Error)} callback called on finished
      */
     function fillLocales(callback){
-        if((1000.99).toLocaleString('fr') === "1 000,99"){
+        if((99.99).toLocaleString('fr') === "99,99"){
             //the browser support locale string
             var localizedNumber = (1000.99).toLocaleString(currentLocale.lang) ;
             currentLocale.delimiters.thousands = localizedNumber[1] ;
@@ -631,7 +637,28 @@
             //the browser does not support locale string, load numbro lib
             loadLib("numbro", NUMBRO_VERSION, NUMBRO_LIB, function(err){
                 if(err){ return callback(err); }
-                var langData = libs.numbro.languageData(currentLocale.lang); 
+
+                var numbroLangName = currentLocale.lang ;
+                var numbroCultures = libs.numbro.cultures() ;
+                if(!numbroCultures[numbroLangName]){ //lang code not found
+                    if(numbroCultures[numbroLangName+"-"+numbroLangName.toUpperCase()]){ //try with same as region code (ex : fr-FR)
+                        numbroLangName = numbroLangName+"-"+numbroLangName.toUpperCase() ;
+                    }else{
+                        //search a lang code starting with our lang code
+                        var foundStartWith = Object.keys(numbroCultures).some(function(l){
+                            if(l.indexOf(numbroLangName) === 0){
+                                numbroLangName = l;
+                                return true;
+                            }
+                        });
+                        if(!foundStartWith){
+                            //found nothing, fallback to en-US
+                            numbroLangName = "en-US" ;
+                        }
+                    }
+                }
+
+                var langData = libs.numbro.cultureData(numbroLangName); 
                 currentLocale.delimiters.thousands = langData.delimiters.thousands ;
                 currentLocale.delimiters.decimal = langData.delimiters.decimal ;
                 callback() ;
@@ -667,6 +694,7 @@
                         console.debug("Locales reloaded") ;
                     });
                 });
+            }else{
                 fillLocales(callback) ;
             }
         }else{
@@ -1113,11 +1141,11 @@
      * @param {function(Error)} callback called when field is created
      */
     function createGridField(element, fieldType, fieldSize, fieldOptions, callback){
-        var subSelects = element.getElementsByTagName("TABLE") ;
-        if(subSelects.length === 0){
+        var subTables = element.getElementsByTagName("TABLE") ;
+        if(subTables.length === 0){
             return callback("Your data field grid should contain a TABLE tag") ;
         }
-        var table = subSelects[0];
+        var table = subTables[0];
         var listThead = table.getElementsByTagName("THEAD") ;
         var thead = listThead.length>0?listThead[0]:null ;
 
@@ -1205,9 +1233,9 @@
                     var totalColsWithSizePx  = 0;
                     var totalColsWithSizePercent  = 0;
                     
-                    listTh.forEach(function(th){
+                    listTh.forEach(function(th, i){
                         var colDef = {
-                            field     : th.getAttribute("data-field-name"),
+                            field     : th.getAttribute("data-field-name")||"f"+i,
                             size      : th.getAttribute("data-field-size")
                         };
 
@@ -1256,6 +1284,7 @@
                             colDef.sortable = true ;
                         }
                         var type = th.getAttribute("data-field-type") ;
+                        colDef.fieldType = type;
                         if(!colDef.render && type){
                             colDef.render = createGridRenderer(type, colDef.field) ;
                         }
@@ -1272,7 +1301,7 @@
                             //no size is defined in px, use %
                             var colPercent = (totalPercent - totalColsWithSizePercent)/totalColsNoSize ;
                             if(colPercent>0){
-                                defaultColSize = colPercent+"%" ;
+                                defaultColSize = (colPercent)+"%" ;
                             }
                         }else{
                             //there is pixel column, compute in pixels
@@ -1299,8 +1328,12 @@
                             var record = {recid: recid++} ;
                             listTd.forEach(function(td, i){
                                 var value = td.innerHTML ;
-                                if(gridOptions.columns[i].render && gridOptions.columns[i].render.indexOf("date") !== -1){
-                                    value = new Date(value) ;
+                                if(gridOptions.columns[i].fieldType){
+                                    if(gridOptions.columns[i].fieldType.indexOf("date") !== -1){
+                                        value = new Date(value) ;
+                                    }else if(["int", "integer", "double", "decimal", "number"].indexOf(gridOptions.columns[i].fieldType) !== -1){
+                                        value = parseFloat(value) ;
+                                    }
                                 }
                                 record[gridOptions.columns[i].field] = value ;
                             }) ;
@@ -1378,8 +1411,11 @@
     function createGridRenderer(type, colName){
         if(["varchar", "text"].indexOf(type) !== -1){
             return null;
-        }
-        if(type === "date"){
+        }else if(["int", "integer"].indexOf(type) !== -1){
+            return "int";
+        }else if(["double", "float", "number", "decimal"].indexOf(type) !== -1){
+            return "number:2" ;
+        }else if(type === "date"){
             return function(record){
                 var dt = record[colName] ;
                 if(typeof(dt) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(dt)){
