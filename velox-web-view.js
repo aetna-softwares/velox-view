@@ -1111,22 +1111,36 @@
      * @param {object} [bindObject] - The data to render. If not given, it use the object given on init or on previous render
      * @param {function} [callback] - Called when render is done
      */
-    VeloxWebView.prototype.render = function (bindObject, callback) {
+    VeloxWebView.prototype.render = function (bindObject, callbackParam) {
         this.ensureInit(function(){
             //ensure init because we can arrive here while init is running (for example a new view refresh is called while a first one is not yet done)
 
             this.elements = null; //clear EL collection to force recompute as some sub element may change on render
             
             if (typeof (bindObject) === "function") {
-                callback = bindObject;
+                callbackParam = bindObject;
                 bindObject = undefined;
             }
             if (bindObject !== undefined) {
                 this.bindObject = bindObject;
             }
-            if (!callback) {
-                callback = function () { };
+            if (!callbackParam) {
+                callbackParam = function () { };
             }
+
+            if(this.rendering){
+                //render is not re-entrant. try to render when you are already rendering
+                //is likely to be loop due to some change event listener
+                return callbackParam() ;
+            }
+
+            this.rendering = true ;
+            var callback = function(err){
+                this.rendering = false ;
+                if(err){ return callbackParam(err) ;}
+                callbackParam() ;
+            } ;
+            
     
     
             if (!this.boundElements) {
