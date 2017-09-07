@@ -1379,8 +1379,6 @@
                         console.log("implement read only on grid ?") ;
                     } ;
                     element.addEventListener = function(event, listener){
-                        //call the normal listener
-                        Object.getPrototypeOf(element).addEventListener.apply(element, arguments) ;
                         grid.on(event, function(ev){
                             if(ev.recid){
                                 ev.record = grid.get(ev.recid) ;

@@ -1,4 +1,4 @@
-/* global mocha, chai, describe, it, VeloxWebView */
+/* global before, veloxScriptLoader, chai, describe, it, VeloxWebView */
 var expect = chai.expect;
 
 
