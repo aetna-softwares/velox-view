@@ -1795,7 +1795,7 @@
     VeloxWebView._hideWaiter = function() {
         if(this.waiterDiv){
             if(this.waiterDiv.parentElement){
-                this.waiterDiv.parentElement.removeChild(this.waiterDiv.parentElement) ;
+                this.waiterDiv.parentElement.removeChild(this.waiterDiv) ;
             }
             this.waiterDiv = null ;
         }
