@@ -515,7 +515,7 @@
                 }
 
                 var matchFile;
-                if((matchFile = /data-file=['"]([^'"]*)['"]/.exec(htmlLower)) !== null){
+                if((matchFile = /data-file=['"]([^'"]*)['"]/i.exec(htmlReplaced)) !== null){
                     //an external file is given
                     cssFile = matchFile[1];
                 } else{
@@ -1615,7 +1615,7 @@
         if(!this.waitCount){ this.waitCount = 0 ;}
         this.waitCount++;
     };
-    VeloxWebView.prototype.startWait = VeloxWebView.startWait ;
+    VeloxWebView.prototype.startWait = VeloxWebView.startWait.bind(VeloxWebView) ; ;
 
     /**
 	* End wait animation
@@ -1628,7 +1628,7 @@
 		}
     };
 
-    VeloxWebView.prototype.endWait = VeloxWebView.endWait ;
+    VeloxWebView.prototype.endWait = VeloxWebView.endWait.bind(VeloxWebView) ;
 
     /**
 	* Close all waiters
@@ -1641,7 +1641,7 @@
 		}
     };
 
-    VeloxWebView.prototype.closeAllWaiters = VeloxWebView.closeAllWaiters ;
+    VeloxWebView.prototype.closeAllWaiters = VeloxWebView.closeAllWaiters.bind(VeloxWebView) ; ;
     
     /**
      * Display info box
@@ -1654,7 +1654,7 @@
         if(callback){ callback() ; }
     } ;
 
-    VeloxWebView.prototype.info = VeloxWebView.info ;
+    VeloxWebView.prototype.info = VeloxWebView.info.bind(VeloxWebView) ; ;
 
     /**
      * Display error box
@@ -1662,7 +1662,7 @@
      * @param {string} message the message to display
      * @param {function} [callback] called when user close message
      */
-    VeloxWebView.error = VeloxWebView.info ;
+    VeloxWebView.error = VeloxWebView.info.bind(VeloxWebView) ; ;
     
     VeloxWebView.prototype.error = VeloxWebView.prototype.info ;
 
@@ -1685,7 +1685,7 @@
         this.error(message, callback) ;
     };
 
-    VeloxWebView.prototype.endWaitError = VeloxWebView.endWaitError ;
+    VeloxWebView.prototype.endWaitError = VeloxWebView.endWaitError.bind(VeloxWebView) ; ;
 
     /**
      * Start a long task, it will display the waiter until finish
@@ -1737,7 +1737,7 @@
         }
     };
 
-    VeloxWebView.prototype.longTask = VeloxWebView.longTask ;
+    VeloxWebView.prototype.longTask = VeloxWebView.longTask.bind(VeloxWebView) ; ;
       
     VeloxWebView._showWaiter = function(message){
         //credit : https://stephanwagner.me/only-css-loading-spinner
@@ -1750,7 +1750,7 @@
             "    right: 0; "+
             "    bottom: 0; "+
             "    background-color: rgba(0, 0, 0, 0.61); "+
-            "    z-index: 999999; "+
+            "    z-index: 1500; "+
             "  }"+
             ".velox_waitmsg { "+
             "    color: white; "+
@@ -1790,7 +1790,7 @@
         document.body.appendChild(this.waiterDiv) ;
     } ;
 
-    VeloxWebView.prototype._showWaiter = VeloxWebView._showWaiter ;
+    VeloxWebView.prototype._showWaiter = VeloxWebView._showWaiter.bind(VeloxWebView) ; ;
     
     VeloxWebView._hideWaiter = function() {
         if(this.waiterDiv){
@@ -1800,7 +1800,7 @@
             this.waiterDiv = null ;
         }
     };
-    VeloxWebView.prototype._hideWaiter = VeloxWebView._hideWaiter ;
+    VeloxWebView.prototype._hideWaiter = VeloxWebView._hideWaiter.bind(VeloxWebView) ; ;
     
     VeloxWebView.prototype._asyncSeries = asyncSeries ;
     VeloxWebView._asyncSeries = asyncSeries ;

@@ -1102,6 +1102,7 @@
             } ;
             element.addEventListener = function(event, listener){
                 $select.on(event, function(ev){
+                    ev.target = element;
                     listener(ev) ;
                 }); 
             } ;
