@@ -1139,7 +1139,7 @@
                 this.rendering = false ;
                 if(err){ return callbackParam(err) ;}
                 callbackParam() ;
-            } ;
+            }.bind(this) ;
             
     
     
