@@ -592,7 +592,7 @@
                     this.container.innerHTML = htmlReplaced;
                 }
     
-                this.initAutoEmit();
+                
     
                 this.prepareSubView() ;
     
@@ -624,6 +624,9 @@
                     if(functionInView){
                         functionInView(this) ;
                     }
+
+                    this.initAutoEmit();
+
                     this.initDone = true;
                     this.emit("initDone");
     
