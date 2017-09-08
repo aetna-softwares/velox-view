@@ -102,7 +102,9 @@
                     }
 
                     element.setAttribute("data-field", colDef.type) ;
-                    element.setAttribute("data-field-size", colDef.size) ;
+                    if(colDef.size){
+                        element.setAttribute("data-field-size", colDef.size) ;
+                    }
                     if(colDef.options){
                         Object.keys(colDef.options).forEach(function(k){
                             element.setAttribute("data-field-"+k, colDef.options[k]) ;
