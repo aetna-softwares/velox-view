@@ -540,15 +540,15 @@
                     } else {
                         //add UUID
                         this.ids[id] = id + ID_SEP + uuidEl;
-                        htmlReplaced = htmlReplaced.replace(new RegExp("\\sid=['\"]"+id+"['\"]"), ' id="' + id + '_-_' + uuidEl + '" data-original-id="' + id + '"');
+                        htmlReplaced = htmlReplaced.replace(new RegExp("\\sid=['\"]"+id+"['\"]"), ' id="' + id + ID_SEP + uuidEl + '" data-original-id="' + id + '"');
                         htmlReplaced = htmlReplaced.replace(new RegExp('data-target="#' + id + '"', 'g'),
-                            'data-target="#' + id + '_-_' + uuidEl + '"');
+                            'data-target="#' + id + ID_SEP + uuidEl + '"');
                         htmlReplaced = htmlReplaced.replace(new RegExp('href="#' + id + '"', 'g'),
-                            'href="#' + id + '_-_' + uuidEl + '"');
+                            'href="#' + id + ID_SEP + uuidEl + '"');
                         htmlReplaced = htmlReplaced.replace(new RegExp('aria-controls="' + id + '"', 'g'),
-                            'aria-controls="' + id + '_-_' + uuidEl + '"');
+                            'aria-controls="' + id + ID_SEP + uuidEl + '"');
                         htmlReplaced = htmlReplaced.replace(new RegExp('for="' + id + '"', 'g'),
-                            'for="' + id + '_-_' + uuidEl + '"');
+                            'for="' + id + ID_SEP + uuidEl + '"');
                     }
                 }
     
@@ -589,6 +589,17 @@
                     }
                 } else {
                     this.container.style.display = "none"; //hide during init
+                    if(this.options.containerIsInside && this.container.id){
+                        //this container is considered to be inside the view
+                        //this is the case when we have a repeating view with external file, ex :
+                        //<div data-bind="foo[]" data-view="oneFoo" id="fooLine">
+                        //in this case the container can't be handled by parent view because it may happens 0 or many time
+                        //it must be handle by the sub view (we are here initializing this subview)
+                        this.container.setAttribute("data-original-id", this.container.id) ;
+                        var modifiedId = this.container.id+ID_SEP + uuidv4() ; ;
+                        this.ids[this.container.id] = modifiedId;
+                        this.container.id = modifiedId ;
+                    }
                     this.container.innerHTML = htmlReplaced;
                 }
     
@@ -1415,6 +1426,7 @@
         var viewOptions = {
             containerParent: parentEl,
             container: container,
+            containerIsInside : !!view.file,
             insertBefore : view.isBefore,
             insertAfter : view.isAfter,
             html: view.html,
@@ -1455,7 +1467,7 @@
                     }
                 }) ;
             }.bind(this)) ;
-            
+
             //render after propagate event to be sure bound listener are called
             v.render( this.bindObject, function(err){
                 if(err){return callback(err);}

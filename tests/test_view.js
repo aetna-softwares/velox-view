@@ -144,6 +144,50 @@ describe("render", function() {
     }) ;
     
   });
+
+  describe("Event HTML propagation", function() {
+    var view = new VeloxWebView("views", "nested_event", {container: "container"}) ;
+    var btClicked = false ;
+    var lineClicked = false ;
+    view.on("initDone", function(){
+      view.EL.bt.addEventListener("click",function(){
+        btClicked=true ;
+      }) ;
+      view.EL.lineToSave.addEventListener("click", function(){
+        lineClicked=true ;
+      }) ;
+    }) ;
+    it("should open without error", function(done) {
+      view.open({
+        families: [
+          { 
+            name: "Felidae",
+            tosave : animals.filter(function(a, i){ return a.family === "Felidae" && i%2 === 0; }),
+            saved : animals.filter(function(a, i){ return a.family === "Felidae" && i%2 !== 0; })
+          },
+          { 
+            name: "Canidae",
+            tosave : animals.filter(function(a, i){ return a.family === "Canidae" && i%2 === 0; }),
+            saved : animals.filter(function(a, i){ return a.family === "Canidae" && i%2 !== 0; })
+          }
+        ]
+      }, function(err){
+        expect(err).to.not.exist ;
+        done() ;
+      }) ;
+    }) ;
+
+    it("should propagate click event (first level)", function() {
+      view.container.querySelectorAll('[data-original-id="bt"]')[0].click();
+      expect(btClicked).to.equal(true);
+    }) ;
+    it("should propagate click event (second level)", function() {
+      view.container.querySelectorAll('[data-original-id="lineToSave"]')[0].click();
+      expect(lineClicked).to.equal(true);
+    }) ;
+
+    
+  });
   
   describe("Nested and visibility", function() {
     var view = new VeloxWebView("views", "nested_visibility", {container: "container"}) ;
