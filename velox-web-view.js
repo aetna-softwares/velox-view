@@ -1436,27 +1436,26 @@
         }.bind(this) ;
         v.open(function(err){
             if(err){return callback(err);}
-            if(view.html){ //anonymous subview
-                //propagate event listener from containing view to subview created elements
-                var parents = [] ;
-                var loopV = v;
-                while(loopV.parentView){
-                    parents.push(loopV.parentView) ;
-                    loopV = loopV.parentView ;
-                }
-                parents.forEach(function(parent){
-                    parent.innerViewIds.forEach(function(innerViewId){
-                        if(v.ids[innerViewId.id] && v.EL[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
-                            innerViewId.realEl = v.EL[innerViewId.id] ;
-                            Object.keys(innerViewId.listeners).forEach(function(event){
-                                innerViewId.listeners[event].forEach(function(l){
-                                    v.EL[innerViewId.id].addEventListener(event, l) ;
-                                }) ;
-                            }) ;  
-                        }
-                    }) ;
-                }.bind(this)) ;
+            //propagate event listener from containing view to subview created elements
+            var parents = [] ;
+            var loopV = v;
+            while(loopV.parentView){
+                parents.push(loopV.parentView) ;
+                loopV = loopV.parentView ;
             }
+            parents.forEach(function(parent){
+                parent.innerViewIds.forEach(function(innerViewId){
+                    if(v.ids[innerViewId.id] && v.EL[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
+                        innerViewId.realEl = v.EL[innerViewId.id] ;
+                        Object.keys(innerViewId.listeners).forEach(function(event){
+                            innerViewId.listeners[event].forEach(function(l){
+                                v.EL[innerViewId.id].addEventListener(event, l) ;
+                            }) ;
+                        }) ;  
+                    }
+                }) ;
+            }.bind(this)) ;
+            
             //render after propagate event to be sure bound listener are called
             v.render( this.bindObject, function(err){
                 if(err){return callback(err);}
