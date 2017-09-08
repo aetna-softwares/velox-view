@@ -473,11 +473,7 @@
         }else if(typeof(colDef.values) === "object" ){
             var script = "<script>";
             script += 'var values = '+JSON.stringify(colDef.values) +" ;" ;
-            if(VeloxWebView.i18n){
-                script += 'return VeloxWebView.i18n.tr("fields.values.'+table+'.'+colDef.name+'."+values[record["'+colDef.name+'"]]) ;'
-            }else{
-                script += "return values[record['"+colDef.name+"']] ;" ;
-            }
+            script += "return values[record['"+colDef.name+"']] ;" ;
             script += "</script>" ;
             innerHTML = script + innerHTML ;
             callback(null, innerHTML) ;
