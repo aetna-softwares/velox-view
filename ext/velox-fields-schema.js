@@ -241,7 +241,6 @@
                     colDef.values.forEach(function(val){
                         var option = document.createElement("OPTION") ;
                         option.value = val;
-                        option.innerHTML = val ;
                         if(VeloxWebView.i18n){
                             option.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+colDef.name+"."+val) ;
                         }else{
@@ -256,11 +255,6 @@
                         var option = document.createElement("OPTION") ;
                         option.value = val;
                         option.innerHTML = colDef.values[val] ;
-                        if(VeloxWebView.i18n){
-                            option.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+colDef.name+"."+colDef.values[val]) ;
-                        }else{
-                            option.innerHTML = colDef.values[val] ;
-                        }
                         select.appendChild(option) ;
                     }) ;
                     callback() ;
