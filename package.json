@@ -7,7 +7,9 @@
   },
   "scripts": {
     "test": "echo \"Run in browser\" && exit 1",
-    "start": "httpserver 9753 localhost"
+    "start": "httpserver 9753 localhost",
+    "minify": "uglifyjs velox-web-view.js --compress --output velox-web-view-min.js",
+    "minify-all": "uglifyjs velox-web-view.js ext/velox-dialogs.js ext/velox-fields.js ext/velox-fields-schema.js ext/velox-i18next.js  ext/velox-list.js --compress --output velox-web-view-min-all.js"
   },
   "repository": {
     "type": "git",
@@ -23,6 +25,7 @@
     "chai": "^4.1.1",
     "chai-string": "^1.4.0",
     "httpserver": "^0.3.0",
-    "mocha": "^3.5.0"
+    "mocha": "^3.5.0",
+    "uglify-js": "^3.1.0"
   }
 }
