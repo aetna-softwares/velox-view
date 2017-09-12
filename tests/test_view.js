@@ -1,4 +1,4 @@
-/* global chai, describe, it, VeloxWebView */
+/* global chai, describe, it, VeloxWebView, sinon, beforeEach */
 var expect = chai.expect;
 
 var animals = [
@@ -437,9 +437,9 @@ describe("Concurrent open", function() {
 
     var view = new VeloxWebView("views", "animal", {container: "container"}) ;
     
-    it("should add a warning when open twice", function() {
+    it("should add a warning when open twice", function(done) {
       view.open() ;
-      view.open() ;
+      view.open(done) ;
       expect( console.warn.calledOnce ).to.be.true;
     }) ;
 

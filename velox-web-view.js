@@ -446,9 +446,11 @@
         if(this.opening){
             //is already opening, callback when init is done and add a warning as it is probably not an expected situation
             console.warn("You are opening the view "+this.directory+" / "+this.name+" while it is already opening.") ;
-            return this.once("initDone", function(){
-                this.open(data, pCallback) ;
-            }.bind(this)) ;
+            var realCallback = pCallback ;
+            pCallback = function(err){
+                if(err){ return realCallback(err) ;}
+                this.open(data, realCallback) ;
+            }.bind(this) ;
         }
 
         this.opening = true ;
