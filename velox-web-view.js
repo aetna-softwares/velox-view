@@ -428,13 +428,34 @@
      * 
      * @param {function(Error)} [callback] - Called when init is done
      */
-    VeloxWebView.prototype.open = function (data, callback) {
+    VeloxWebView.prototype.open = function (data, pCallback) {
         if(typeof(data) === "function"){
-            callback = data;
+            pCallback = data;
             data = null;
         }
 
-        if(!callback){ callback = function(){}; }
+        if (!pCallback) { 
+            pCallback = function (err) { 
+                if(err){ 
+                    console.error("Unexpected error", err) ;
+                    throw "Unexpected error "+err ; 
+                }
+            }; 
+        }
+
+        if(this.opening){
+            //is already opening, callback when init is done and add a warning as it is probably not an expected situation
+            console.warn("You are opening the view "+this.directory+" / "+this.name+" while it is already opening.") ;
+            return this.once("initDone", function(){
+                this.open(data, pCallback) ;
+            }.bind(this)) ;
+        }
+
+        this.opening = true ;
+        var callback = function(err){
+            this.opening = false ;
+            pCallback(err) ;
+        }.bind(this) ;
 
         if (this.initDone) {
             //already init
@@ -463,13 +484,7 @@
         this.staticHTML = this.options.html;
         this.staticCSS = this.options.css;
 
-        if (!callback) { callback = function (err) { 
-            
-            if(err){ 
-                console.error("Unexpected error", err) ;
-                throw "Unexpected error "+err ; 
-            }
-        }; }
+       
 
         this.getHTML((function (html) {
             this.ids = {};

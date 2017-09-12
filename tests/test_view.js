@@ -420,3 +420,28 @@ describe("Long task", function() {
   });
   
 });
+
+
+
+describe("Concurrent open", function() {
+  describe("Open while is already opening", function() {
+    
+    beforeEach(function() {
+      if (null == this.sinon) {
+        this.sinon = sinon.sandbox.create();
+      } else {
+        this.sinon.restore();
+      }
+      this.sinon.stub(console, 'warn');
+    });
+
+    var view = new VeloxWebView("views", "animal", {container: "container"}) ;
+    
+    it("should add a warning when open twice", function() {
+      view.open() ;
+      view.open() ;
+      expect( console.warn.calledOnce ).to.be.true;
+    }) ;
+
+  });
+});
