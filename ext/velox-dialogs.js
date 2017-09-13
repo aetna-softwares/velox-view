@@ -114,7 +114,7 @@
     extension.extendsProto.error = function (message, callback) {
         if(typeof(message) === "object"){
             console.error("unexpected error", message) ;
-			if(message && message.constructor === Error){
+			if(message && message instanceof Error){
                 if(this.tr){
                     message = this.tr("global.unexpectedError", {err : message.message+"\n"+message.stack}) ;
                 }else{
