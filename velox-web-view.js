@@ -950,8 +950,8 @@
                 this.views[viewId] = {
                     elParent: el.parentElement,
                     el: el,
-                    // isBefore :  nextElementIds.length>0?nextElementIds:null,
-                    // isAfter : previousElementIds.length>0?previousElementIds:null,
+                    isBefore :  nextElementIds.length>0?nextElementIds:null,
+                    isAfter : previousElementIds.length>0?previousElementIds:null,
                     bindPath: bindAttr,
                     dir: dir,
                     html: el.outerHTML,
