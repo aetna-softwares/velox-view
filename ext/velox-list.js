@@ -176,7 +176,7 @@
                     if(this.list){
                         //if the list exists
 
-                        var elements = this.elementsHavingAttribute("data-field");
+                        var elements = this.elementsHavingAttribute("data-bind");
                         elements.forEach(function(element){
                             element.addEventListener("change", function(){
                                 //a change happen 

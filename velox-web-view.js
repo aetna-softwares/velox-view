@@ -1437,21 +1437,31 @@
         var view = this.views[viewId];
         var bindPath = view.bindPath || "";
 
+        var isAfter = view.isAfter;
+        if(view.instances.length > 0){
+            var lastInstanceContainer = view.instances[view.instances.length - 1].container;
+            if(!lastInstanceContainer.hasAttribute("data-vieworder-id")){
+                lastInstanceContainer.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+            }
+            isAfter = [lastInstanceContainer.getAttribute("data-vieworder-id")] ;
+        }
+
         var parentEl = view.elParent; //default parent
         var container = null;
         if(view.file){
             //in case of nested view, the view file contains the view innerHTML but not
             //the outer element like for inline sub view. We must add the outer element as container
             container = view.el.cloneNode() ;
-            insertChild(view.elParent, container, view.isBefore, view.isAfter) ;
+            insertChild(view.elParent, container, view.isBefore, isAfter) ;
         }
+
 
         var viewOptions = {
             containerParent: parentEl,
             container: container,
             containerIsInside : !!view.file,
             insertBefore : view.isBefore,
-            insertAfter : view.isAfter,
+            insertAfter : isAfter,
             html: view.html,
             css: view.html?"":undefined,
             bindObject: null,
