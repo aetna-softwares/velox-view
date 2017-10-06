@@ -172,43 +172,38 @@
                     //first time render on this item, search for all fields to listen on changes
                     
                     //get the list array from data
-                    this.list = this.pathExtract(this.bindObject, this.bindPath.substring(0, indexBracket)) ;
-                    if(this.list){
-                        //if the list exists
-
-                        var elements = this.elementsHavingAttribute("data-bind");
-                        elements.forEach(function(element){
-                            element.addEventListener("change", function(){
-                                //a change happen 
-                                if(this.listAutoActive){ //the list is active
-                                    var listIndex = viewDef.instances.indexOf(this) ; //recompute because it may have change with remove actions
-                                    if(listIndex === viewDef.instances.length - 1){
-                                        //where are on the last line, add a line
-                                        this.parentView.addViewInstance(this.viewId, function(){}) ;
-                                    }
+                    var elements = this.elementsHavingAttribute("data-bind");
+                    elements.forEach(function(element){
+                        element.addEventListener("change", function(){
+                            //a change happen 
+                            if(this.listAutoActive){ //the list is active
+                                var listIndex = viewDef.instances.indexOf(this) ; //recompute because it may have change with remove actions
+                                if(listIndex === viewDef.instances.length - 1){
+                                    //where are on the last line, add a line
+                                    this.parentView.addViewInstance(this.viewId, function(){}) ;
                                 }
-                            }.bind(this)) ;
-                        }.bind(this));
-
-                        //get the potential remove buttons
-                        var elsRemove = this.elementsHavingAttribute("data-list-remove");
-                        elsRemove.forEach(function(elRemove){
-                            elRemove.addEventListener("click", function(){
-                                //click on remove button
-                                if(this.listAutoActive){ //the list is active
-                                    //remove the line
-                                    var listIndex = viewDef.instances.indexOf(this) ;
-                                    this.parentView.removeViewInstance(this.viewId, listIndex) ;
-                                }
-                            }.bind(this)) ;
+                            }
                         }.bind(this)) ;
+                    }.bind(this));
 
-                        
-                        //listen to load (render), remove and add instance events in parent view
-                        this.parentView.on('load', toggleRemoveEls.bind(this)) ;
-                        this.parentView.on('viewInstanceRemoved', toggleRemoveEls.bind(this)) ;
-                        this.parentView.on('viewInstanceAdded', toggleRemoveEls.bind(this)) ;    
-                    }
+                    //get the potential remove buttons
+                    var elsRemove = this.elementsHavingAttribute("data-list-remove");
+                    elsRemove.forEach(function(elRemove){
+                        elRemove.addEventListener("click", function(){
+                            //click on remove button
+                            if(this.listAutoActive){ //the list is active
+                                //remove the line
+                                var listIndex = viewDef.instances.indexOf(this) ;
+                                this.parentView.removeViewInstance(this.viewId, listIndex) ;
+                            }
+                        }.bind(this)) ;
+                    }.bind(this)) ;
+
+                    
+                    //listen to load (render), remove and add instance events in parent view
+                    this.parentView.on('load', toggleRemoveEls.bind(this)) ;
+                    this.parentView.on('viewInstanceRemoved', toggleRemoveEls.bind(this)) ;
+                    this.parentView.on('viewInstanceAdded', toggleRemoveEls.bind(this)) ;    
                 }.bind(this)) ;
             }
         }

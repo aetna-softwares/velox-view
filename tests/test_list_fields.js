@@ -15,7 +15,7 @@ var animals = [
 
 describe("List extension", function() {
   describe("List auto with data", function() {
-    var view = new VeloxWebView("views", "list1", {container: "container"}) ;
+    var view = new VeloxWebView("views", "list_fields", {container: "container"}) ;
     it("should open without error", function(done) {
       this.timeout(5000); //more timeout as it must fetch all libs
       view.open({animals: animals}, function(err){
@@ -56,8 +56,9 @@ describe("List extension", function() {
 
     it("should add a line when set value in last line", function() {
       var allInput = document.querySelectorAll("input") ;
+      var allFields = document.querySelectorAll("[data-field]") ;
       allInput[allInput.length-1].value = "change" ;
-      allInput[allInput.length-1].dispatchEvent(new Event('change'));
+      allFields[allFields.length-1].dispatchEvent(new Event('change'));
       expect(document.querySelectorAll("input").length).to.equals(allInput.length+1) ;
       expect(document.querySelectorAll("input")[allInput.length-1].value).to.equals("change") ;
       expect(document.querySelectorAll("input")[allInput.length].value).to.equals("") ;
@@ -76,7 +77,7 @@ describe("List extension", function() {
   });
 
   describe("List auto with no data", function() {
-    var view = new VeloxWebView("views", "list1", {container: "container"}) ;
+    var view = new VeloxWebView("views", "list_fields", {container: "container"}) ;
     it("should open without error", function(done) {
       this.timeout(5000); //more timeout as it must fetch all libs
       view.open({animals: []}, function(err){
@@ -99,42 +100,9 @@ describe("List extension", function() {
 
     it("should add a line when set value in last line", function() {
       var allInput = document.querySelectorAll("input") ;
+      var allFields = document.querySelectorAll("[data-field]") ;
       allInput[allInput.length-1].value = "change" ;
-      allInput[allInput.length-1].dispatchEvent(new Event('change'));
-      expect(document.querySelectorAll("input").length).to.equals(allInput.length+1) ;
-      expect(document.querySelectorAll("input")[allInput.length-1].value).to.equals("change") ;
-      expect(document.querySelectorAll("input")[allInput.length].value).to.equals("") ;
-    });
-   
-    
-  });
-
-  describe("List auto with undefined data", function() {
-    var view = new VeloxWebView("views", "list1", {container: "container"}) ;
-    it("should open without error", function(done) {
-      this.timeout(5000); //more timeout as it must fetch all libs
-      view.open({}, function(err){
-        expect(err).to.not.exist ;
-        done() ;
-      }) ;
-    });
-
-    it("should toggle list auto without error", function(done) {
-      view.setListAuto(true, function(err){
-        expect(err).to.not.exist ;
-        done();
-      }) ;
-    });
-
-    it("should have an extra line", function() {
-      expect(document.querySelectorAll("input").length).to.equal(1) ;
-      expect(document.querySelector("button").style.display).to.equal("none") ;
-    });
-
-    it("should add a line when set value in last line", function() {
-      var allInput = document.querySelectorAll("input") ;
-      allInput[allInput.length-1].value = "change" ;
-      allInput[allInput.length-1].dispatchEvent(new Event('change'));
+      allFields[allFields.length-1].dispatchEvent(new Event('change'));
       expect(document.querySelectorAll("input").length).to.equals(allInput.length+1) ;
       expect(document.querySelectorAll("input")[allInput.length-1].value).to.equals("change") ;
       expect(document.querySelectorAll("input")[allInput.length].value).to.equals("") ;

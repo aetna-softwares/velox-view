@@ -186,7 +186,7 @@
                 
                 var label = document.createElement("LABEL") ;
                 var text = document.createTextNode(VeloxWebView.tr("fields."+fieldDef));
-                if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
+                if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
                     //for checkbox, add input in the label
                     var input = element.querySelector("input") ;
                     element.removeChild(input) ;
@@ -332,7 +332,7 @@
             if(err){ return callback(err); }
             var values = {} ;
             results.forEach(function(r){
-                var label = colDef.labelField || valColumn;
+                var label = colDef.labelField || valColumn;
                 schema[otherTable].columns.forEach(function(c){
                     label = label.replace(c.name, r[c.name]) ;
                 }) ;
