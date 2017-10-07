@@ -1279,13 +1279,13 @@
                             var originalValue = boundEl.boundAttributes[name] ;
                             var value = originalValue ;
                             while(value.indexOf("{") !== -1){
-                                var indexStart = value.indexOf("{") ;
+                                var indexStart = value.indexOf("${") ;
                                 var indexEnd = value.indexOf("}") ;
                                 if(indexEnd < indexStart){ 
                                     console.error("Wrong syntax in "+originalValue) ;
                                     break;
                                 }
-                                var expr = value.substring(indexStart+1, indexEnd) ;
+                                var expr = value.substring(indexStart+2, indexEnd) ;
                                 var exprValue = evalExpr(baseData, expr) ;
                                 value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
                             }
