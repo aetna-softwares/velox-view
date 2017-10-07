@@ -1278,7 +1278,7 @@
                         Object.keys(boundEl.boundAttributes).forEach(function(name){
                             var originalValue = boundEl.boundAttributes[name] ;
                             var value = originalValue ;
-                            while(value.indexOf("{") !== -1){
+                            while(value.indexOf("${") !== -1){
                                 var indexStart = value.indexOf("${") ;
                                 var indexEnd = value.indexOf("}") ;
                                 if(indexEnd < indexStart){ 
