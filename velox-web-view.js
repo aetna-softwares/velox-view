@@ -156,6 +156,7 @@
         if(getParent){
             pathArray.pop() ;
         }
+        var objectPath = [] ;
         var dataObject = obj;
         while (pathArray.length > 0) {
             //property name
@@ -168,7 +169,10 @@
             }
 
             if (dataObject) {
-                if (p && p !== "this") {
+                if (p && p === "$parent"){
+                    dataObject = objectPath.pop() ;
+                }else if (p && p !== "$this") {
+                    objectPath.push(dataObject);
                     dataObject = dataObject[p];
                 }
                 if (dataObject && index !== null) {
@@ -1197,7 +1201,7 @@
                     var boundAttributes = {} ;
                     var hasBoundAttribute = false ;
                     for(var i=0; i<attributes.length; i++){
-                        if(attributes[i].value.indexOf("{") !== -1 && attributes[i].value.indexOf("}") !== -1){
+                        if(attributes[i].value.indexOf("${") !== -1 && attributes[i].value.indexOf("}") !== -1){
                             boundAttributes[attributes[i].name] = attributes[i].value ;
                             hasBoundAttribute = true ;
                         }
@@ -1205,7 +1209,22 @@
                     if(hasBoundAttribute){
                         bindEl.boundAttributes = boundAttributes;
                     }
-                    if(bindEl.bindPath || bindEl.boundAttributes){
+
+                    var textNodes = Array.prototype.slice.apply(el.childNodes).filter(function(n){ return n.nodeType === Node.TEXT_NODE; }) ;
+                    var boundTextNodes = {} ;
+                    var hasBoundTextNodes = false ;
+                    for(var i=0; i<textNodes.length; i++){
+                        if(textNodes[i].textContent.indexOf("${") !== -1 && textNodes[i].textContent.indexOf("}") !== -1){
+                            boundTextNodes[i] = textNodes[i].textContent ;
+                            hasBoundTextNodes = true ;
+                        }
+                    }
+                    if(hasBoundTextNodes){
+                        bindEl.boundTextNodes = boundTextNodes;
+                    }
+
+
+                    if(bindEl.bindPath || bindEl.boundAttributes || bindEl.boundTextNodes){
                         this.boundElements.push(bindEl);
                     }
                 }.bind(this)) ;
@@ -1226,7 +1245,7 @@
                     var el = boundEl.el;
                     var bindPath = boundEl.bindPath;
                     if(bindPath){
-                        var bindData = pathExtract(baseData, bindPath);
+                        var bindData = pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath);
                         
                         if (el.setValue){
                             el.setValue(bindData) ;
@@ -1292,15 +1311,35 @@
                             boundEl.el.setAttribute(name, value) ;
                         }.bind(this)) ;
                     }
+
+                    if(boundEl.boundTextNodes){
+                        var textNodes = Array.prototype.slice.apply(el.childNodes).filter(function(n){ return n.nodeType === Node.TEXT_NODE; }) ;
+                        Object.keys(boundEl.boundTextNodes).forEach(function(index){
+                            var originalValue = boundEl.boundTextNodes[index] ;
+                            var value = originalValue ;
+                            while(value.indexOf("${") !== -1){
+                                var indexStart = value.indexOf("${") ;
+                                var indexEnd = value.indexOf("}") ;
+                                if(indexEnd < indexStart){ 
+                                    console.error("Wrong syntax in "+originalValue) ;
+                                    break;
+                                }
+                                var expr = value.substring(indexStart+2, indexEnd) ;
+                                var exprValue = evalExpr(baseData, expr) ;
+                                value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
+                            }
+                            textNodes[index].textContent = value;
+                        }.bind(this)) ;
+                    }
     
                     //dispatch bound event on this element
                     var event = document.createEvent('CustomEvent');
                     event.initCustomEvent('bound', false, true, {
                         value: bindData,
-                        baseData: baseData,
+                        baseData: pathExtract(this.bindObject, this.bindPath),
                         bindPath: bindPath,
                         view: this,
-                        data: pathExtract(baseData, bindPath, true)
+                        data: pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath, true)
                     });
                     Object.keys(event.detail).forEach(function(k){
                         event[k] = event.detail[k] ;
@@ -1324,6 +1363,7 @@
     
                 //set sub views
                 var calls = [];
+                
                 Object.keys(this.views).forEach((function (viewId) {
                     calls.push(function(cb){
                         var view = this.views[viewId];
@@ -1345,7 +1385,7 @@
                             }
                         }
     
-                        var bindData = pathExtract(baseData, bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
+                        var bindData = pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
                         if(bindPath.length >0 && bindPath[bindPath.length - 1] === "]" && !bindData){
                             //array binding but array is null
                             shouldDisplay = false;

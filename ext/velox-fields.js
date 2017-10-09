@@ -91,7 +91,7 @@
          * @param {function(Error)} callback called when the field is created
          */
         createField: function(element, fieldType, fieldSize, fieldOptions, callback){
-            createField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createField(this, element, fieldType, fieldSize, fieldOptions, callback) ;
         },
 
         resetLocale: function(){
@@ -388,6 +388,7 @@
      * @private
      */
     function doInitView(callback){
+        var view = this;
         var elements = this.elementsHavingAttribute("data-field");
         var calls = [] ;
         elements.forEach(function(element){
@@ -402,7 +403,7 @@
                         fieldOptions[attKey.substring(startIndex)] = element.getAttribute(attKey) ;
                     }
                 }) ;
-                createField(element, fieldType, fieldSize, fieldOptions, cb) ;
+                createField(view, element, fieldType, fieldSize, fieldOptions, cb) ;
             }) ;
         });
         series(calls, callback) ;
@@ -423,13 +424,15 @@
      * @param {object} fieldOptions field options map (from element attributes)
      * @param {function(Error)} callback called when the field is created
      */
-    function createField(element, fieldType, fieldSize, fieldOptions, callback){
-
+    function createField(view, element, fieldType, fieldSize, fieldOptions, callback){
+        //dispatch bound event on container element
+        view.emit('beforeInitField', {id: element.getAttribute("data-original-id"), element: element, fieldType: fieldType, fieldOptions: fieldOptions});
         _createField(element, fieldType, fieldSize, fieldOptions, function(err){
             if(err){ return callback(err); }
             decorators.forEach(function(deco){
                 deco(element, fieldType, fieldSize, fieldOptions) ;
             }) ;
+            view.emit('afterInitField', {id: element.getAttribute("data-original-id"), element: element, fieldType: fieldType, fieldOptions: fieldOptions});
             callback() ;
         }) ;
     }
