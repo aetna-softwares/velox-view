@@ -1248,15 +1248,22 @@
                         var bindData = pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath);
                         
                         if (el.setValue){
-                            el.setValue(bindData) ;
+                            if(el.getValue() != bindData){
+                                el.setValue(bindData) ;
+                            }
                         }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
                             if(el.tagName === "INPUT" && el.type === "checkbox"){
-                                el.checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
+                                var checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
+                                if(el.checked !== checked){
+                                    el.checked = checked ;
+                                }
                             }else{
                                 if (bindData === null || bindData === undefined) {
                                     bindData = "";
                                 }
-                                el.value = bindData;
+                                if(el.value != bindData){
+                                    el.value = bindData;
+                                }
                             }
                             
                         } else {
@@ -1289,7 +1296,9 @@
                                     }
                                 }
                             }
-                            el.innerHTML = bindData;
+                            if(el.innerHTML != bindData){
+                                el.innerHTML = bindData;
+                            }
                         }
                     }
 
@@ -1308,7 +1317,9 @@
                                 var exprValue = evalExpr(baseData, expr) ;
                                 value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
                             }
-                            boundEl.el.setAttribute(name, value) ;
+                            if(boundEl.el.getAttribute(name) != value){
+                                boundEl.el.setAttribute(name, value) ;
+                            }
                         }.bind(this)) ;
                     }
 
@@ -1328,7 +1339,9 @@
                                 var exprValue = evalExpr(baseData, expr) ;
                                 value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
                             }
-                            textNodes[index].textContent = value;
+                            if(textNodes[index].textContent != value){
+                                textNodes[index].textContent = value;
+                            }
                         }.bind(this)) ;
                     }
     
