@@ -464,3 +464,47 @@ describe("Concurrent open", function () {
 
 	});
 });
+
+
+describe("Expr eval", function () {
+	describe("Open while is already opening", function () {
+
+		beforeEach(function () {
+			if (null == this.sinon) {
+				this.sinon = sinon.sandbox.create();
+			} else {
+				this.sinon.restore();
+			}
+			this.sinon.stub(console, 'error');
+		});
+
+		var view = new VeloxWebView("views", "eval", { container: "container" });
+
+		it("should open without error", function (done) {
+			view.open({foo: 2, bar:false}, function(err){
+				if(err){ return done(err) ;}
+
+				expect(console.error.callCount).to.equal(2);
+				done() ;
+			});
+		});
+
+		it("should display following expr", function () {
+			expect(document.querySelector('[data-original-id="eval1"]')).to.exist;
+			expect(document.querySelector('[data-original-id="eval2"]')).to.be.null;
+			expect(document.querySelector('[data-original-id="eval3"]')).to.exist;
+			expect(document.querySelector('[data-original-id="eval4"]')).to.be.null;
+			expect(document.querySelector('[data-original-id="eval5"]')).to.be.null;
+		});
+
+		it("should display following expr after render", function () {
+			view.render({foo: 2, bar: true}) ;
+			expect(document.querySelector('[data-original-id="eval1"]')).to.be.null;
+			expect(document.querySelector('[data-original-id="eval2"]')).to.exist;
+			expect(document.querySelector('[data-original-id="eval3"]')).to.be.null;
+			expect(document.querySelector('[data-original-id="eval4"]')).to.be.null;
+			expect(document.querySelector('[data-original-id="eval5"]')).to.be.null;
+		});
+
+	});
+});

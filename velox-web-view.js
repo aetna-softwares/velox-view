@@ -111,26 +111,66 @@
         }
     };
 
+    /**
+     * This function evaluate an expression against a data object
+     * 
+     * @example
+     * evalExpr({a: 1, b: 2}, "a > 0 && b < 5") //return true
+     * 
+     * @param {object} currentData object data
+     * @param {string} expr expression to evaluate
+     */
     function evalExpr(currentData, expr){
         if(currentData){
+            /*
+            the expression will be run in a function receiving the object properties as argument
+            for example : 
+            evalExpr({a: 1, b: 2}, "a > 0 && b < 5") 
+            will execute a function like this : 
+            function(a, b){ return a > 0 && b < 5; }
+            with arguments (1,2)
+            */
+
+
+            // prepare function arguments definition and value
             var argNames = [] ;
             var argValues = [] ;
             Object.keys(currentData).forEach(function(k){
                 argNames.push(k);
                 argValues.push(currentData[k]);
             }) ;
-            try{
-                return new Function(argNames.join(","), "return "+expr).apply(null, argValues) ;
-            }catch(e){
-                if(e.name === "ReferenceError" && /\w/.test(expr)){
-                    //just one word givien ReferenceError it is a data path returning nothing, return false is the expected behaviour
+
+            /*
+            we run in a loop to handle the undefined properties. consider the following example
+            evalExpr({foo: true}, "foo && !bar") 
+            we read !bar as !myObj.bar which usually return false
+            but in the wrapping function this will throw a ReferenceError, so we loop to add them to the argument and retry
+            */
+
+            var i = 0;
+            while(i<20){ //limit to 20 retry, somebody who use more than 20 not referenced variable is probably insane...
+                i++;
+                try{
+                    return new Function(argNames.join(","), "return "+expr).apply(null, argValues) ;
+                }catch(e){
+                    if(e.name === "ReferenceError"){
+                        //the expression use a variable name that is not in arguments name
+                        
+                        //add the variable to the argument list with undefined value
+                        var varName = e.message.split(" ")[0] ;
+                        argNames.push(varName);
+                        argValues.push(undefined) ;
+                        continue; //retry
+                    }
+                    //other case, log a console error as it likely to be a programmation error
+                    console.error("Error while evaluing expr "+expr, e) ;
                     return false;
                 }
-                //other case, log a console error as it likely to be a programmation error
-                console.error("Error while evaluing expr "+expr, e) ;
-                return false;
             }
-        }
+            console.error("More than 20 retry of "+expr+" there is something wrong in it !") ;
+            return false;
+        } 
+        return false;
     }
 
     /**
