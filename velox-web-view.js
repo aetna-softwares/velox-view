@@ -1232,8 +1232,16 @@
                 allElements.forEach(function(el){
                     var bindPath = el.getAttribute("data-bind");
                     var bindEl = {el: el} ;
+                    var isContainerOfNestedView = false;
+                    if(el === this.container){
+                        if(el.getAttribute("data-view")){
+                            isContainerOfNestedView = true;
+                        } else if(el.children.length > 0) {
+                            isContainerOfNestedView = true;
+                        }
+                    }
                     if(
-                        el !== this.container && //on container we only allow attribute binding, it makes no sense to replace inner content from binding. it will erase the view content...
+                        !isContainerOfNestedView &&
                         bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
                         bindEl.bindPath = bindPath;
                     }
@@ -1285,7 +1293,12 @@
                     var el = boundEl.el;
                     var bindPath = boundEl.bindPath;
                     if(bindPath){
-                        var bindData = pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath);
+                        var fullBindPath = (this.bindPath||"$this")+"."+bindPath ;
+                        if(el === this.container){
+                            //the container is bound, so its data is not inside is path
+                            fullBindPath = bindPath ;
+                        }
+                        var bindData = pathExtract(this.bindObject, fullBindPath);
                         
                         if (el.setValue){
                             if(el.getValue() != bindData){

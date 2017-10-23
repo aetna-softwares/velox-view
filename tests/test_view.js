@@ -193,6 +193,7 @@ describe("render", function () {
 		var view = new VeloxWebView("views", "nested_visibility", { container: "container" });
 
 		var data = {
+			title: "Animals to save",
 			tosave: animals.slice(),
 			saved: []
 		};
@@ -209,6 +210,11 @@ describe("render", function () {
 				expect(err).to.not.exist;
 				done();
 			});
+		});
+
+		it("should have a title", function () {
+			expect(view.container.querySelector('[data-bind="title"]')).to.exist;;
+			expect(view.container.querySelector('[data-bind="title"]').innerHTML).to.equal("Animals to save");
 		});
 
 		it("should have " + animals.length + " animals", function () {

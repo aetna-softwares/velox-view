@@ -1,4 +1,4 @@
-<label>Animals to save</label>
+<label data-bind="title" data-show-if="title"></label>
 <ul data-show-if="tosave">
     <!-- Show if there is something in todo -->
     <li data-bind="tosave[]" data-view="nested_visibility_item"></li>
