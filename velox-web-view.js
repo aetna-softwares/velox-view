@@ -1296,7 +1296,7 @@
                         var fullBindPath = (this.bindPath||"$this")+"."+bindPath ;
                         if(el === this.container){
                             //the container is bound, so its data is not inside is path
-                            fullBindPath = bindPath ;
+                            fullBindPath = this.bindPath ;
                         }
                         var bindData = pathExtract(this.bindObject, fullBindPath);
                         
