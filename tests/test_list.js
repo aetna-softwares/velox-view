@@ -74,7 +74,8 @@ describe("List extension", function() {
    
     
   });
-
+  });
+/*
   describe("List auto with no data", function() {
     var view = new VeloxWebView("views", "list1", {container: "container"}) ;
     it("should open without error", function(done) {
@@ -144,3 +145,4 @@ describe("List extension", function() {
   });
 
 });
+*/

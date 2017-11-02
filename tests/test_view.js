@@ -12,6 +12,7 @@ var animals = [
 	{ family: "Ursidae", name: "Giant Panda", color: "green" }
 ];
 
+
 describe("render", function () {
 	describe("simple render", function () {
 		var view = new VeloxWebView("views", "animal", { container: "container" });
@@ -511,6 +512,38 @@ describe("Expr eval", function () {
 			expect(document.querySelector('[data-original-id="eval4"]')).to.be.null;
 			expect(document.querySelector('[data-original-id="eval5"]')).to.be.null;
 		});
+
+	});
+});
+
+
+
+describe("Sub view render", function () {
+	describe("Inline", function () {
+		var view = new VeloxWebView("views", "nested_simple", { container: "container" });
+
+		it("should open without error", function (done) {
+			view.open({
+				title: { color: "red", label: "Save the animals !" },
+				tosave: animals
+			}, function (err) {
+				expect(err).to.not.exist;
+				done();
+			});
+		});
+
+		it("should have nested title as first child", function () {
+			var firstView = view.views[Object.keys(view.views)[0]].instances[0] ;
+			expect(firstView.getBoundObject()).to.equal(animals[0]);
+		});
+
+		it("should render in subview accordingly to bind path", function () {
+			var firstView = view.views[Object.keys(view.views)[0]].instances[0] ;
+			firstView.render(animals[1]) ;
+			expect(firstView.getBoundObject()).to.equal(animals[1]);
+		});
+
+
 
 	});
 });

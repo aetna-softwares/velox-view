@@ -432,6 +432,9 @@
             decorators.forEach(function(deco){
                 deco(element, fieldType, fieldSize, fieldOptions) ;
             }) ;
+            if(element.hasAttribute("readonly")){
+                element.setReadOnly(true) ;
+            }
             view.emit('afterInitField', {id: element.getAttribute("data-original-id"), element: element, fieldType: fieldType, fieldOptions: fieldOptions});
             callback() ;
         }) ;

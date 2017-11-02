@@ -514,7 +514,8 @@
             //check if the container is still around there
             if(this.container && document.documentElement.contains(this.container)){
                 //OK the container is still here, just refresh data
-                return this.render(data, callback) ;
+                this.bindObject = data;
+                return this.render(callback) ;
             }else{
                 //the container has been wipped out (probably a parent DOM element has been removed)
                 //the view is in unstable state, it should have been closed with close() before being take out the DOM
@@ -1189,21 +1190,25 @@
     /**
      * Render data in the view
      * 
-     * @param {object} [bindObject] - The data to render. If not given, it use the object given on init or on previous render
+     * @param {object} [dataToRender] - The data to render. If not given, it use the object given on init or on previous render
      * @param {function} [callback] - Called when render is done
      */
-    VeloxWebView.prototype.render = function (bindObject, callbackParam) {
+    VeloxWebView.prototype.render = function (dataToRender, callbackParam) {
         this.ensureInit(function(){
             //ensure init because we can arrive here while init is running (for example a new view refresh is called while a first one is not yet done)
 
             this.elements = null; //clear EL collection to force recompute as some sub element may change on render
             
-            if (typeof (bindObject) === "function") {
-                callbackParam = bindObject;
-                bindObject = undefined;
+            if (typeof (dataToRender) === "function") {
+                callbackParam = dataToRender;
+                dataToRender = undefined;
             }
-            if (bindObject !== undefined) {
-                this.bindObject = bindObject;
+            if (dataToRender !== undefined) {
+                if(this.bindPath){
+                    pathSetValue(this.bindObject, this.bindPath, dataToRender) ;
+                }else{
+                    this.bindObject = dataToRender;
+                }
             }
             if (!callbackParam) {
                 callbackParam = function () { };
@@ -1500,7 +1505,8 @@
                         //update bind path because the index in array may have change with user remove line in list auto
                         view.instances[y].bindPath = view.instances[y].bindPath.substring(0, view.instances[y].bindPath.lastIndexOf("[")+1)+y+"]" ;
                     }
-                    view.instances[y].render(this.bindObject, cb) ;
+                    view.instances[y].bindObject = this.bindObject ;
+                    view.instances[y].render(cb) ;
                 }
             }.bind(this));
         }.bind(this)) ;
@@ -1608,7 +1614,8 @@
             }.bind(this)) ;
 
             //render after propagate event to be sure bound listener are called
-            v.render( this.bindObject, function(err){
+            v.bindObject = this.bindObject ;
+            v.render(function(err){
                 if(err){return callback(err);}
                 callback() ;
                 this.emit("viewInstanceAdded", {viewId: viewId, index : view.instances.length-1}) ;
@@ -1640,19 +1647,18 @@
     /**
      * Update data object from value inputed in view
      * 
-     * @param {object} [dataObject] - The data object to update. If not given the object used for render is updated
+     * @param {object} [dataToUpdate] - The data object to update. If not given the object used for render is updated
      */
-    VeloxWebView.prototype.updateData = function (dataObject) {
-        if (dataObject === undefined) {
-            dataObject = this.bindObject;
+    VeloxWebView.prototype.updateData = function (dataToUpdate) {
+        var baseData = dataToUpdate;
+        if (dataToUpdate === undefined) {
+            //object not given, update in the bound object
+            baseData = pathExtract(this.bindObject, this.bindPath);
         }
-        if(!dataObject){
-            dataObject = {} ;
+        if(!baseData){
+            baseData = {} ;
         }
-        var baseData = dataObject;
-        if (this.bindPath) {
-            baseData = pathExtract(dataObject, this.bindPath);
-        }
+        
         //set simple elements
         this.boundElements.forEach((function (boundEl) {
             if(boundEl.bindPath){
@@ -1677,9 +1683,9 @@
 
         //set sub views
         Object.keys(this.views).forEach((function (viewId) {
-            this._updateDataFromView(viewId, baseData, dataObject) ;
+            this._updateDataFromView(viewId, baseData, dataToUpdate) ;
         }).bind(this));
-        return dataObject ;
+        return baseData ;
     };
 
     /**
@@ -1712,7 +1718,7 @@
                     viewData[i] = {} ;
                 }
             };
-            instance.updateData(dataObject);
+            instance.updateData(viewData[i]);
         }).bind(this));
 
         if(Array.isArray(viewData) && viewData.length>0){

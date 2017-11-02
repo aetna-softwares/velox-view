@@ -465,7 +465,7 @@
         }else if(Array.isArray(colDef.values)){
             var script = "<script>";
             if(VeloxWebView.i18n){
-                script += 'return VeloxWebView.i18n.tr("fields.values.'+table+'.'+colDef.name+'."+record["'+colDef.name+'"]) ;'
+                script += 'return VeloxWebView.i18n.tr("fields.values.'+table+'.'+colDef.name+'."+record["'+colDef.name+'"]) ;' ;
             }else{
                 script += "return record['"+colDef.name+"'] ;" ;
             }
