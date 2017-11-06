@@ -41,7 +41,7 @@
             type: "js",
             version: W2UI_VERSION,
             cdn: "//rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.js",
-            bowerPath: "w2ui/dist/w2ui.min.js"
+            bowerPath: "w2ui/dist/w2ui.js"
         }
     ];
 

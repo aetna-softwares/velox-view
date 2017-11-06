@@ -744,7 +744,7 @@
     VeloxWebView.prototype.show = function(){
         if(this.container){
             this.container.style.display = ""; 
-            this.emit("displayed");      
+            this.emit("displayed", {view : this});      
         }
     } ;
 

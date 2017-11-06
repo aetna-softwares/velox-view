@@ -216,7 +216,7 @@
             type: "js",
             version: W2UI_VERSION,
             cdn: "http://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.js",
-            bowerPath: "w2ui/dist/w2ui.min.js"
+            bowerPath: "w2ui/dist/w2ui.js"
         }
     ];
 
@@ -407,10 +407,12 @@
             }) ;
         });
         series(calls, callback) ;
-        this.on("displayed", function(){
-            var grids = this.container.querySelectorAll("[data-field=grid]");
-            for(var i=0; i<grids.length; i++){
-                grids[i].render() ;
+        this.on("displayed", function(ev){
+            if(ev.data.view === this){
+                var grids = this.container.querySelectorAll("[data-field=grid]");
+                for(var i=0; i<grids.length; i++){
+                    grids[i].render() ;
+                }
             }
         }.bind(this)) ;
     }
@@ -1197,7 +1199,26 @@
 
 
                     if(thead){
-                        ["header", "toolbar","toolbarAdd", "toolbarEdit", "toolbarDelete","toolbarSave","footer", "lineNumbers", "selectColumn", "expandColumn"].forEach(function(showAttr){
+
+                        ["header"         ,
+                        "toolbar"        ,
+                        "footer"         ,
+                        "columnHeaders"  ,
+                        "lineNumbers"    ,
+                        "expandColumn"   ,
+                        "selectColumn"   ,
+                        "emptyRecords"   ,
+                        "toolbarInput"  ,
+                        "toolbarReload"  ,
+                        "toolbarColumns" ,
+                        "toolbarSearch"  ,
+                        "toolbarAdd"     ,
+                        "toolbarEdit"    ,
+                        "toolbarDelete"  ,
+                        "toolbarSave"    ,
+                        "selectionBorder",
+                        "recordTitles"   ,
+                        "skipRecords"].forEach(function(showAttr){
                             var showValue = thead.getAttribute(showAttr);
                             if(showValue){
                                 gridOptions.show[showAttr] = showValue.trim().toLowerCase() === "true" ;
@@ -1396,7 +1417,7 @@
                         if(element[k] === undefined){
                             if(typeof(grid[k]) === "function"){
                                 element[k] = function(){
-                                    grid[k].apply(grid, arguments) ;
+                                    return grid[k].apply(grid, arguments) ;
                                 };
                             }else{
                                 Object.defineProperty(element, k, {
@@ -1423,7 +1444,7 @@
             return "int";
         }else if(["double", "float", "number", "decimal"].indexOf(type) !== -1){
             return "number:2" ;
-        }else if(type === "date"){
+        }else if(type === "date" || type === "timestamp"){
             return function(record){
                 var dt = record[colName] ;
                 if(typeof(dt) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(dt)){

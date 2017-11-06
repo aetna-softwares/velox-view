@@ -160,9 +160,17 @@
      */
     function doTranslateView(){
         var elements = this.elementsHavingAttribute("data-i18n");
+        var regexpAttr = /^\[(.*)](.*)$/;
         for(var i=0; i<elements.length; i++){
             var str = elements[i].getAttribute("data-i18n") ;
-            elements[i].innerHTML = translate(str) ;
+            var match ;
+            if((match = regexpAttr.exec(str)) !== null) {
+                var attr = match[1] ;
+                var code = match[2] ;
+                elements[i].setAttribute(attr, translate(code)) ;
+            }else{
+                elements[i].innerHTML = translate(str) ;
+            }
         }
     }
 
