@@ -153,11 +153,11 @@
                 try{
                     return new Function(argNames.join(","), "return "+expr).apply(null, argValues) ;
                 }catch(e){
-                    if(e.name === "ReferenceError"){
+                    if(e.name === "ReferenceError" ){
                         //the expression use a variable name that is not in arguments name
                         
                         //add the variable to the argument list with undefined value
-                        var varName = e.message.split(" ")[0] ;
+                        var varName = e.message.split(" ")[0].replace(/'/g, "") ;
                         argNames.push(varName);
                         argValues.push(undefined) ;
                         continue; //retry
@@ -547,53 +547,47 @@
 
             var htmlReplaced = html ;
 
-            var css = this.staticCSS ;
-            var cssFile = null;
+
+
+
+            var cssStatics = [] ;
+            if(this.staticCSS){
+                cssStatics.push(this.staticCSS) ;
+            }
+            var cssFiles = [];
             var functionInView = null;
-            var htmlLower = htmlReplaced.toLowerCase();
-            var indexScript = htmlLower.indexOf("<script") ;
-            var indexStyle = htmlLower.indexOf("<style") ;
-            
-            if(indexScript === 0 /*script is first tag*/
-                || (indexScript !== -1 && indexStyle === 0 && indexScript < htmlLower.indexOf("</style>")+10) /*script follow style that is first tag */
-            ){
-                var indexBodyScript = htmlReplaced.indexOf(">", indexScript) ;
-                var indexEndScript = htmlLower.indexOf("</script>") ;
-                if(indexEndScript === -1){
-                    return callback("can't find closing </script> in view") ;
-                }
-                var scriptBody = htmlReplaced.substring(indexBodyScript+1, indexEndScript) ;
-                
-                scriptBody +=  "//# sourceURL=/"+this.directory+"/"+this.name+".js" ;
 
-                functionInView = new Function("view", scriptBody) ;
-                
-                htmlReplaced = htmlReplaced.substring(0, indexScript)+htmlReplaced.substring(indexEndScript+"</script>".length).trim() ;
+            var parser = new DOMParser();
+            var xmlDoc = parser.parseFromString(html,"text/html");
+            if(xmlDoc.head.children.length>0){
+                var child = xmlDoc.head.children[0] ;
+                var scriptIndex = 0;
+                while(child && (child.tagName === "SCRIPT" || child.tagName === "STYLE")){
+
+                    if(child.tagName === "SCRIPT"){
+                        var scriptBody = child.innerHTML ;
+                        
+                        scriptBody +=  "//# sourceURL=/"+this.directory+"/"+this.name+(scriptIndex>0?"_"+scriptIndex:"")+".js" ;
+        
+                        functionInView = new Function("view", scriptBody) ;
+                        scriptIndex++;
+                    }else if(child.tagName === "STYLE"){
+                        if(child.hasAttribute("data-file")){
+                            cssFiles.push(child.getAttribute("data-file")) ;
+                        }else{
+                            cssStatics.push(child.innerHTML) ;
+                        }
+                    }
+
+                    child = child.nextElementSibling ;
+                }
             }
 
-            htmlLower = htmlReplaced.toLowerCase();
-            indexStyle = htmlLower.indexOf("<style") ;
-            
-            if(indexStyle === 0){
-                var indexBodyStyle = htmlReplaced.indexOf(">", indexStyle) ;
-                var indexEndStyle = htmlLower.indexOf("</style>") ;
-                if(indexEndStyle === -1){
-                    return callback("can't find closing </style> in view") ;
-                }
+            html = xmlDoc.body.innerHTML ;
 
-                var matchFile;
-                if((matchFile = /data-file=['"]([^'"]*)['"]/i.exec(htmlReplaced)) !== null){
-                    //an external file is given
-                    cssFile = matchFile[1];
-                } else{
-                    var styleBody = htmlReplaced.substring(indexBodyStyle+1, indexEndStyle) ;
-                    css = styleBody ;
-                }
 
-                htmlReplaced = htmlReplaced.substring(0, indexStyle)+htmlReplaced.substring(indexEndStyle+"</style>".length).trim() ;
-            }
 
-            this._loadCSS(css, cssFile, function(){
+            this._loadCSS(cssStatics, cssFiles, function(){
                 var match;
                 while ((match = REGEXP_ID.exec(html)) !== null) {
                     var id = match[1];
@@ -851,15 +845,17 @@
     } ;
     VeloxWebView.prototype.loadStaticCss = VeloxWebView.loadStaticCss ;
 
-    VeloxWebView.prototype._loadCSS = function (css, cssFile, callback) {
-        if(css !== null && css !== undefined){
-            this.loadStaticCss(css) ;
-            callback() ;
-        }else if(cssFile){
-            this.loadCSSFile(cssFile, callback);
-        }else{
-            callback() ;
-        }
+    VeloxWebView.prototype._loadCSS = function (cssStrings, cssFiles, callback) {
+        var calls = [] ;
+        cssStrings.forEach(function(cssContent){
+            this.loadStaticCss(cssContent) ;
+        }.bind(this)) ;
+        cssFiles.forEach(function(cssFile){
+            calls.push(function(cb){
+                this.loadCSSFile(cssFile, cb);
+            }.bind(this)) ;
+        }.bind(this)) ;
+        asyncSeries(calls, callback) ;
     } ;
 
 
@@ -1374,6 +1370,9 @@
                                 var expr = value.substring(indexStart+2, indexEnd) ;
                                 var exprValue = evalExpr(baseData, expr) ;
                                 value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
+                            }
+                            if(name.indexOf("attr-") === 0){
+                                name = name.substring(name.indexOf("-")+1) ;
                             }
                             if(boundEl.el.getAttribute(name) != value){
                                 boundEl.el.setAttribute(name, value) ;

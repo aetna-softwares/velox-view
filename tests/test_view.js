@@ -366,8 +366,28 @@ describe("Style", function () {
 			});
 		});
 
-		it("should have blue background", function () {
+		it("should have purple background", function () {
 			expect(window.getComputedStyle(view.container.querySelector(".purple")).backgroundColor).to.equal("rgb(128, 0, 128)");
+		});
+
+
+	});
+	describe("Many style and script", function () {
+		var view = new VeloxWebView("views", "style_many_style_and_script", { container: "container" });
+
+		it("should open without error", function (done) {
+			view.open(function (err) {
+				expect(err).to.not.exist;
+				done();
+			});
+		});
+
+		it("should have yellow background", function () {
+			expect(window.getComputedStyle(view.container.querySelector(".yellow")).backgroundColor).to.equal("rgb(255, 255, 0)");
+		});
+
+		it("should have blue background", function () {
+			expect(window.getComputedStyle(view.container.querySelector(".blue")).backgroundColor).to.equal("rgb(0, 0, 255)");
 		});
 
 
