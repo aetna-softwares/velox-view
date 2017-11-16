@@ -541,14 +541,7 @@
         this.getHTML((function (html) {
             this.ids = {};
 
-
-
             var html = html.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
-
-            var htmlReplaced = html ;
-
-
-
 
             var cssStatics = [] ;
             if(this.staticCSS){
@@ -584,7 +577,7 @@
             }
 
             html = xmlDoc.body.innerHTML ;
-
+            var htmlReplaced = html ;
 
 
             this._loadCSS(cssStatics, cssFiles, function(){
