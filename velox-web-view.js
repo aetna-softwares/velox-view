@@ -703,7 +703,7 @@
                             this.mustHide = false ;
                         }
                         callback();
-                        this.emit("openDone");
+                        this.emit("openDone", {view: this});
                     }).bind(this));
                 }).bind(this));
             }.bind(this)) ;
@@ -715,7 +715,6 @@
      * Hide the view in the DOM (display none)
      */
     VeloxWebView.prototype.hide = function(){
-        
         if(this.container && this.initDone){
             this.container.style.display = "none";
             this.emit("hidden");      
@@ -1174,6 +1173,16 @@
         }else{
             callback("The transformData function should take argument (data) or (data, callback)") ;
         }
+    } ;
+
+    /**
+     * Get the subview instance
+     * 
+     * @param {string} idSubView id of the subview (set by id attribute in HTML)
+     */
+    VeloxWebView.prototype.getSubView = function(idSubView){
+        if(!this.views[idSubView]){ throw "The subview "+idSubView+" does not exists in view "+this.name+", make sure you add an id attribute on the containing element"; }
+        return this.views[idSubView].instances[0] ;
     } ;
 
     /**
