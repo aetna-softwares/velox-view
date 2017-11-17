@@ -1191,6 +1191,7 @@
 
                     var gridOptions = {
                         name: idPath||"grid_"+uuidv4(),
+                        textSearch: "contains",
                         columns   : [],
                         show      : {},
                         searches : []

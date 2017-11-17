@@ -100,14 +100,14 @@
      * @param {string} type - the event type name
      * @param {object} [data=undefined] - the data to send with the event
      */
-    EventEmiter.prototype.emit = function (type, data) {
+    EventEmiter.prototype.emit = function (type, data, source) {
         var listeners = this.listeners[type];
         if (!listeners) {
             return;
         }
         for (var i = 0; i < listeners.length; i++) {
             var listener = listeners[i];
-            listener({ type: type, data: data });
+            listener({ type: type, data: data, source: source||this });
         }
     };
 
@@ -1590,7 +1590,7 @@
         var _emit = v.emit ;
         v.emit = function(event, data){
             _emit.bind(v)(event, data) ; //emit the event inside the view
-            this.emit(event, data) ; //propagate on this view
+            this.emit(event, data, v) ; //propagate on this view
         }.bind(this) ;
         v.open(function(err){
             if(err){return callback(err);}
