@@ -1197,7 +1197,15 @@
                         searches : []
                     } ;
 
-
+                    ["keyboard", "recid", "markSearch", "multiSearch", "multiSelect", "multiSort", 
+                        "recordHeight", "reorderColumns", "reorderRows", "selectType"].forEach(function(optionAttribute){
+                        var optionValue = table.getAttribute(optionAttribute);
+                        if(optionValue){
+                            if(optionValue === "false"){ optionValue = false ;}
+                            if(optionValue === "true"){ optionValue = true ;}
+                            gridOptions[optionAttribute] = optionValue ;
+                        }
+                    }) ;
 
                     if(thead){
 
@@ -1395,7 +1403,11 @@
                         if(value){
                             value.forEach(function(d,i){
                                 if(!d.recid){
-                                    d.recid = i ;
+                                    if(gridOptions.recid){
+                                        d.recid = d[gridOptions.recid] ;
+                                    }else{
+                                        d.recid = i ;
+                                    }
                                 }
                             });
                             grid.add(value) ;

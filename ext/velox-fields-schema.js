@@ -354,6 +354,10 @@
             table = listTables[0] ;
         }
         
+        if(!table.getAttribute("recid") && tableDef.pk && tableDef.pk.length === 1){
+            table.setAttribute("recid", tableDef.pk[0]) ;
+        }
+
         var listTH = Array.prototype.slice.call(table.getElementsByTagName("TH")) ;
         var calls = [] ;
         if(listTH.length === 0){
@@ -371,6 +375,8 @@
             var tr = document.createElement("TR") ;
             thead.appendChild(tr) ;
             
+            
+
             tableDef.columns.forEach(function(colDef){
                 if(colDef.name.indexOf("velox_") === 0) { return ; }
                 
