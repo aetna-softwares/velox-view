@@ -770,6 +770,7 @@
 
 
     VeloxWebView.prototype.close = function(){
+        this.emit("close");   
         if(!this.options.container && this.options.containerParent && this.containerParent && this.container){
             this.containerParent.removeChild(this.container) ;
         }else if(this.container){
