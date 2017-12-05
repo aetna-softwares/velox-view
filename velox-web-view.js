@@ -450,7 +450,11 @@
                         if(this.container.id === this.ids[id]){
                             els[id] = this.container;
                         }else{
-                            els[id] = this.container.querySelector("#"+this.ids[id]);
+                            try {
+                                els[id] = this.container.querySelector("#"+this.ids[id]);
+                            } catch (e){
+                                els[id] = null;
+                            }
                         }
                         if (els[id]) {
                             var view = this;
