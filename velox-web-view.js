@@ -9,30 +9,35 @@
      */
     var ID_SEP = "_-_";
 
-    /**
-     * Regexp to find id attribute
-     */
-    var REGEXP_ID = /\sid=['"]([^'"]*)['"]/g;
+   
+    var HTMLELEMENT_PROTO_KEYS = Object.keys(Element.prototype).concat(Object.keys(HTMLElement.prototype));
 
     /**
      * Dictionnary of all loaded CSS
      */
     var loadedCss = {};
 
+    var parsedHTMLCache = {} ;
+
+    var uuidBase = null;
+    var uuidInc = 0;
     /**
      * Create an unique ID
      */
     function uuidv4() {
-        if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
-            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
-                return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-            }) ;
-        }else{
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
+        if(!uuidBase){
+            if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
+                uuidBase = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
+                    return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                }) ;
+            }else{
+                uuidBase = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            }
         }
+        return uuidBase+"-"+(uuidInc++) ;
     }
 
     /**
@@ -318,7 +323,7 @@
         var call = calls[0];
         call(function (err) {
             if (err) { return callback(err); }
-            if(calls.length > 9 && calls.length % 9 === 0){
+            if(calls.length > 50 && calls.length % 50 === 0){
                 //call setimmediate to avoid too much recursion
                 setImmediate(function(){
                     asyncSeries(calls.slice(1), callback);
@@ -333,7 +338,7 @@
         var nextElement = null;
         var previousElement = null;
         if(insertBefore || insertAfter){
-            var children = Array.prototype.slice.apply(parentElement.children) ;
+            var children = parentElement.children ;
             if(insertBefore){
                 //must be inserted before another element in parent
                 var afterChain = insertBefore ;
@@ -344,30 +349,41 @@
                 }
                 while(nextElement === null && afterChain.length>0){
                     var afterId = afterChain.shift() ;
-                    children.some(function(child){
-                        if(child.getAttribute("data-vieworder-id") === afterId){
-                            nextElement = child;
-                            return true;
+                    for(var i=0; i<children.length; i++){
+                        if(children[i].getAttribute("data-vieworder-id") === afterId){
+                            nextElement = children[i];
+                            break;
                         }
-                    }) ;
+                    }
                 }
             }
             if(insertAfter){
                 //must be inserted after another element in parent
-                var beforeChain = insertAfter ;
-                if(!Array.isArray(beforeChain)){
-                    beforeChain = [beforeChain] ;
-                }else{
-                    beforeChain = beforeChain.slice() ;
-                }
-                while(previousElement === null && beforeChain.length>0){
-                    var beforeId = beforeChain.shift() ;
-                    children.some(function(child){
-                        if(child.getAttribute("data-vieworder-id") === beforeId){
-                            previousElement = child;
-                            return true;
+                if(typeof(insertAfter) === "string" || typeof(insertAfter[0]) === "string" ){
+                    var beforeId = insertAfter.length === 1?insertAfter[0]:insertAfter ;
+                    for(var i=children.length-1; i>=0; i--){
+                        if(children[i].getAttribute("data-vieworder-id") === beforeId){
+                            previousElement = children[i];
+                            break;
                         }
-                    }) ;
+                    }
+                }else{
+                    var beforeChain = insertAfter ;
+    
+                    if(!Array.isArray(beforeChain)){
+                        beforeChain = [beforeChain] ;
+                    }else{
+                        beforeChain = beforeChain.slice() ;
+                    }
+                    while(previousElement === null && beforeChain.length>0){
+                        var beforeId = beforeChain.shift() ;
+                        for(var i=0; i<children.length; i++){
+                            if(children[i].getAttribute("data-vieworder-id") === beforeId){
+                                previousElement = children[i];
+                                break;
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -541,123 +557,19 @@
         this.getHTML((function (html) {
             this.ids = {};
 
-            var html = html.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
-
-            var cssStatics = [] ;
-            if(this.staticCSS){
-                cssStatics.push(this.staticCSS) ;
-            }
-            var cssFiles = [];
-            var functionInView = null;
-
-            var parser = new DOMParser();
-            var xmlDoc = parser.parseFromString(html,"text/html");
-            if(xmlDoc.head.children.length>0){
-                var child = xmlDoc.head.children[0] ;
-                var scriptIndex = 0;
-                while(child && (child.tagName === "SCRIPT" || child.tagName === "STYLE")){
-
-                    if(child.tagName === "SCRIPT"){
-                        var scriptBody = child.innerHTML ;
-                        
-                        scriptBody +=  "//# sourceURL=/"+this.directory+"/"+this.name+(scriptIndex>0?"_"+scriptIndex:"")+".js" ;
-        
-                        functionInView = new Function("view", scriptBody) ;
-                        scriptIndex++;
-                    }else if(child.tagName === "STYLE"){
-                        if(child.hasAttribute("data-file")){
-                            cssFiles.push(child.getAttribute("data-file")) ;
-                        }else{
-                            cssStatics.push(child.innerHTML) ;
-                        }
-                    }
-
-                    child = child.nextElementSibling ;
-                }
-            }
-
-            html = xmlDoc.body.innerHTML ;
+            var parsed = this.parseHTML(html) ;
+            var cssStatics = parsed.cssStatics;
+            var cssFiles = parsed.cssFiles;
+            var functionInView = parsed.functionInView;
+            html = parsed.html ;
             var htmlReplaced = html ;
 
 
             this._loadCSS(cssStatics, cssFiles, function(){
-                var match;
-                while ((match = REGEXP_ID.exec(html)) !== null) {
-                    var id = match[1];
-                    var uuidEl = uuidv4();
+                var clonedBody = parsed.xmlDoc.body.cloneNode(true) ;
+                htmlReplaced = this.replaceIds(clonedBody) ;
     
-                    if (id[0] === "#") {
-                        //force keep this id
-                        id = id.substring(1);
-                        this.ids[id] = id;
-                        htmlReplaced = htmlReplaced.replace('id="#' + id + '"', 'id="' + id + '"');
-                    } else {
-                        //add UUID
-                        this.ids[id] = id + ID_SEP + uuidEl;
-                        htmlReplaced = htmlReplaced.replace(new RegExp("\\sid=['\"]"+id+"['\"]"), ' id="' + id + ID_SEP + uuidEl + '" data-original-id="' + id + '"');
-                        htmlReplaced = htmlReplaced.replace(new RegExp('data-target="#' + id + '"', 'g'),
-                            'data-target="#' + id + ID_SEP + uuidEl + '"');
-                        htmlReplaced = htmlReplaced.replace(new RegExp('href="#' + id + '"', 'g'),
-                            'href="#' + id + ID_SEP + uuidEl + '"');
-                        htmlReplaced = htmlReplaced.replace(new RegExp('aria-controls="' + id + '"', 'g'),
-                            'aria-controls="' + id + ID_SEP + uuidEl + '"');
-                        htmlReplaced = htmlReplaced.replace(new RegExp('for="' + id + '"', 'g'),
-                            'for="' + id + ID_SEP + uuidEl + '"');
-                    }
-                }
-    
-                htmlReplaced = htmlReplaced.replace(/__dir__/g, this.directory);
-    
-    
-    
-                if (typeof (this.container) === "string") {
-                    this.containerId = this.container;
-                    this.container = document.getElementById(this.container);
-                }
-    
-                if (!this.container) {
-                    if (this.containerParent) {
-                        //automatically create container in parent if not exist
-                        var div = document.createElement("DIV");
-                        div.innerHTML = htmlReplaced.trim();
-                        if(div.childNodes.length === 1){
-                            //only 1 root element in view, use it as container
-                            this.container = div.children[0] ;
-                        }else{
-                            //many root element in the view, use the div as container
-                            this.container = div ;
-                        }
-    
-                        if (this.containerId) {
-                            this.container.id = this.containerId;
-                        }
-    
-                        if (typeof (this.containerParent) === "string") {
-                            this.containerParent = document.getElementById(this.containerParent);
-                        }
-                        this.container.style.display = "none"; //hide during init
-                        insertChild(this.containerParent, this.container, this.options.insertBefore, this.options.insertAfter) ;
-                        
-                    } else {
-                        throw this.containerId + " is not found";
-                    }
-                } else {
-                    this.container.style.display = "none"; //hide during init
-                    if(this.options.containerIsInside && this.container.id){
-                        //this container is considered to be inside the view
-                        //this is the case when we have a repeating view with external file, ex :
-                        //<div data-bind="foo[]" data-view="oneFoo" id="fooLine">
-                        //in this case the container can't be handled by parent view because it may happens 0 or many time
-                        //it must be handle by the sub view (we are here initializing this subview)
-                        this.container.setAttribute("data-original-id", this.container.id) ;
-                        var modifiedId = this.container.id+ID_SEP + uuidv4() ; ;
-                        this.ids[this.container.id] = modifiedId;
-                        this.container.id = modifiedId ;
-                    }
-                    this.container.innerHTML = htmlReplaced;
-                }
-    
-                
+                this.addToContainer(clonedBody, parsed) ;
     
                 this.prepareSubView() ;
     
@@ -709,6 +621,98 @@
             }.bind(this)) ;
         }).bind(this));
         return this;
+    };
+
+    
+    VeloxWebView.prototype.addToContainer = function(clonedBody, parsedHTML){
+        if (typeof (this.container) === "string") {
+            this.containerId = this.container;
+            this.container = document.getElementById(this.container);
+        }
+
+        if (!this.container) {
+            if (this.containerParent) {
+                //automatically create container in parent if not exist
+                if(parsedHTML.childrenCount === 1){
+                    //only 1 root element in view, use it as container
+                    this.container = clonedBody.firstChild;
+                    //this.container = div.firstElementChild ;
+                }else{
+                    //many root element in the view, use the div as container
+                    var div = document.createElement("DIV");
+                    //div.innerHTML = htmlReplaced.trim();
+                    div.appendChild(clonedBody) ;
+                    this.container = div ;
+                }
+
+                if (this.containerId) {
+                    this.container.id = this.containerId;
+                }
+
+                if (typeof (this.containerParent) === "string") {
+                    this.containerParent = document.getElementById(this.containerParent);
+                }
+                this.container.style.display = "none"; //hide during init
+                insertChild(this.containerParent, this.container, this.options.insertBefore, this.options.insertAfter) ;
+                
+            } else {
+                throw this.containerId + " is not found";
+            }
+        } else {
+            this.container.style.display = "none"; //hide during init
+            if(this.options.containerIsInside && this.container.id){
+                //this container is considered to be inside the view
+                //this is the case when we have a repeating view with external file, ex :
+                //<div data-bind="foo[]" data-view="oneFoo" id="fooLine">
+                //in this case the container can't be handled by parent view because it may happens 0 or many time
+                //it must be handle by the sub view (we are here initializing this subview)
+                this.container.setAttribute("data-original-id", this.container.id) ;
+                var modifiedId = this.container.id+ID_SEP + uuidv4() ; ;
+                this.ids[this.container.id] = modifiedId;
+                this.container.id = modifiedId ;
+            }
+            this.container.innerHTML = clonedBody.innerHTML;
+        }
+    };
+
+    /**
+     * Replace ids by view local ids (ensure unique)
+     * 
+     * @param {Element} bodyNode the body node of the HTML contents
+     */
+    VeloxWebView.prototype.replaceIds = function(bodyNode){
+        var elWithId = bodyNode.querySelectorAll("[id]") ;
+        for(var i=0; i<elWithId.length; i++){
+            var el = elWithId[i] ;
+            var id = el.id ;
+            var uuidEl = uuidv4();
+            if (id[0] === "#") {
+                //force keep this id
+                id = id.substring(1);
+                this.ids[id] = id;
+                el.id = id ;
+            } else {
+                //add UUID
+                var modifiedId = id + ID_SEP + uuidEl ;
+                this.ids[id] = modifiedId;
+                el.id = modifiedId ;
+                el.setAttribute("data-original-id", id) ;
+
+                //modify references
+                var elTarget = bodyNode.querySelectorAll('[data-target="#'+id+'"]') ;
+                for(var y=0; y<elTarget.length; y++){
+                    elTarget[y].setAttribute("data-target", "#"+modifiedId) ;
+                }
+                var elHref = bodyNode.querySelectorAll('[href="#'+id+'"]') ;
+                for(var y=0; y<elHref.length; y++){
+                    elHref[y].setAttribute("href", "#"+modifiedId) ;
+                }
+                var elFor = bodyNode.querySelectorAll('[for="'+id+'"]') ;
+                for(var y=0; y<elFor.length; y++){
+                    elFor[y].setAttribute("data-target", modifiedId) ;
+                }
+            }
+        }
     };
 
     /**
@@ -808,7 +812,7 @@
             callback(this.staticHTML);
         } else {
             var htmlUrl = this.directory + "/" + this.name + ".html";
-
+            
             var xhr = new XMLHttpRequest();
             xhr.open('GET', htmlUrl);
             xhr.onload = (function () {
@@ -821,6 +825,64 @@
             xhr.send();
         }
     };
+
+    /**
+     * Extract the CSS/SCRIPT and HTML part from view HTML source
+     * 
+     * @param {sting} html the HTML of the view
+     */
+    VeloxWebView.prototype.parseHTML = function (htmlOfView) {
+        var parsed = parsedHTMLCache[htmlOfView] ;
+        if(!parsed){
+            var html = htmlOfView.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
+            
+            var cssStatics = [] ;
+            if(this.staticCSS){
+                cssStatics.push(this.staticCSS) ;
+            }
+            var cssFiles = [];
+            var functionInView = null;
+    
+            var parser = new DOMParser();
+            var xmlDoc = parser.parseFromString(html,"text/html");
+            if(xmlDoc.head.children.length>0){
+                var child = xmlDoc.head.children[0] ;
+                var scriptIndex = 0;
+                while(child && (child.tagName === "SCRIPT" || child.tagName === "STYLE")){
+    
+                    if(child.tagName === "SCRIPT"){
+                        var scriptBody = child.innerHTML ;
+                        
+                        scriptBody +=  "//# sourceURL=/"+this.directory+"/"+this.name+(scriptIndex>0?"_"+scriptIndex:"")+".js" ;
+        
+                        functionInView = new Function("view", scriptBody) ;
+                        scriptIndex++;
+                    }else if(child.tagName === "STYLE"){
+                        if(child.hasAttribute("data-file")){
+                            cssFiles.push(child.getAttribute("data-file")) ;
+                        }else{
+                            cssStatics.push(child.innerHTML) ;
+                        }
+                    }
+    
+                    child = child.nextElementSibling ;
+                }
+            }
+    
+            html = xmlDoc.body.innerHTML ;
+            parsed = {
+                childrenCount: xmlDoc.body.children.length,
+                xmlDoc :xmlDoc,
+                html: html,
+                cssStatics: cssStatics,
+                cssFiles: cssFiles,
+                functionInView: functionInView
+            } ;
+            parsedHTMLCache[htmlOfView] = parsed;
+        }
+        return parsed ;
+    };
+
 
     VeloxWebView.loadStaticCss = function(css){
         if (!loadedCss[css]) {
@@ -1111,7 +1173,7 @@
                         isFake: true
                     } ;
                     //create decorator around element properties and function
-                    Object.keys(Element.prototype).concat(Object.keys(HTMLElement.prototype)).forEach(function(k){
+                    HTMLELEMENT_PROTO_KEYS.forEach(function(k){
                         if(Object.keys(fakeEl).indexOf(k) === -1){
                             if(typeof(elInner[k]) === "function"){
                                 fakeEl[k] = function(){
@@ -1195,6 +1257,8 @@
     VeloxWebView.prototype.render = function (dataToRender, callbackParam) {
         this.ensureInit(function(){
             //ensure init because we can arrive here while init is running (for example a new view refresh is called while a first one is not yet done)
+
+            
 
             this.elements = null; //clear EL collection to force recompute as some sub element may change on render
             
@@ -1353,8 +1417,8 @@
                                     }
                                 }
                             }
-                            if(el.innerHTML != bindData){
-                                el.innerHTML = bindData;
+                            if(el.textContent != bindData){
+                                el.textContent = bindData;
                             }
                         }
                     }

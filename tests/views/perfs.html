@@ -1,0 +1,25 @@
+<div class="col-lg-8 col-md-8 col-sm-12 col-xs-12 pos_posForm__100h pos_posForm__block " data-spy="scroll" data-target="#navbar-products" >
+    <div id="navbar-products">
+        <ul class="nav">
+            <li data-bind="categories[]">
+                <a href="#cate" data-cate="{{id}}" data-bind="name"></a>
+            </li>
+        </ul>
+    </div>
+
+    <div data-cate="" id="cate"  data-bind="categories[]">
+        <div class="row">
+            <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12 pos_posForm__cateContainer" data-bind="name">
+            </div>
+            <div class="col-lg-3 col-md-4 col-sm-6 col-xs-6 pos_posForm__productContainer"  data-bind="products[]">
+                <div class="pos_posForm__product" id="productBlock">
+                    <div class="pos_posForm__productName"  data-bind="name">
+                    </div>
+                    <div class="pos_posForm__productPrice" data-bind="list_price_with_tax_str">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
