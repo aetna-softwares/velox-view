@@ -561,67 +561,71 @@
         this.getHTML((function (html) {
             this.ids = {};
 
-            var parsed = this.parseHTML(html) ;
-            var cssStatics = parsed.cssStatics;
-            var cssFiles = parsed.cssFiles;
-            var functionInView = parsed.functionInView;
-            html = parsed.html ;
-            var htmlReplaced = html ;
-
-
-            this._loadCSS(cssStatics, cssFiles, function(){
-                var clonedBody = parsed.xmlDoc.body.cloneNode(true) ;
-                htmlReplaced = this.replaceIds(clonedBody) ;
+            this.parseHTML(html, function(err, parsed){
+                if(err){ throw err; }
+                var cssStatics = parsed.cssStatics;
+                var cssFiles = parsed.cssFiles;
+                var functionInView = parsed.functionInView;
+                //html = parsed.html ;
+                //var htmlReplaced = html ;
     
-                this.addToContainer(clonedBody, parsed) ;
     
-                this.prepareSubView() ;
-    
-                var calls = [];
-    
-                VeloxWebView.extensions.forEach((function (extension) {
-                    if (extension.init) {
-                        calls.push((function (cb) {
-                            if (extension.init.length === 0) {
-                                //no callback
-                                try{
-                                    extension.init.bind(this)();
-                                    cb() ;
-                                }catch(err){
-                                    cb(err) ;
+                this._loadCSS(cssStatics, cssFiles, function(){
+                    var clonedBody = parsed.xmlDoc.body.cloneNode(true) ;
+                    //htmlReplaced = 
+                    this.replaceIds(clonedBody) ;
+                    
+        
+                    this.addToContainer(clonedBody, parsed) ;
+        
+                    this.prepareSubView() ;
+        
+                    var calls = [];
+        
+                    VeloxWebView.extensions.forEach((function (extension) {
+                        if (extension.init) {
+                            calls.push((function (cb) {
+                                if (extension.init.length === 0) {
+                                    //no callback
+                                    try{
+                                        extension.init.bind(this)();
+                                        cb() ;
+                                    }catch(err){
+                                        cb(err) ;
+                                    }
+                                } else {
+                                    extension.init.bind(this)(function(err){
+                                        cb(err) ;
+                                    }.bind(this));
                                 }
-                            } else {
-                                extension.init.bind(this)(function(err){
-                                    cb(err) ;
-                                }.bind(this));
-                            }
-                        }).bind(this));
-                    }
-                }).bind(this));
-    
-                asyncSeries(calls, (function (err) {
-                    if(err){  return callback(err) ; }
-    
-                    if(functionInView){
-                        functionInView(this) ;
-                    }
-
-                    this.initAutoEmit();
-
-                    this.initDone = true;
-                    this.emit("initDone");
-    
-                    this.render((function (err) {
-                        if(err){ return callback(err) ;}
-                        this.show();      
-                        if(this.mustHide){
-                            this.hide(); //hide has been called while init running
-                            this.mustHide = false ;
+                            }).bind(this));
                         }
-                        callback();
-                        this.emit("openDone", {view: this});
                     }).bind(this));
-                }).bind(this));
+        
+                    asyncSeries(calls, (function (err) {
+                        if(err){  return callback(err) ; }
+        
+                        if(functionInView){
+                            functionInView(this) ;
+                        }
+    
+                        this.initAutoEmit();
+    
+                        this.initDone = true;
+                        this.emit("initDone");
+        
+                        this.render((function (err) {
+                            if(err){ return callback(err) ;}
+                            this.show();      
+                            if(this.mustHide){
+                                this.hide(); //hide has been called while init running
+                                this.mustHide = false ;
+                            }
+                            callback();
+                            this.emit("openDone", {view: this});
+                        }).bind(this));
+                    }).bind(this));
+                }.bind(this)) ;
             }.bind(this)) ;
         }).bind(this));
         return this;
@@ -716,6 +720,19 @@
                     elFor[y].setAttribute("data-target", modifiedId) ;
                 }
             }
+        }
+    };
+
+    /**
+     * Replace relative path
+     * 
+     * @param {Element} bodyNode the body node of the HTML contents
+     */
+    VeloxWebView.prototype.replacePaths = function(bodyNode){
+        var elImg = bodyNode.querySelectorAll("img") ;
+        for(var i=0; i<elImg.length; i++){
+            var el = elImg[i] ;
+            el.setAttribute("src", this.directory+"/"+el.getAttribute("src"));
         }
     };
 
@@ -817,74 +834,105 @@
         } else {
             var htmlUrl = this.directory + "/" + this.name + ".html";
             
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', htmlUrl);
-            xhr.onload = (function () {
-                if (xhr.status === 200) {
-                    callback.bind(this)(xhr.responseText);
-                } else {
-                    callback.bind(this)('Request to ' + htmlUrl + ' failed.  Returned status of ' + xhr.status);
-                }
-            }).bind(this);
-            xhr.send();
+            this.getXHR(htmlUrl, callback) ;
         }
     };
+
+    VeloxWebView.prototype.getXHR = function (url, callback) {
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        xhr.onload = (function () {
+            if (xhr.status === 200) {
+                callback.bind(this)(xhr.responseText);
+            } else {
+                callback.bind(this)('Request to ' + url + ' failed.  Returned status of ' + xhr.status);
+            }
+        }).bind(this);
+        xhr.send();
+    } ;
 
     /**
      * Extract the CSS/SCRIPT and HTML part from view HTML source
      * 
      * @param {sting} html the HTML of the view
      */
-    VeloxWebView.prototype.parseHTML = function (htmlOfView) {
+    VeloxWebView.prototype.parseHTML = function (htmlOfView, callback) {
         var parsed = parsedHTMLCache[htmlOfView] ;
-        if(!parsed){
-            var html = htmlOfView.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
-            
-            var cssStatics = [] ;
-            if(this.staticCSS){
-                cssStatics.push(this.staticCSS) ;
-            }
-            var cssFiles = [];
-            var functionInView = null;
-    
-            var parser = new DOMParser();
-            var xmlDoc = parser.parseFromString(html,"text/html");
-            if(xmlDoc.head.children.length>0){
-                var child = xmlDoc.head.children[0] ;
-                var scriptIndex = 0;
-                while(child && (child.tagName === "SCRIPT" || child.tagName === "STYLE")){
-    
-                    if(child.tagName === "SCRIPT"){
+        if(parsed){
+            return callback(null, parsed) ;
+        }
+        var html = htmlOfView.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
+        
+        var cssStatics = [] ;
+        if(this.staticCSS){
+            cssStatics.push(this.staticCSS) ;
+        }
+        var cssFiles = [];
+        var functionInView = null;
+        var calls = [] ;
+
+        var parser = new DOMParser();
+        var xmlDoc = parser.parseFromString(html,"text/html");
+        if(xmlDoc.head.children.length>0){
+            var child = xmlDoc.head.children[0] ;
+            var scriptIndex = 0;
+            while(child && (child.tagName === "SCRIPT" || child.tagName === "STYLE")){
+
+                if(child.tagName === "SCRIPT"){
+                    if(child.hasAttribute("data-file")){
+                        (function(child){
+                            var jsPath = child.getAttribute("data-file") ;
+                            calls.push(function(cb){
+                                var jsUrl = this.directory + "/" + jsPath;
+                                this.getXHR(jsUrl, function(contents){
+                                    var scriptBody = contents ;
+                                    scriptBody +=  "//# sourceURL=/"+this.directory+"/"+jsPath ;
+                                    functionInView = new Function("view", scriptBody) ;
+                                    scriptIndex++;
+                                    cb() ;
+                                }) ;
+                            }.bind(this)) ;
+                        }).bind(this)(child) ;
+                    }else{
                         var scriptBody = child.innerHTML ;
                         
                         scriptBody +=  "//# sourceURL=/"+this.directory+"/"+this.name+(scriptIndex>0?"_"+scriptIndex:"")+".js" ;
         
                         functionInView = new Function("view", scriptBody) ;
                         scriptIndex++;
-                    }else if(child.tagName === "STYLE"){
-                        if(child.hasAttribute("data-file")){
-                            cssFiles.push(child.getAttribute("data-file")) ;
-                        }else{
-                            cssStatics.push(child.innerHTML) ;
-                        }
                     }
-    
-                    child = child.nextElementSibling ;
+                }else if(child.tagName === "STYLE"){
+                    if(child.hasAttribute("data-file")){
+                        cssFiles.push(child.getAttribute("data-file")) ;
+                    }else{
+                        cssStatics.push(child.innerHTML) ;
+                    }
                 }
+
+                child = child.nextElementSibling ;
             }
-    
-            html = xmlDoc.body.innerHTML ;
+        }
+
+        //html = xmlDoc.body.innerHTML ;
+
+        this.replacePaths(xmlDoc.body) ;
+
+        asyncSeries(calls, function(err){
+            if(err){
+                return callback(err) ;
+            }
+
             parsed = {
                 childrenCount: xmlDoc.body.children.length,
                 xmlDoc :xmlDoc,
-                html: html,
+                //html: html,
                 cssStatics: cssStatics,
                 cssFiles: cssFiles,
                 functionInView: functionInView
             } ;
             parsedHTMLCache[htmlOfView] = parsed;
-        }
-        return parsed ;
+            callback(null, parsed) ;
+        }) ;
     };
 
 
