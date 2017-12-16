@@ -1,3 +1,7 @@
+
+
+
+
 ; (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
         typeof define === 'function' && define.amd ? define(factory) :
@@ -180,86 +184,7 @@
         return false;
     }
 
-    function PathExtractor(data){
-        this.data = data;
-        this.cache = [] ;
-    }
-
-    PathExtractor.prototype.setData = function(data){
-        if(this.data !== data){
-            this.data = data;
-            this.cache = [] ;
-        }
-    } ;
-
-    PathExtractor.prototype.extract = function(pathParam, getParent){
-        return pathExtract(this.data, pathParam, getParent) ;
-        if(!pathParam){
-            return this.data ;
-        }
-        var dataObject = this.data;
-        var path = pathParam;
-        // var currentPath = "" ;
-        var remainingPath = path ;
-        // for(var i=0; i<this.cache.length; i++){
-        //     var cacheEntry = this.cache[i] ;
-        //     if(path.indexOf(cacheEntry.path) === 0){
-        //         dataObject = cacheEntry.data;
-        //         currentPath = cacheEntry.path ;
-        //         //console.log("from cache", currentPath, dataObject, "wanted", pathParam) ;
-        //     }
-        // }
-        // if(currentPath){
-        //     remainingPath = path.substring(currentPath.length) ;
-        // }
-        var objectPath = [] ;
-        while(remainingPath.length>0){
-            //console.log("remain", remainingPath, "wanted", pathParam, "in", dataObject) ;
-            var nextDotIndex = remainingPath.indexOf(".") ;
-            var nextBracketIndex = remainingPath.indexOf("[") ;
-            var nextPartIndex = nextDotIndex ;
-            if(nextBracketIndex !== -1 && nextBracketIndex<nextDotIndex || nextDotIndex === -1 && nextBracketIndex !== -1){
-                nextPartIndex = nextBracketIndex ;
-            }
-            //console.log("nextPartIndex", nextPartIndex) ;
-            var nextPart;
-            if(nextPartIndex !== -1){
-                nextPart = remainingPath.substring(0, nextPartIndex+1) ;
-                remainingPath = remainingPath.substring(nextPartIndex+1);
-            }else{
-                //no more dot
-                if(getParent){break ;}
-                nextPart = remainingPath;
-                remainingPath = "";
-            }
-            // currentPath += nextPart;
-            var p = nextPart;
-            while(p[p.length-1] === "." || p[p.length-1] === "[" || p[p.length-1] === "]"){
-                p = p.substring(0, p.length-1) ;
-            }
-            p = p.trim() ;
-
-            //console.log("p in ", p, dataObject) ;
-            if (dataObject) {
-                if (p && p === "$parent"){
-                    dataObject = objectPath.pop() ;
-                }else if (p && p !== "$this") {
-                    objectPath.push(dataObject);
-                    dataObject = dataObject[p];
-                }
-                //console.log(currentPath, p, dataObject) ;
-                // if(nextPart[nextPart.length-1] !== "]"){
-                //     this.cache.push({
-                //         path: currentPath,
-                //         data: dataObject
-                //     }) ;
-                // }
-            }
-        }
-        //console.log(pathParam, dataObject, this.data) ;
-        return dataObject;
-    } ;
-
+    
     /**
      * Extract a sub object use a path
      * 
@@ -297,16 +222,16 @@
             //property name
             // var p = pathArray.shift().trim();
             var p = pathArray[ind].trim();
-            var index = null;
-            if (p[p.length-1] === "]") {
-                //has index
-                i = p.length-3;
-                while(i>0 && p[i] !== "["){
-                    i--;
-                }
-                index = p.substring(i + 1, p.length-1).trim();
-                p = p.substring(0, i).trim();
-            }
+            // var index = null;
+            // if (p[p.length-1] === "]") {
+            //     //has index
+            //     i = p.length-3;
+            //     while(i>0 && p[i] !== "["){
+            //         i--;
+            //     }
+            //     index = p.substring(i + 1, p.length-1).trim();
+            //     p = p.substring(0, i).trim();
+            // }
             
 
             if (dataObject) {
@@ -316,9 +241,9 @@
                     objectPath.push(dataObject);
                     dataObject = dataObject[p];
                 }
-                if (dataObject && index !== null) {
-                    dataObject = dataObject[index];
-                }
+                // if (dataObject && index !== null) {
+                //     dataObject = dataObject[index];
+                // }
             }
             ind++ ;
         }
@@ -415,25 +340,36 @@
      * @param {function(err)} callback - Called when all functions are finished 
      */
     function asyncSeries(calls, callback) {
-        if (calls.length === 0) {
+        var len = calls.length;
+        if (len === 0) {
             //nothing more to call
             return callback();
         }
         var call = calls[0];
         call(function (err) {
             if (err) { return callback(err); }
-            if(calls.length > 50 && calls.length % 50 === 0){
+
+            if (len === 1) {
+                //nothing more to call
+                return callback();
+            }
+
+            if(len > 20 && len % 20 === 0){
                 //call setimmediate to avoid too much recursion
-                setTimeout(function(){
-                    asyncSeries(calls.slice(1), callback);
-                }, 0) ;
+                // setTimeout(function(){
+                //     asyncSeries(calls, ++index, callback);
+                // }, 0) ;
                 // setImmediate(function(){
-                //     asyncSeries(calls.slice(1), callback);
+                //     asyncSeries(calls, ++index, callback);
                 // }) ;
+                setImmediate(function(){
+                    asyncSeries(calls.slice(1), callback);
+                }) ;
             }else{
                 asyncSeries(calls.slice(1), callback);
             }
         });
+
     }
 
     function insertChild(parentElement, element, insertBefore, insertAfter){
@@ -447,7 +383,9 @@
                 if(!Array.isArray(afterChain)){
                     afterChain = [afterChain] ;
                 }else{
-                    afterChain = afterChain.slice() ;
+                    var copy = [];
+                    for ( var i=0;i<afterChain.length; i++ ) {copy[i] = afterChain[i];}
+                    afterChain = copy ;
                 }
                 while(nextElement === null && afterChain.length>0){
                     var afterId = afterChain.shift() ;
@@ -475,7 +413,9 @@
                     if(!Array.isArray(beforeChain)){
                         beforeChain = [beforeChain] ;
                     }else{
-                        beforeChain = beforeChain.slice() ;
+                        var copy = [];
+                        for ( var i=0;i<beforeChain.length; i++ ) {copy[i] = beforeChain[i];}
+                        beforeChain = copy ;
                     }
                     while(previousElement === null && beforeChain.length>0){
                         var beforeId = beforeChain.shift() ;
@@ -537,7 +477,6 @@
         this.innerViewIds = [] ;
         this.waitCount = 0;
         this.EL = {} ;
-        this.dataExtractor = options.dataExtractor || new PathExtractor() ;
         
 
         //add extension features
@@ -599,7 +538,6 @@
                 //OK the container is still here, just refresh data
                 if(data){
                     this.bindObject = data;
-                    this.dataExtractor.setData(data) ;
                 }
                 return this.render(callback) ;
             }else{
@@ -617,9 +555,7 @@
         
         this.container = this.options.container;
         this.bindObject = data || this.options.bindObject;
-        if(data){
-            this.dataExtractor.setData(data) ;
-        }
+
         this.bindPath = this.options.bindPath;
         if(!this.bindPath){
             this.bindPath = [] ;
@@ -645,25 +581,53 @@
             var subViewsKeys = Object.keys(parsed.subviews) ;
             for(var i=0; i<subViewsKeys.length; i++){
                 var k = subViewsKeys[i] ;
-                this.views[k] = {} ;
-
-                var viewKeys = Object.keys(parsed.subviews[k]) ;
-                for(var y=0; y<viewKeys.length; y++){
-                    var p = viewKeys[y] ;
-                    this.views[k][p] = parsed.subviews[k][p] ;
-                }
+                var subViewDef = parsed.subviews[k] ;
 
                 //search the parent element in current instance
-                var idParent = this.views[k].elParent.getAttribute("data-vieworder-id") ;
+                var idParent = subViewDef.elParent.getAttribute("data-vieworder-id") ;
                 var parentInThisInstance = this.viewRootEl.querySelector('[data-vieworder-id="'+idParent+'"]') ;
-                if(!parentInThisInstance && (this.views[k].elParent.tagName === "BODY" || this.viewRootEl.getAttribute("data-vieworder-id") === idParent)){
+                if(!parentInThisInstance) {// && (subViewDef.elParent.tagName === "BODY" || this.viewRootEl.getAttribute("data-vieworder-id") === idParent)){
                     //parent is the view root
                     parentInThisInstance = this.viewRootEl ;
                 }
-                this.views[k].elParent = parentInThisInstance ;
+                
+                this.views[k] = {
+                    elParent: parentInThisInstance,
+                    el: subViewDef.el,
+                    isBefore : subViewDef.isBefore,
+                    isAfter : subViewDef.isAfter,
+                    bindPath: subViewDef.bindPath,
+                    dir: subViewDef.dir,
+                    html: subViewDef.html,
+                    file: subViewDef.file,
+                    showIf: subViewDef.showIf,
+                    hideIf: subViewDef.hideIf,
+                    ids: subViewDef.ids,
+                    instances: []
+                } ;
+                this.prepareSubViewsSubElements(subViewDef) ;
+            }
 
-                this.views[k].instances = [] ;
-                this.prepareSubViewsSubElements(parsed.subviews[k]) ;
+            //prepare the bound elements
+            this.boundElements = [] ;
+            for(var i=0; i<parsed.boundElements.length; i++){
+                var boundEl = parsed.boundElements[i] ;
+                var el = boundEl.el ;
+                var idEl = el.getAttribute("data-vieworder-id") ;
+                var elInThisInstance = this.viewRootEl.querySelector('[data-vieworder-id="'+idEl+'"]') ;
+                if(!elInThisInstance){// && (el.tagName === "BODY" || this.viewRootEl.getAttribute("data-vieworder-id") === idEl)){
+                    //parent is the view root
+                    elInThisInstance = this.viewRootEl ;
+                }
+
+                var boundElCopy = {
+                    bindPath : boundEl.bindPath,
+                    boundAttributes: boundEl.boundAttributes,
+                    boundTextNodes: boundEl.boundTextNodes,
+                    el: elInThisInstance
+                } ;
+
+                this.boundElements.push(boundElCopy) ;
             }
 
             
@@ -823,9 +787,9 @@
      */
     VeloxWebView.prototype.replaceIds = function(bodyNode, parsed){
         this.ids = {};
-        for(var i=0; i<parsed.ids; i++){
+        for(var i=0; i<parsed.ids.length; i++){
             var id = parsed.ids[i] ;
-            var el = bodyNode.getElementById(id) ;
+            var el = bodyNode.querySelector('[id="'+id+'"]') ;
 
             this.EL[id] = el ;
             var view = this;
@@ -918,7 +882,9 @@
      * @param {boolean} withIgnore return the element contains in ignore blocks
      */
     VeloxWebView.prototype.elementsHavingAttribute = function(attributeName, withIgnore){
-        var elements = Array.prototype.slice.apply(this.viewRootEl.querySelectorAll('['+attributeName+']'));
+        var elements = [];
+        var foundEls = this.viewRootEl.querySelectorAll('['+attributeName+']');
+        for ( var i=0;i<foundEls.length; i++ ) {elements[i] = foundEls[i];}
         if(this.viewRootEl.hasAttribute(attributeName)){//add the container himself if it has this attribute
             elements.push(this.viewRootEl) ;
         }
@@ -965,8 +931,7 @@
      * @return {object} - The object bound to the view
      */
     VeloxWebView.prototype.getBoundObject = function () {
-        return this.dataExtractor.extract(this.bindPath) ;
-        // return pathExtract(this.bindObject, this.bindPath);
+        return pathExtract(this.bindObject, this.bindPath);
     };
 
 
@@ -1069,7 +1034,7 @@
 
         this.replacePaths(xmlDoc.body) ;
 
-        asyncSeries(calls, function(err){
+        asyncSeries(calls,  function(err){
             if(err){
                 return callback(err) ;
             }
@@ -1082,6 +1047,68 @@
                 ids.push(elIds[i].id) ;
             }
 
+            var boundElements = [];
+            var allElements = [];
+            var foundEls = xmlDoc.getElementsByTagName("*");
+            for ( var i=0;i<foundEls.length; i++ ) {allElements[i] = foundEls[i];}
+            for(var z=0; z<allElements.length; z++){
+                var el = allElements[z] ;
+                var bindPath = el.getAttribute("data-bind");
+                var bindEl = {el: el} ;
+                var isContainerOfNestedView = false;
+                if(el === xmlDoc){
+                    if(el.getAttribute("data-view")){
+                        isContainerOfNestedView = true;
+                    } else if(el.children.length > 0) {
+                        isContainerOfNestedView = true;
+                    }
+                }
+                if(
+                    !isContainerOfNestedView &&
+                    bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
+                    bindEl.bindPath = bindPath.split(".");
+                }
+                var attributes = el.attributes ;
+                var boundAttributes = {} ;
+                var hasBoundAttribute = false ;
+                for(var i=0; i<attributes.length; i++){
+                    if(attributes[i].value.indexOf("${") !== -1 && attributes[i].value.indexOf("}") !== -1){
+                        boundAttributes[attributes[i].name] = attributes[i].value ;
+                        hasBoundAttribute = true ;
+                    }
+                }
+                if(hasBoundAttribute){
+                    bindEl.boundAttributes = boundAttributes;
+                }
+
+                var textNodes = [];
+                for ( var i=0;i<el.childNodes.length; i++ ) {
+                    if(el.childNodes[i].nodeType === Node.TEXT_NODE){
+                        textNodes.push(el.childNodes[i]);
+                    }
+                }
+
+                var boundTextNodes = {} ;
+                var hasBoundTextNodes = false ;
+                for(var i=0; i<textNodes.length; i++){
+                    if(textNodes[i].textContent.indexOf("${") !== -1 && textNodes[i].textContent.indexOf("}") !== -1){
+                        boundTextNodes[i] = textNodes[i].textContent ;
+                        hasBoundTextNodes = true ;
+                    }
+                }
+                if(hasBoundTextNodes){
+                    bindEl.boundTextNodes = boundTextNodes;
+                }
+
+
+                if(bindEl.bindPath || bindEl.boundAttributes || bindEl.boundTextNodes){
+                    if(!bindEl.el.hasAttribute("data-vieworder-id")){
+                        bindEl.el.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+                    }
+                    boundElements.push(bindEl);
+                }
+            } ;
+
             parsed = {
                 childrenCount: xmlDoc.body.childNodes.length,
                 xmlDoc :xmlDoc,
@@ -1090,7 +1117,8 @@
                 cssFiles: cssFiles,
                 subviews: subviews,
                 functionInView: functionInView,
-                ids: ids
+                ids: ids,
+                boundElements: boundElements
             } ;
             parsedHTMLCache[htmlOfView] = parsed;
             callback(null, parsed) ;
@@ -1561,8 +1589,7 @@
                     //FIXME : handle extractor cache
                     pathSetValue(this.bindObject, this.bindPath, dataToRender) ;
                 }else{
-                    this.dataExtractor.setData(dataToRender) ;
-                    //this.bindObject = dataToRender;
+                    this.bindObject = dataToRender;
                 }
             }
             if (!callbackParam) {
@@ -1587,7 +1614,9 @@
             if (!this.boundElements) {
                 this.boundElements = [];
     
-                var allElements = Array.prototype.slice.apply(this.viewRootEl.getElementsByTagName("*")) ;
+                var allElements = [];
+                var foundEls = this.viewRootEl.getElementsByTagName("*");
+                for ( var i=0;i<foundEls.length; i++ ) {allElements[i] = foundEls[i];}
                 allElements.push(this.viewRootEl) ;
                 for(var z=0; z<allElements.length; z++){
                     var el = allElements[z] ;
@@ -1619,7 +1648,13 @@
                         bindEl.boundAttributes = boundAttributes;
                     }
 
-                    var textNodes = Array.prototype.slice.apply(el.childNodes).filter(function(n){ return n.nodeType === Node.TEXT_NODE; }) ;
+                    var textNodes = [];
+                    for ( var i=0;i<el.childNodes.length; i++ ) {
+                        if(el.childNodes[i].nodeType === Node.TEXT_NODE){
+                            textNodes.push(el.childNodes[i]);
+                        }
+                    }
+
                     var boundTextNodes = {} ;
                     var hasBoundTextNodes = false ;
                     for(var i=0; i<textNodes.length; i++){
@@ -1646,8 +1681,7 @@
     
                 var baseData = this.bindObject;
                 if (this.bindPath) {
-                    baseData = this.dataExtractor.extract(this.bindPath) ;
-                    //pathExtract(this.bindObject, this.bindPath);
+                    baseData = pathExtract(this.bindObject, this.bindPath);
                 }
     
                 //set simple elements
@@ -1656,13 +1690,12 @@
                     var el = boundEl.el;
                     var bindPath = boundEl.bindPath;
                     if(bindPath){
-                        var fullBindPath = (this.bindPath||["$this"]).concat(bindPath.split(".")) ;
+                        var fullBindPath = (this.bindPath||["$this"]).concat(bindPath) ;
                         if(el === this.container){
                             //the container is bound, so its data is not inside is path
                             fullBindPath = this.bindPath ;
                         }
-                        var bindData = this.dataExtractor.extract(fullBindPath);
-                        //var bindData = pathExtract(this.bindObject, fullBindPath);
+                        var bindData = pathExtract(this.bindObject, fullBindPath);
                         
                         if (el.setValue){
                             if(el.getValue() != bindData){
@@ -1745,7 +1778,12 @@
                     }
 
                     if(boundEl.boundTextNodes){
-                        var textNodes = Array.prototype.slice.apply(el.childNodes).filter(function(n){ return n.nodeType === Node.TEXT_NODE; }) ;
+                        var textNodes = [];
+                        for ( var y=0;y<el.childNodes.length; y++ ) {
+                            if(el.childNodes[y].nodeType === Node.TEXT_NODE){
+                                textNodes.push(el.childNodes[y]);
+                            }
+                        }
                         for(var y=0; y<boundEl.boundTextNodes.length; y++){
                             var index = boundEl.boundTextNodes[y] ;
                             var originalValue = boundEl.boundTextNodes[index] ;
@@ -1771,10 +1809,10 @@
                     var event = document.createEvent('CustomEvent');
                     event.initCustomEvent('bound', false, true, {
                         value: bindData,
-                        baseData: this.dataExtractor.extract(this.bindPath),//pathExtract(this.bindObject, this.bindPath),
+                        baseData: pathExtract(this.bindObject, this.bindPath),
                         bindPath: bindPath,
                         view: this,
-                        data: this.dataExtractor.extract((this.bindPath||["$this"]).concat(bindPath.split(".")), true)//pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath, true)
+                        data: pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath, true)
                     });
                     var detailKeys = Object.keys(event.detail) ;
                     for(var y=0; y<detailKeys.length; y++){
@@ -1791,7 +1829,7 @@
                     baseData: this.bindObject,
                     bindPath: this.bindPath,
                     view: this,
-                    data: this.dataExtractor.extract(this.bindPath, true)//pathExtract(this.bindObject, this.bindPath, true)
+                    data: pathExtract(this.bindObject, this.bindPath, true)
                 });
                 var detailKeys = Object.keys(event.detail) ;
                 for(var y=0; y<detailKeys.length; y++){
@@ -1823,10 +1861,15 @@
                                 shouldDisplay = true; //empty array, should display
                             }
                         }
-                        var pathConcat = (this.bindPath||["$this"]).concat(bindPath)
-                        pathConcat[pathConcat.length-1] = pathConcat[pathConcat.length-1].replace(/\[\]$/, "") ;
-                        var bindData = this.dataExtractor.extract(pathConcat);
-                        //var bindData = pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
+
+                        var bindData = this.bindObject;
+                        if(bindPath.length>0){
+                            var pathConcat = (this.bindPath||["$this"]).concat(bindPath) ;
+                            pathConcat[pathConcat.length-1] = pathConcat[pathConcat.length-1].replace(/\[\]$/, "") ;
+    
+                            bindData = pathExtract(this.bindObject, pathConcat);
+                        }
+
                         if(bindPath.length >0 && bindPath[bindPath.length - 1][bindPath[bindPath.length - 1].length-1] === "]" && !bindData){
                             //array binding but array is null
                             shouldDisplay = false;
@@ -1947,10 +1990,15 @@
             insertChild(view.elParent, container, view.isBefore, isAfter) ;
         }
 
-        var thisBindPath = bindPath.slice() ;
-        thisBindPath[thisBindPath.length - 1] = thisBindPath[thisBindPath.length - 1].replace(/\[\]$/, "[" + view.instances.length + "]") ;
+        var thisBindPath = [];
+        if(bindPath.length>0){
+            for ( var i=0;i<bindPath.length; i++ ) {thisBindPath[i] = bindPath[i];}
+            //thisBindPath[thisBindPath.length - 1] = thisBindPath[thisBindPath.length - 1].replace(/\[\]$/, "[" + view.instances.length + "]") ;
+            thisBindPath[thisBindPath.length - 1] = thisBindPath[thisBindPath.length - 1].replace(/\[\]$/, "") ;
+        }
+        thisBindPath.push(""+view.instances.length) ;
 
-        var baseData = pathExtract(this.bindObject, (this.bindPath ? this.bindPath : []).concat(thisBindPath)) ;
+        var baseData = pathExtract(this.bindObject, thisBindPath) ;
 
         var viewOptions = {
             containerParent: parentEl,
@@ -1961,8 +2009,7 @@
             html: view.html,
             css: view.html?"":undefined,
             bindObject: null,
-            dataExtractor: this.dataExtractor,
-            bindPath: thisBindPath//(this.bindPath ? this.bindPath : []).concat(thisBindPath) 
+            bindPath: []// (this.bindPath ? this.bindPath : []).concat(thisBindPath) 
         } ;
         
         var v = new VeloxWebView(view.dir, view.file, viewOptions);
@@ -2009,7 +2056,7 @@
                 }
 
                 //render after propagate event to be sure bound listener are called
-                v.bindObject = baseData//this.bindObject ;
+                v.bindObject = baseData; //this.bindObject ;
                 v.render(function(err){
                     if(err){return callback(err);}
                     callback() ;
@@ -2049,8 +2096,7 @@
         var baseData = dataToUpdate;
         if (dataToUpdate === undefined) {
             //object not given, update in the bound object
-            baseData = this.dataExtractor.extract(this.bindPath) ;
-            //baseData = pathExtract(this.bindObject, this.bindPath);
+            baseData = pathExtract(this.bindObject, this.bindPath);
         }
         if(!baseData){
             baseData = {} ;
@@ -2148,7 +2194,7 @@
                     this.emit(id, {
                         data: this.getBoundObject(),
                         currentData: this.getBoundObject(),
-                        parentData: this.dataExtractor.extract(this.bindPath, true),//pathExtract(this.bindObject, this.bindPath, true),
+                        parentData: pathExtract(this.bindObject, this.bindPath, true),
                         view: this
                     });
                 }).bind(this));
