@@ -14,6 +14,7 @@ var animals = [
 
 
 describe("render", function () {
+	
 	describe("simple render", function () {
 		var view = new VeloxWebView("views", "animal", { container: "container" });
 		it("should do the initial render", function (done) {
@@ -69,19 +70,19 @@ describe("render", function () {
 			expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length / 2);
 		});
 		it("should have " + animals.length / 2 + " animals saved", function () {
-			expect(view.container.querySelectorAll('[data-bind="saved[]"]').length).to.equal(animals.length / 2);
+			expect(view.container.querySelectorAll('[data-test="saved[]"]').length).to.equal(animals.length / 2);
 		});
 		it("First animal to save is " + animals[0].name, function () {
 			expect(view.container.querySelector('[data-bind="tosave[]"]').querySelector('[data-bind="name"]').innerHTML).to.equal(animals[0].name);
 		});
 		it("First saved animal is " + animals[1].name, function () {
-			expect(view.container.querySelector('[data-bind="saved[]"]').querySelector('[data-bind="name"]').innerHTML).to.equal(animals[1].name);
+			expect(view.container.querySelector('[data-test="saved[]"]').querySelector('[data-bind="name"]').innerHTML).to.equal(animals[1].name);
 		});
 		it(animals[1].name + " is in zoo", function () {
-			expect(view.container.querySelector('[data-bind="saved[]"]').querySelector('[data-show-if="inZoo"]')).to.exist;
+			expect(view.container.querySelector('[data-test="saved[]"]').querySelector('[data-test-show-if="inZoo"]')).to.exist;
 		});
 		it(animals[3].name + " is not in zoo", function () {
-			expect(view.container.querySelectorAll('[data-bind="saved[]"]')[1].querySelector('[data-show-if="inZoo"]')).to.not.exist;
+			expect(view.container.querySelectorAll('[data-test="saved[]"]')[1].querySelector('[data-test-show-if="inZoo"]')).to.not.exist;
 		});
 	});
 
@@ -109,7 +110,7 @@ describe("render", function () {
 		});
 
 		it("should have " + animals.length + " animals processed", function () {
-			expect(view.container.querySelectorAll('.processed [data-bind="animals[]"]').length).to.equal(animals.length);
+			expect(view.container.querySelectorAll('.processed [data-test="animals[]"]').length).to.equal(animals.length);
 		});
 
 	});
@@ -127,7 +128,7 @@ describe("render", function () {
 		});
 
 		it("should have " + animals.length + " animals", function () {
-			expect(view.container.querySelectorAll('[data-bind="animals[]"]').length).to.equal(animals.length);
+			expect(view.container.querySelectorAll('[data-test="animals[]"]').length).to.equal(animals.length);
 		});
 
 		it("should have 3 proud dogs", function () {
@@ -189,6 +190,7 @@ describe("render", function () {
 
 
 	});
+	
 
 	describe("Nested and visibility", function () {
 		var view = new VeloxWebView("views", "nested_visibility", { container: "container" });
@@ -220,32 +222,37 @@ describe("render", function () {
 
 		it("should have " + animals.length + " animals", function () {
 			expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length);
-			expect(view.container.querySelector('[data-hide-if="tosave"]')).to.not.exist;;
-			expect(view.container.querySelector('[data-show-if="saved"]')).to.not.exist;;
+			expect(view.container.querySelector('[data-test="tosave-hide"]')).to.not.exist;;
+			expect(view.container.querySelector('[data-test="saved-show"]')).to.not.exist;;
 		});
 
-		it("should have 1 saved animals", function () {
-			view.container.querySelector("[data-original-id='save']").click();
-			expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length - 1);
-			expect(view.container.querySelectorAll('[data-bind="saved[]"]').length).to.equal(1);
+		it("should have 1 saved animals", function (done) {
+			data.saved.push(data.tosave[0]);
+			data.tosave.splice(0, 1);
+			view.render(function(){
+				expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length - 1);
+				expect(view.container.querySelectorAll('[data-test="saved"]').length).to.equal(1);
+				done() ;
+			});
 		});
 
 		it("should have saved animals displayed after to save animals", function () {
-			expect(view.container.querySelector('[data-show-if="saved"]')).to.exist;
-			expect(view.container.querySelector('[data-show-if="tosave"]').nextElementSibling).to.equal(view.container.querySelector('[data-show-if="saved"]'));
+			expect(view.container.querySelector('[data-test="saved-show"]')).to.exist;
+			expect(view.container.querySelector('[data-test="tosave-show"]').nextElementSibling).to.equal(view.container.querySelector('[data-test="saved-show"]'));
 		});
 
-		it("should have no more animals to save", function () {
-			view.container.querySelector("[data-original-id='save']").click();
-			view.container.querySelector("[data-original-id='save']").click();
-			view.container.querySelector("[data-original-id='save']").click();
-			view.container.querySelector("[data-original-id='save']").click();
-			view.container.querySelector("[data-original-id='save']").click();
-			view.container.querySelector("[data-original-id='save']").click();
-			view.container.querySelector("[data-original-id='save']").click();
-			expect(view.container.querySelector('[data-show-if="tosave"]')).to.not.exist;
-			expect(view.container.querySelector('[data-hide-if="tosave"]')).to.exist;
-			expect(view.container.querySelector('[data-hide-if="tosave"]').nextElementSibling).to.equal(view.container.querySelector('[data-show-if="saved"]'));
+		it("should have no more animals to save", function (done) {
+			data.tosave.forEach(function(s){
+				data.saved.push(s);
+			}) ;
+			data.tosave.splice(0) ;
+
+			view.render(function(){
+				expect(view.container.querySelector('[data-test="tosave-show"]')).to.not.exist;
+				expect(view.container.querySelector('[data-test="tosave-hide"]')).to.exist;
+				expect(view.container.querySelector('[data-test="tosave-hide"]').nextElementSibling).to.equal(view.container.querySelector('[data-test="saved-show"]'));
+				done() ;
+			});
 		});
 
 	});
@@ -525,12 +532,13 @@ describe("Expr eval", function () {
 		});
 
 		it("should display following expr after render", function () {
-			view.render({foo: 2, bar: true}) ;
-			expect(document.querySelector('[data-original-id="eval1"]')).to.be.null;
-			expect(document.querySelector('[data-original-id="eval2"]')).to.exist;
-			expect(document.querySelector('[data-original-id="eval3"]')).to.be.null;
-			expect(document.querySelector('[data-original-id="eval4"]')).to.be.null;
-			expect(document.querySelector('[data-original-id="eval5"]')).to.be.null;
+			view.render({foo: 2, bar: true}, function(){
+				expect(document.querySelector('[data-original-id="eval1"]')).to.be.null;
+				expect(document.querySelector('[data-original-id="eval2"]')).to.exist;
+				expect(document.querySelector('[data-original-id="eval3"]')).to.be.null;
+				expect(document.querySelector('[data-original-id="eval4"]')).to.be.null;
+				expect(document.querySelector('[data-original-id="eval5"]')).to.be.null;
+			}) ;
 		});
 
 	});

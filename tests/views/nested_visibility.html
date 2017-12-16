@@ -1,18 +1,18 @@
 <label data-bind="title" data-show-if="title"></label>
-<ul data-show-if="tosave">
+<ul data-show-if="tosave" data-test="tosave-show">
     <!-- Show if there is something in todo -->
     <li data-bind="tosave[]" data-view="nested_visibility_item"></li>
 </ul>
 
-<div data-hide-if="tosave">
+<div data-hide-if="tosave" data-test="tosave-hide">
     <!-- Hide if there is something in todo -->
     Nothing to save
 </div>
-<div data-show-if="saved">
+<div data-show-if="saved" data-test="saved-show">
     <!-- Show if there is something in done -->
     <label>Saved</label>
     <ul>
-        <li data-bind="saved[]">
+        <li data-bind="saved[]" data-test="saved">
             <span data-bind="name"></span> 
         </li>
     </ul>
