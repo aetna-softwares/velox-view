@@ -8,9 +8,9 @@
 <label>Animal saved</label>
 <ul>
     <!-- Repeat an HTML block for all  -->
-    <li data-bind="saved[]">
+    <li data-bind="saved[]" data-test="saved[]">
         Hello <span data-bind="name"></span> 
         <!-- Show only if the property cancelled is not false/null/undefined -->
-        <span data-show-if="inZoo"> <em>(in zoo only :( )</em></span>
+        <span data-show-if="inZoo" data-test-show-if="inZoo"> <em>(in zoo only :( )</em></span>
     </li>
 </ul>
