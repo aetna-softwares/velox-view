@@ -279,52 +279,50 @@
      */
     function pathSetValue(obj, path, value) {
         var pathArray = path.slice();
-        if (!Array.isArray(path)) {
-            pathArray = path.split(".");
-        }
+        
         var dataObject = obj;
         while (pathArray.length > 0) {
             //property name
             var p = pathArray.shift().trim();
-            var index = null;
-            if (p.indexOf("[") !== -1) {
-                //has index
-                index = parseInt(p.substring(p.indexOf("[") + 1, p.indexOf("]")).trim(), 10);
-                p = p.substring(0, p.indexOf("[")).trim();
-            }
+            // var index = null;
+            // if (p.indexOf("[") !== -1) {
+            //     //has index
+            //     index = parseInt(p.substring(p.indexOf("[") + 1, p.indexOf("]")).trim(), 10);
+            //     p = p.substring(0, p.indexOf("[")).trim();
+            // }
 
             if (dataObject) {
                 if (pathArray.length === 0) {
                     //last part, set the value
-                    if (index !== null) {
-                        if (p && p !== "this") {
-                            if (!dataObject[p]) {
-                                dataObject[p] = [];
-                            }
-                            dataObject = dataObject[p];
-                        }
-                        dataObject[index] = value;
-                    } else {
+                    // if (index !== null) {
+                    //     if (p && p !== "this") {
+                    //         if (!dataObject[p]) {
+                    //             dataObject[p] = [];
+                    //         }
+                    //         dataObject = dataObject[p];
+                    //     }
+                    //     dataObject[index] = value;
+                    // } else {
                         dataObject[p] = value;
-                    }
+                    // }
                 } else {
                     //not last part, continue to dig
                     if (p && p !== "this") {
                         if (!dataObject[p]) {
-                            if (index !== null) {
-                                dataObject[p] = [];
-                            } else {
+                            // if (index !== null) {
+                            //     dataObject[p] = [];
+                            // } else {
                                 dataObject[p] = {};
-                            }
+                            // }
                         }
                         dataObject = dataObject[p];
                     }
-                    if (dataObject && index !== null) {
-                        if (!dataObject[index]) {
-                            dataObject[index] = {};
-                        }
-                        dataObject = dataObject[index];
-                    }
+                    // if (dataObject && index !== null) {
+                    //     if (!dataObject[index]) {
+                    //         dataObject[index] = {};
+                    //     }
+                    //     dataObject = dataObject[index];
+                    // }
                 }
 
             }
@@ -354,20 +352,20 @@
                 return callback();
             }
 
-            if(len > 20 && len % 20 === 0){
-                //call setimmediate to avoid too much recursion
-                // setTimeout(function(){
-                //     asyncSeries(calls, ++index, callback);
-                // }, 0) ;
-                // setImmediate(function(){
-                //     asyncSeries(calls, ++index, callback);
-                // }) ;
-                setImmediate(function(){
-                    asyncSeries(calls.slice(1), callback);
-                }) ;
-            }else{
+            // if(len > 20 && len % 20 === 0){
+            //     //call setimmediate to avoid too much recursion
+            //     // setTimeout(function(){
+            //     //     asyncSeries(calls, ++index, callback);
+            //     // }, 0) ;
+            //     // setImmediate(function(){
+            //     //     asyncSeries(calls, ++index, callback);
+            //     // }) ;
+            //     setImmediate(function(){
+            //         asyncSeries(calls.slice(1), callback);
+            //     }) ;
+            // }else{
                 asyncSeries(calls.slice(1), callback);
-            }
+            // }
         });
 
     }
@@ -539,7 +537,8 @@
                 if(data){
                     this.bindObject = data;
                 }
-                return this.render(callback) ;
+                this.render() ;
+                return callback() ;
             }else{
                 //the container has been wipped out (probably a parent DOM element has been removed)
                 //the view is in unstable state, it should have been closed with close() before being take out the DOM
@@ -553,6 +552,41 @@
         }
 
         
+        
+        this.staticHTML = this.options.html;
+        this.staticCSS = this.options.css;
+
+        this.compileView((function viewCompiled(err, parsed){
+            if(err){ throw err; }
+
+            this.openCompiled(data, parsed) ;
+
+            callback() ;
+        }).bind(this));
+        return this;
+    };
+
+    /**
+     * Open the view
+     * 
+     * @param {function(Error)} [callback] - Called when init is done
+     */
+    VeloxWebView.prototype.openCompiled = function (data, parsed) {
+        
+        if(!parsed){
+            this.staticHTML = this.options.html;
+            this.staticCSS = this.options.css;
+    
+            var key = this.directory + "/" + this.name;
+            if(this.staticHTML !== null && this.staticHTML !== undefined){
+                key = this.staticHTML ;
+            }
+            
+            parsed = parsedHTMLCache[key] ;
+        }
+
+        if(!parsed){ throw "try open compiled view but it is not compiled" ; }
+
         this.container = this.options.container;
         this.bindObject = data || this.options.bindObject;
 
@@ -563,132 +597,31 @@
             this.bindPath = this.bindPath.split(".") ;
         }
         this.containerParent = this.options.containerParent;
+            
+        this.prepareView(parsed);
+
+        this.render() ;
+        this.addToContainer(this.viewRootEl) ;
+        this.show();      
+        if(this.mustHide){
+            this.hide(); //hide has been called while init running
+            this.mustHide = false ;
+        }
+        this.opening = false ;
+        this.emit("openDone", {view: this}, this, true);
+        
+        return;
+    };
+
+    VeloxWebView.prototype.compileView = function(callback){
         this.staticHTML = this.options.html;
         this.staticCSS = this.options.css;
 
-        this.prepareView((function viewPrepared(err, parsed){
-            if(err){ throw err; }
-                
-            var functionInView = parsed.functionInView;
-            var clonedBody = parsed.xmlDoc.body.cloneNode(true) ;
-
-            this.replaceIds(clonedBody, parsed) ;
-            
-            this.prepareContainer(clonedBody, parsed) ;
-
-            //clone the sub views definitions
-            this.views = {} ;
-            var subViewsKeys = Object.keys(parsed.subviews) ;
-            for(var i=0; i<subViewsKeys.length; i++){
-                var k = subViewsKeys[i] ;
-                var subViewDef = parsed.subviews[k] ;
-
-                //search the parent element in current instance
-                var idParent = subViewDef.elParent.getAttribute("data-vieworder-id") ;
-                var parentInThisInstance = this.viewRootEl.querySelector('[data-vieworder-id="'+idParent+'"]') ;
-                if(!parentInThisInstance) {// && (subViewDef.elParent.tagName === "BODY" || this.viewRootEl.getAttribute("data-vieworder-id") === idParent)){
-                    //parent is the view root
-                    parentInThisInstance = this.viewRootEl ;
-                }
-                
-                this.views[k] = {
-                    elParent: parentInThisInstance,
-                    el: subViewDef.el,
-                    isBefore : subViewDef.isBefore,
-                    isAfter : subViewDef.isAfter,
-                    bindPath: subViewDef.bindPath,
-                    dir: subViewDef.dir,
-                    html: subViewDef.html,
-                    file: subViewDef.file,
-                    showIf: subViewDef.showIf,
-                    hideIf: subViewDef.hideIf,
-                    ids: subViewDef.ids,
-                    instances: []
-                } ;
-                this.prepareSubViewsSubElements(subViewDef) ;
-            }
-
-            //prepare the bound elements
-            this.boundElements = [] ;
-            for(var i=0; i<parsed.boundElements.length; i++){
-                var boundEl = parsed.boundElements[i] ;
-                var el = boundEl.el ;
-                var idEl = el.getAttribute("data-vieworder-id") ;
-                var elInThisInstance = this.viewRootEl.querySelector('[data-vieworder-id="'+idEl+'"]') ;
-                if(!elInThisInstance){// && (el.tagName === "BODY" || this.viewRootEl.getAttribute("data-vieworder-id") === idEl)){
-                    //parent is the view root
-                    elInThisInstance = this.viewRootEl ;
-                }
-
-                var boundElCopy = {
-                    bindPath : boundEl.bindPath,
-                    boundAttributes: boundEl.boundAttributes,
-                    boundTextNodes: boundEl.boundTextNodes,
-                    el: elInThisInstance
-                } ;
-
-                this.boundElements.push(boundElCopy) ;
-            }
-
-            
-            //this.prepareSubView() ;
-
-            var calls = [];
-
-            VeloxWebView.extensions.forEach((function (extension) {
-                if (extension.init) {
-                    calls.push((function (cb) {
-                        if (extension.init.length === 0) {
-                            //no callback
-                            try{
-                                extension.init.bind(this)();
-                                cb() ;
-                            }catch(err){
-                                cb(err) ;
-                            }
-                        } else {
-                            extension.init.bind(this)(function(err){
-                                cb(err) ;
-                            }.bind(this));
-                        }
-                    }).bind(this));
-                }
-            }).bind(this));
-
-            asyncSeries(calls, (function (err) {
-                if(err){  return callback(err) ; }
-
-                if(functionInView){
-                    functionInView(this) ;
-                }
-
-                this.initAutoEmit();
-
-                this.initDone = true;
-                this.emit("initDone", null, this, true);
-
-                this.render((function (err) {
-                    if(err){ return callback(err) ;}
-                    this.addToContainer(this.viewRootEl) ;
-                    this.show();      
-                    if(this.mustHide){
-                        this.hide(); //hide has been called while init running
-                        this.mustHide = false ;
-                    }
-                    callback();
-                    this.emit("openDone", {view: this}, this, true);
-                }).bind(this));
-            }).bind(this));
-        }).bind(this));
-        return this;
-    };
-
-    VeloxWebView.prototype.prepareView = function(callback){
         var key = this.directory + "/" + this.name;
         if(this.staticHTML !== null && this.staticHTML !== undefined){
             key = this.staticHTML ;
         }
-
+        
         var parsed = parsedHTMLCache[key] ;
         if(parsed){
             return callback(null, parsed) ;
@@ -696,14 +629,146 @@
             this.getHTML(function (html) {
                 this.parseHTML(html, function(err, parsed){
                     if(err){ throw err; }
+
+                    parsedHTMLCache[key] = parsed;
+
                     this._loadCSS(parsed.cssStatics, parsed.cssFiles, function(){
-                        callback(null, parsed) ;
-                    });
+                        var calls = [];
+                        
+                        VeloxWebView.extensions.forEach((function (extension) {
+                            if (extension.prepare) {
+                                calls.push((function (cb) {
+                                    if (extension.prepare.length === 0) {
+                                        //no callback
+                                        try{
+                                            extension.prepare.bind(this)();
+                                            cb() ;
+                                        }catch(err){
+                                            cb(err) ;
+                                        }
+                                    } else {
+                                        extension.prepare.bind(this)(function(err){
+                                            cb(err) ;
+                                        }.bind(this));
+                                    }
+                                }).bind(this));
+                            }
+                        }).bind(this));
+
+                        var calls = [];
+                        
+                        Object.keys(parsed.subviews).forEach((function (viewId) {
+                            calls.push(function(cb){
+                                var view = parsed.subviews[viewId] ;
+                                var viewOptions = {
+                                    containerParent: null,
+                                    container: null,
+                                    containerIsInside : null,
+                                    insertBefore : null,
+                                    insertAfter : null,
+                                    file: view.file,
+                                    html: view.html,
+                                    css: view.html?"":undefined,
+                                    bindObject: null,
+                                    bindPath: []
+                                } ;
+                                
+                                var v = new VeloxWebView(view.dir, view.file, viewOptions);
+                                v.compileView(cb) ;
+                            });
+                        }));
+
+                        asyncSeries(calls, function(err){
+                            if(err){ throw err; }
+                            callback(null, parsed) ;
+                        }) ;
+                    }.bind(this));
                 }.bind(this));
             }.bind(this));
         }
     } ;
 
+    VeloxWebView.prototype.prepareView = function(parsed){
+        var functionInView = parsed.functionInView;
+        var clonedBody = parsed.xmlDoc.body.cloneNode(true) ;
+
+        this.replaceIds(clonedBody, parsed) ;
+        
+        this.prepareContainer(clonedBody, parsed) ;
+
+        //clone the sub views definitions
+        this.views = {} ;
+        var subViewsKeys = Object.keys(parsed.subviews) ;
+        for(var i=0; i<subViewsKeys.length; i++){
+            var k = subViewsKeys[i] ;
+            var subViewDef = parsed.subviews[k] ;
+
+            //search the parent element in current instance
+            var idParent = subViewDef.elParent.getAttribute("data-vieworder-id") ;
+            var parentInThisInstance = this.viewRootEl.querySelector('[data-vieworder-id="'+idParent+'"]') ;
+            if(!parentInThisInstance) {// && (subViewDef.elParent.tagName === "BODY" || this.viewRootEl.getAttribute("data-vieworder-id") === idParent)){
+                //parent is the view root
+                parentInThisInstance = this.viewRootEl ;
+            }
+            
+            this.views[k] = {
+                elParent: parentInThisInstance,
+                el: subViewDef.el,
+                isBefore : subViewDef.isBefore,
+                isAfter : subViewDef.isAfter,
+                bindPath: subViewDef.bindPath,
+                dir: subViewDef.dir,
+                html: subViewDef.html,
+                file: subViewDef.file,
+                showIf: subViewDef.showIf,
+                hideIf: subViewDef.hideIf,
+                multiple: subViewDef.multiple,
+                ids: subViewDef.ids,
+                instances: []
+            } ;
+            this.prepareSubViewsSubElements(subViewDef) ;
+        }
+
+        //prepare the bound elements
+        this.boundElements = [] ;
+        for(var i=0; i<parsed.boundElements.length; i++){
+            var boundEl = parsed.boundElements[i] ;
+            var el = boundEl.el ;
+            var idEl = el.getAttribute("data-vieworder-id") ;
+            var elInThisInstance = this.viewRootEl.querySelector('[data-vieworder-id="'+idEl+'"]') ;
+            if(!elInThisInstance){// && (el.tagName === "BODY" || this.viewRootEl.getAttribute("data-vieworder-id") === idEl)){
+                //parent is the view root
+                elInThisInstance = this.viewRootEl ;
+            }
+
+            var boundElCopy = {
+                bindPath : boundEl.bindPath,
+                boundAttributes: boundEl.boundAttributes,
+                boundTextNodes: boundEl.boundTextNodes,
+                el: elInThisInstance
+            } ;
+
+            this.boundElements.push(boundElCopy) ;
+        }
+
+    
+        for(var i=0; i<VeloxWebView.extensions.length; i++){
+            var extension = VeloxWebView.extensions[i] ;
+            if (extension.init) {
+                extension.init.bind(this)();
+            }
+        }
+
+
+        if(functionInView){
+            functionInView(this) ;
+        }
+
+        this.initAutoEmit();
+
+        this.initDone = true;
+        this.emit("initDone", null, this, true);
+    };
 
     
     VeloxWebView.prototype.prepareContainer = function(clonedBody, parsedHTML){
@@ -746,17 +811,17 @@
                 throw this.containerId + " is not found";
             }
         } else {
-            if(this.options.containerIsInside && this.container.id){
-                //this container is considered to be inside the view
-                //this is the case when we have a repeating view with external file, ex :
-                //<div data-bind="foo[]" data-view="oneFoo" id="fooLine">
-                //in this case the container can't be handled by parent view because it may happens 0 or many time
-                //it must be handle by the sub view (we are here initializing this subview)
-                this.container.setAttribute("data-original-id", this.container.id) ;
-                var modifiedId = this.container.id+ID_SEP + uuidv4() ; ;
-                this.ids[this.container.id] = modifiedId;
-                this.container.id = modifiedId ;
-            }
+            // if(this.options.containerIsInside && this.container.id){
+            //     //this container is considered to be inside the view
+            //     //this is the case when we have a repeating view with external file, ex :
+            //     //<div data-bind="foo[]" data-view="oneFoo" id="fooLine">
+            //     //in this case the container can't be handled by parent view because it may happens 0 or many time
+            //     //it must be handle by the sub view (we are here initializing this subview)
+            //     this.container.setAttribute("data-original-id", this.container.id) ;
+            //     var modifiedId = this.container.id+ID_SEP + uuidv4() ; ;
+            //     this.ids[this.container.id] = modifiedId;
+            //     this.container.id = modifiedId ;
+            // }
             while (this.container.firstChild) {
                 this.container.removeChild(this.container.firstChild);
             }
@@ -787,54 +852,62 @@
      */
     VeloxWebView.prototype.replaceIds = function(bodyNode, parsed){
         this.ids = {};
+        if(this.container && this.container.id && !this.container.hasAttribute("data-original-id")){
+            //this container is considered to be inside the view
+                //this is the case when we have a repeating view with external file, ex :
+                //<div data-bind="foo[]" data-view="oneFoo" id="fooLine">
+                //in this case the container can't be handled by parent view because it may happens 0 or many time
+                //it must be handle by the sub view (we are here initializing this subview)
+            this.changeId(this.container.id, this.container, bodyNode) ;
+        }
         for(var i=0; i<parsed.ids.length; i++){
             var id = parsed.ids[i] ;
             var el = bodyNode.querySelector('[id="'+id+'"]') ;
+            
+            this.changeId(id, el, bodyNode) ;
+        }
+        
+    };
+    VeloxWebView.prototype.changeId = function(id, el, bodyNode){
+        this.EL[id] = el ;
+        var view = this;
+        var elAddEventListener = el.addEventListener ;
+        el.addEventListener = function(event, listener){
+            elAddEventListener.call(el,event, function(ev){
+                ev.viewOfElement = view;
+                listener.bind(el)(ev) ;
+            }) ;
+        } ;
+        el.on = el.addEventListener ;
 
-            this.EL[id] = el ;
-            var view = this;
-            var elAddEventListener = el.addEventListener ;
-            el.addEventListener = function(event, listener){
-                elAddEventListener.call(el,event, function(ev){
-                    ev.viewOfElement = view;
-                    listener.bind(el)(ev) ;
-                }) ;
-            } ;
-            el.on = el.addEventListener ;
+        var uuidEl = uuidv4();
+        if (id[0] === "#") {
+            //force keep this id
+            id = id.substring(1);
+            this.ids[id] = id;
+            el.id = id ;
+        } else {
+            //add UUID
+            var modifiedId = id + ID_SEP + uuidEl ;
+            this.ids[id] = modifiedId;
+            el.id = modifiedId ;
+            el.setAttribute("data-original-id", id) ;
 
-            var uuidEl = uuidv4();
-            if (id[0] === "#") {
-                //force keep this id
-                id = id.substring(1);
-                this.ids[id] = id;
-                el.id = id ;
-            } else {
-                //add UUID
-                var modifiedId = id + ID_SEP + uuidEl ;
-                this.ids[id] = modifiedId;
-                el.id = modifiedId ;
-                el.setAttribute("data-original-id", id) ;
-
-                //modify references
-                var elTarget = bodyNode.querySelectorAll('[data-target="#'+id+'"]') ;
-                for(var y=0; y<elTarget.length; y++){
-                    elTarget[y].setAttribute("data-target", "#"+modifiedId) ;
-                }
-                var elHref = bodyNode.querySelectorAll('[href="#'+id+'"]') ;
-                for(var y=0; y<elHref.length; y++){
-                    elHref[y].setAttribute("href", "#"+modifiedId) ;
-                }
-                var elFor = bodyNode.querySelectorAll('[for="'+id+'"]') ;
-                for(var y=0; y<elFor.length; y++){
-                    elFor[y].setAttribute("data-target", modifiedId) ;
-                }
+            //modify references
+            var elTarget = bodyNode.querySelectorAll('[data-target="#'+id+'"]') ;
+            for(var y=0; y<elTarget.length; y++){
+                elTarget[y].setAttribute("data-target", "#"+modifiedId) ;
+            }
+            var elHref = bodyNode.querySelectorAll('[href="#'+id+'"]') ;
+            for(var y=0; y<elHref.length; y++){
+                elHref[y].setAttribute("href", "#"+modifiedId) ;
+            }
+            var elFor = bodyNode.querySelectorAll('[for="'+id+'"]') ;
+            for(var y=0; y<elFor.length; y++){
+                elFor[y].setAttribute("data-target", modifiedId) ;
             }
         }
-        for(i=0; i<this.innerViewIds.length; i++){
-            var innerViewId = this.innerViewIds[i] ;
-            this.EL[innerViewId.id] =  innerViewId;
-        }
-    };
+    }
 
     /**
      * Replace relative path
@@ -974,11 +1047,8 @@
      * @param {sting} html the HTML of the view
      */
     VeloxWebView.prototype.parseHTML = function (htmlOfView, callback) {
-        var parsed = parsedHTMLCache[htmlOfView] ;
-        if(parsed){
-            return callback(null, parsed) ;
-        }
-        var html = htmlOfView.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
+        var parsed = null;
+        var html = htmlOfView; //.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
         
         var cssStatics = [] ;
         if(this.staticCSS){
@@ -1120,7 +1190,6 @@
                 ids: ids,
                 boundElements: boundElements
             } ;
-            parsedHTMLCache[htmlOfView] = parsed;
             callback(null, parsed) ;
         }.bind(this)) ;
     };
@@ -1424,6 +1493,10 @@
                         dir = viewAttr.substring(0, lastSlash) ;
                         file= viewAttr.substring(lastSlash+1) ;
                     }
+                    var isMultiple = false ;
+                    if(bindAttr && /\[\]$/.test(bindAttr)){
+                        isMultiple = true ;
+                    }
                     subViews[viewId] = {
                         elParent: el.parentElement,
                         el: el,
@@ -1434,31 +1507,23 @@
                         file: file,
                         showIf: showIfAttr,
                         hideIf: hideIfAttr,
-                        ids:ids,
-                        instances: []
-                    };
-                }else if(showIfAttr || hideIfAttr){
-                    if(el.id){ids.push(el.id) ;}
-                    elClone.removeAttribute("data-show-if");
-                    elClone.removeAttribute("data-hide-if");
-                    subViews[viewId] = {
-                        elParent: el.parentElement,
-                        el: el,
-                        isBefore :  nextElementIds.length>0?nextElementIds:null,
-                        isAfter : previousElementIds.length>0?previousElementIds:null,
-                        bindPath: bindAttr?bindAttr.split("."):[],
-                        dir: dir,
-                        html: elClone.outerHTML,
-                        showIf: showIfAttr,
-                        hideIf: hideIfAttr,
+                        multiple: isMultiple,
                         ids:ids,
                         instances: []
                     };
                 }else{
-                    if(el.id){ids.push(el.id) ;}
+                    if(showIfAttr){
+                        elClone.removeAttribute("data-show-if");
+                    }
+                    if(hideIfAttr){
+                        elClone.removeAttribute("data-hide-if");
+                    }
+                    var isMultiple = false ;
                     if(bindAttr && /\[\]$/.test(bindAttr)){
+                        isMultiple = true ;
                         elClone.removeAttribute("data-bind");
                     }
+                    if(el.id){ids.push(el.id) ;}
                     subViews[viewId] = {
                         elParent: el.parentElement,
                         el: el,
@@ -1467,12 +1532,13 @@
                         bindPath: bindAttr?bindAttr.split("."):[],
                         dir: dir,
                         html: elClone.outerHTML,
+                        multiple: isMultiple,
                         showIf: showIfAttr,
                         hideIf: hideIfAttr,
                         ids:ids,
                         instances: []
                     };
-                }
+                } 
             }
         }
         
@@ -1527,6 +1593,7 @@
                 }
             }
             this.innerViewIds.push(fakeEl) ;
+            this.EL[id] = fakeEl;
         }
     } ;
     
@@ -1572,359 +1639,275 @@
      * @param {object} [dataToRender] - The data to render. If not given, it use the object given on init or on previous render
      * @param {function} [callback] - Called when render is done
      */
-    VeloxWebView.prototype.render = function (dataToRender, callbackParam) {
-        this.ensureInit(function doRender(){
-            //ensure init because we can arrive here while init is running (for example a new view refresh is called while a first one is not yet done)
+    VeloxWebView.prototype.render = function (dataToRender) {
+        if (!this.initDone) {
+            this.once("initDone", function(){
+                this.render(dataToRender) ;
+            }.bind(this));
+            return;
+        }
 
-            
-
-            this.elements = null; //clear EL collection to force recompute as some sub element may change on render
-            
-            if (typeof (dataToRender) === "function") {
-                callbackParam = dataToRender;
-                dataToRender = undefined;
+        this.elements = null; //clear EL collection to force recompute as some sub element may change on render
+        
+        if (dataToRender !== undefined) {
+            if(this.bindPath && this.bindPath.length > 0){
+                //FIXME : handle extractor cache
+                pathSetValue(this.bindObject, this.bindPath, dataToRender) ;
+            }else{
+                this.bindObject = dataToRender;
             }
-            if (dataToRender !== undefined) {
-                if(this.bindPath){
-                    //FIXME : handle extractor cache
-                    pathSetValue(this.bindObject, this.bindPath, dataToRender) ;
-                }else{
-                    this.bindObject = dataToRender;
+        }
+
+        if(this.rendering){
+            //render is not re-entrant. try to render when you are already rendering
+            //is likely to be loop due to some change event listener
+            return ;
+        }
+
+        this.rendering = true ;
+        var callback = function(){
+            this.rendering = false ;
+        }.bind(this) ;
+        
+
+        if (!this.bindObject) { return callback(); }
+
+
+        var baseData = this.bindObject;
+        if (this.bindPath) {
+            baseData = pathExtract(this.bindObject, this.bindPath);
+        }
+
+        //set simple elements
+        for(var i=0; i<this.boundElements.length; i++){
+            var boundEl = this.boundElements[i] ;
+            var el = boundEl.el;
+            var bindPath = boundEl.bindPath;
+            if(bindPath){
+                var fullBindPath = (this.bindPath||["$this"]).concat(bindPath) ;
+                if(el === this.container){
+                    //the container is bound, so its data is not inside is path
+                    fullBindPath = this.bindPath ;
+                }
+                var bindData = pathExtract(this.bindObject, fullBindPath);
+                
+                if (el.setValue){
+                    if(el.getValue() != bindData){
+                        el.setValue(bindData) ;
+                    }
+                }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
+                    if(el.tagName === "INPUT" && el.type === "checkbox"){
+                        var checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
+                        if(el.checked !== checked){
+                            el.checked = checked ;
+                        }
+                    }else{
+                        if (bindData === null || bindData === undefined) {
+                            bindData = "";
+                        }
+                        if(el.value != bindData){
+                            el.value = bindData;
+                        }
+                    }
+                    
+                } else {
+                    if (bindData === null || bindData === undefined) {
+                        bindData = "";
+                    }
+                    if(typeof(bindData) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(bindData)){
+                        //if is a date like "2017-07-24T22:00:00.000Z"
+                        bindData = new Date(bindData) ;
+                    }
+                    if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(bindData)){
+                        //if is a date like "2017-07-24"
+                        bindData = new Date(bindData) ;
+                    }
+                    if(bindData instanceof Date){
+                        //try to guess if it is a date or a date time
+                        if(bindData.getHours() === 0 && bindData.getMinutes() === 0 && bindData.getSeconds() === 0 && bindData.getMilliseconds() === 0){
+                            //the date is exactly midnight, assume it is date only data
+                            if(bindData.toLocaleDateString){
+                                bindData = bindData.toLocaleDateString() ;
+                            }else{
+                                bindData = bindData.toDateString() ; //IE10...
+                            }
+                        }else{
+                            //the date has a date with time information, it is probably a data/time
+                            if(bindData.toLocaleDateString){
+                                bindData = bindData.toLocaleDateString()+" "+bindData.toLocaleTimeString() ;
+                            }else{
+                                bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
+                            }
+                        }
+                    }
+                    if(el.textContent != bindData){
+                        el.textContent = bindData;
+                    }
                 }
             }
-            if (!callbackParam) {
-                callbackParam = function () { };
-            }
 
-            if(this.rendering){
-                //render is not re-entrant. try to render when you are already rendering
-                //is likely to be loop due to some change event listener
-                return callbackParam() ;
-            }
-
-            this.rendering = true ;
-            var callback = function(err){
-                this.rendering = false ;
-                if(err){ return callbackParam(err) ;}
-                callbackParam() ;
-            }.bind(this) ;
-            
-    
-    
-            if (!this.boundElements) {
-                this.boundElements = [];
-    
-                var allElements = [];
-                var foundEls = this.viewRootEl.getElementsByTagName("*");
-                for ( var i=0;i<foundEls.length; i++ ) {allElements[i] = foundEls[i];}
-                allElements.push(this.viewRootEl) ;
-                for(var z=0; z<allElements.length; z++){
-                    var el = allElements[z] ;
-                    var bindPath = el.getAttribute("data-bind");
-                    var bindEl = {el: el} ;
-                    var isContainerOfNestedView = false;
-                    if(el === this.container){
-                        if(el.getAttribute("data-view")){
-                            isContainerOfNestedView = true;
-                        } else if(el.children.length > 0) {
-                            isContainerOfNestedView = true;
+            if(boundEl.boundAttributes){
+                var boundAttributesKeys = Object.keys(boundEl.boundAttributes) ;
+                for(var y=0; y<boundAttributesKeys.length; y++){
+                    var name = boundAttributesKeys[y] ;
+                    var originalValue = boundEl.boundAttributes[name] ;
+                    var value = originalValue ;
+                    while(value.indexOf("${") !== -1){
+                        var indexStart = value.indexOf("${") ;
+                        var indexEnd = value.indexOf("}") ;
+                        if(indexEnd < indexStart){ 
+                            console.error("Wrong syntax in "+originalValue) ;
+                            break;
                         }
+                        var expr = value.substring(indexStart+2, indexEnd) ;
+                        var exprValue = evalExpr(baseData, expr) ;
+                        value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
                     }
-                    if(
-                        !isContainerOfNestedView &&
-                        bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
-                        bindEl.bindPath = bindPath;
+                    if(name.indexOf("attr-") === 0){
+                        name = name.substring(name.indexOf("-")+1) ;
                     }
-                    var attributes = el.attributes ;
-                    var boundAttributes = {} ;
-                    var hasBoundAttribute = false ;
-                    for(var i=0; i<attributes.length; i++){
-                        if(attributes[i].value.indexOf("${") !== -1 && attributes[i].value.indexOf("}") !== -1){
-                            boundAttributes[attributes[i].name] = attributes[i].value ;
-                            hasBoundAttribute = true ;
-                        }
-                    }
-                    if(hasBoundAttribute){
-                        bindEl.boundAttributes = boundAttributes;
-                    }
-
-                    var textNodes = [];
-                    for ( var i=0;i<el.childNodes.length; i++ ) {
-                        if(el.childNodes[i].nodeType === Node.TEXT_NODE){
-                            textNodes.push(el.childNodes[i]);
-                        }
-                    }
-
-                    var boundTextNodes = {} ;
-                    var hasBoundTextNodes = false ;
-                    for(var i=0; i<textNodes.length; i++){
-                        if(textNodes[i].textContent.indexOf("${") !== -1 && textNodes[i].textContent.indexOf("}") !== -1){
-                            boundTextNodes[i] = textNodes[i].textContent ;
-                            hasBoundTextNodes = true ;
-                        }
-                    }
-                    if(hasBoundTextNodes){
-                        bindEl.boundTextNodes = boundTextNodes;
-                    }
-
-
-                    if(bindEl.bindPath || bindEl.boundAttributes || bindEl.boundTextNodes){
-                        this.boundElements.push(bindEl);
+                    if(boundEl.el.getAttribute(name) != value){
+                        boundEl.el.setAttribute(name, value) ;
                     }
                 } ;
             }
-    
-            if (!this.bindObject) { return callback(); }
-    
-            // this._transformData(function dataTransformed(err){
-            //     if(err){ return callback(err); }
-    
-                var baseData = this.bindObject;
-                if (this.bindPath) {
-                    baseData = pathExtract(this.bindObject, this.bindPath);
+
+            if(boundEl.boundTextNodes){
+                var textNodes = [];
+                for ( var y=0;y<el.childNodes.length; y++ ) {
+                    if(el.childNodes[y].nodeType === Node.TEXT_NODE){
+                        textNodes.push(el.childNodes[y]);
+                    }
                 }
-    
-                //set simple elements
-                for(var i=0; i<this.boundElements.length; i++){
-                    var boundEl = this.boundElements[i] ;
-                    var el = boundEl.el;
-                    var bindPath = boundEl.bindPath;
-                    if(bindPath){
-                        var fullBindPath = (this.bindPath||["$this"]).concat(bindPath) ;
-                        if(el === this.container){
-                            //the container is bound, so its data is not inside is path
-                            fullBindPath = this.bindPath ;
+                for(var y=0; y<boundEl.boundTextNodes.length; y++){
+                    var index = boundEl.boundTextNodes[y] ;
+                    var originalValue = boundEl.boundTextNodes[index] ;
+                    var value = originalValue ;
+                    while(value.indexOf("${") !== -1){
+                        var indexStart = value.indexOf("${") ;
+                        var indexEnd = value.indexOf("}") ;
+                        if(indexEnd < indexStart){ 
+                            console.error("Wrong syntax in "+originalValue) ;
+                            break;
                         }
-                        var bindData = pathExtract(this.bindObject, fullBindPath);
-                        
-                        if (el.setValue){
-                            if(el.getValue() != bindData){
-                                el.setValue(bindData) ;
-                            }
-                        }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-                            if(el.tagName === "INPUT" && el.type === "checkbox"){
-                                var checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
-                                if(el.checked !== checked){
-                                    el.checked = checked ;
-                                }
-                            }else{
-                                if (bindData === null || bindData === undefined) {
-                                    bindData = "";
-                                }
-                                if(el.value != bindData){
-                                    el.value = bindData;
-                                }
-                            }
-                            
-                        } else {
-                            if (bindData === null || bindData === undefined) {
-                                bindData = "";
-                            }
-                            if(typeof(bindData) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(bindData)){
-                                //if is a date like "2017-07-24T22:00:00.000Z"
-                                bindData = new Date(bindData) ;
-                            }
-                            if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(bindData)){
-                                //if is a date like "2017-07-24"
-                                bindData = new Date(bindData) ;
-                            }
-                            if(bindData instanceof Date){
-                                //try to guess if it is a date or a date time
-                                if(bindData.getHours() === 0 && bindData.getMinutes() === 0 && bindData.getSeconds() === 0 && bindData.getMilliseconds() === 0){
-                                    //the date is exactly midnight, assume it is date only data
-                                    if(bindData.toLocaleDateString){
-                                        bindData = bindData.toLocaleDateString() ;
-                                    }else{
-                                        bindData = bindData.toDateString() ; //IE10...
-                                    }
-                                }else{
-                                    //the date has a date with time information, it is probably a data/time
-                                    if(bindData.toLocaleDateString){
-                                        bindData = bindData.toLocaleDateString()+" "+bindData.toLocaleTimeString() ;
-                                    }else{
-                                        bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
-                                    }
-                                }
-                            }
-                            if(el.textContent != bindData){
-                                el.textContent = bindData;
-                            }
-                        }
+                        var expr = value.substring(indexStart+2, indexEnd) ;
+                        var exprValue = evalExpr(baseData, expr) ;
+                        value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
                     }
-
-                    if(boundEl.boundAttributes){
-                        for(var y=0; y<boundEl.boundAttributes.length; y++){
-                            var name = boundEl.boundAttributes[y] ;
-                            var originalValue = boundEl.boundAttributes[name] ;
-                            var value = originalValue ;
-                            while(value.indexOf("${") !== -1){
-                                var indexStart = value.indexOf("${") ;
-                                var indexEnd = value.indexOf("}") ;
-                                if(indexEnd < indexStart){ 
-                                    console.error("Wrong syntax in "+originalValue) ;
-                                    break;
-                                }
-                                var expr = value.substring(indexStart+2, indexEnd) ;
-                                var exprValue = evalExpr(baseData, expr) ;
-                                value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
-                            }
-                            if(name.indexOf("attr-") === 0){
-                                name = name.substring(name.indexOf("-")+1) ;
-                            }
-                            if(boundEl.el.getAttribute(name) != value){
-                                boundEl.el.setAttribute(name, value) ;
-                            }
-                        } ;
+                    if(textNodes[index].textContent != value){
+                        textNodes[index].textContent = value;
                     }
-
-                    if(boundEl.boundTextNodes){
-                        var textNodes = [];
-                        for ( var y=0;y<el.childNodes.length; y++ ) {
-                            if(el.childNodes[y].nodeType === Node.TEXT_NODE){
-                                textNodes.push(el.childNodes[y]);
-                            }
-                        }
-                        for(var y=0; y<boundEl.boundTextNodes.length; y++){
-                            var index = boundEl.boundTextNodes[y] ;
-                            var originalValue = boundEl.boundTextNodes[index] ;
-                            var value = originalValue ;
-                            while(value.indexOf("${") !== -1){
-                                var indexStart = value.indexOf("${") ;
-                                var indexEnd = value.indexOf("}") ;
-                                if(indexEnd < indexStart){ 
-                                    console.error("Wrong syntax in "+originalValue) ;
-                                    break;
-                                }
-                                var expr = value.substring(indexStart+2, indexEnd) ;
-                                var exprValue = evalExpr(baseData, expr) ;
-                                value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
-                            }
-                            if(textNodes[index].textContent != value){
-                                textNodes[index].textContent = value;
-                            }
-                        }
-                    }
-    
-                    //dispatch bound event on this element
-                    var event = document.createEvent('CustomEvent');
-                    event.initCustomEvent('bound', false, true, {
-                        value: bindData,
-                        baseData: pathExtract(this.bindObject, this.bindPath),
-                        bindPath: bindPath,
-                        view: this,
-                        data: pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath, true)
-                    });
-                    var detailKeys = Object.keys(event.detail) ;
-                    for(var y=0; y<detailKeys.length; y++){
-                        var k = detailKeys[y] ;
-                        event[k] = event.detail[k] ;
-                    }
-                    el.dispatchEvent(event);
                 }
-    
-                //dispatch bound event on container element
-                var event = document.createEvent('CustomEvent');
-                event.initCustomEvent('bound', false, true, {
-                    value: this.getBoundObject(),
-                    baseData: this.bindObject,
-                    bindPath: this.bindPath,
-                    view: this,
-                    data: pathExtract(this.bindObject, this.bindPath, true)
-                });
-                var detailKeys = Object.keys(event.detail) ;
-                for(var y=0; y<detailKeys.length; y++){
-                    var k = detailKeys[y] ;
-                    event[k] = event.detail[k] ;
+            }
+
+            //dispatch bound event on this element
+            var event = document.createEvent('CustomEvent');
+            event.initCustomEvent('bound', false, true, {
+                value: bindData,
+                baseData: pathExtract(this.bindObject, this.bindPath),
+                bindPath: bindPath,
+                view: this,
+                data: pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath, true)
+            });
+            var detailKeys = Object.keys(event.detail) ;
+            for(var y=0; y<detailKeys.length; y++){
+                var k = detailKeys[y] ;
+                event[k] = event.detail[k] ;
+            }
+            el.dispatchEvent(event);
+        }
+
+        //dispatch bound event on container element
+        var event = document.createEvent('CustomEvent');
+        event.initCustomEvent('bound', false, true, {
+            value: this.getBoundObject(),
+            baseData: this.bindObject,
+            bindPath: this.bindPath,
+            view: this,
+            data: pathExtract(this.bindObject, this.bindPath, true)
+        });
+        var detailKeys = Object.keys(event.detail) ;
+        for(var y=0; y<detailKeys.length; y++){
+            var k = detailKeys[y] ;
+            event[k] = event.detail[k] ;
+        }
+        this.viewRootEl.dispatchEvent(event);
+
+        //set sub views
+        var viewIds = Object.keys(this.views) ;
+        for(var b=0; b<viewIds.length; b++){
+            var viewId = viewIds[b] ;
+            var view = this.views[viewId];
+            var bindPath = view.bindPath || [];
+            var shouldDisplay = true;
+            if(view.showIf){
+                var showIfData = evalExpr(baseData, view.showIf) ;
+                if(!showIfData || (Array.isArray(showIfData) && showIfData.length === 0)){
+                    shouldDisplay = false ; 
                 }
-                this.viewRootEl.dispatchEvent(event);
-    
-                //set sub views
-                var calls = [];
-                
-                Object.keys(this.views).forEach((function (viewId) {
-                    calls.push(function(cb){
-                        var view = this.views[viewId];
-                        var bindPath = view.bindPath || [];
-                        var shouldDisplay = true;
-                        if(view.showIf){
-                            var showIfData = evalExpr(baseData, view.showIf) ;
-                            if(!showIfData || (Array.isArray(showIfData) && showIfData.length === 0)){
-                                shouldDisplay = false ; 
-                            }
-                        }
-                        if(view.hideIf){
-                            var hideIfData = evalExpr(baseData, view.hideIf) ;
-                            shouldDisplay = false;
-                            if(!hideIfData){
-                                shouldDisplay = true; //no data should display
-                            }else if(hideIfData && Array.isArray(hideIfData) && hideIfData.length === 0) {
-                                shouldDisplay = true; //empty array, should display
-                            }
-                        }
+            }
+            if(view.hideIf){
+                var hideIfData = evalExpr(baseData, view.hideIf) ;
+                shouldDisplay = false;
+                if(!hideIfData){
+                    shouldDisplay = true; //no data should display
+                }else if(hideIfData && Array.isArray(hideIfData) && hideIfData.length === 0) {
+                    shouldDisplay = true; //empty array, should display
+                }
+            }
 
-                        var bindData = this.bindObject;
-                        if(bindPath.length>0){
-                            var pathConcat = (this.bindPath||["$this"]).concat(bindPath) ;
-                            pathConcat[pathConcat.length-1] = pathConcat[pathConcat.length-1].replace(/\[\]$/, "") ;
-    
-                            bindData = pathExtract(this.bindObject, pathConcat);
-                        }
+            var bindData = this.bindObject;
+            if(bindPath.length>0){
+                var pathConcat = (this.bindPath||["$this"]).concat(bindPath) ;
+                pathConcat[pathConcat.length-1] = pathConcat[pathConcat.length-1].replace(/\[\]$/, "") ;
 
-                        if(bindPath.length >0 && bindPath[bindPath.length - 1][bindPath[bindPath.length - 1].length-1] === "]" && !bindData){
-                            //array binding but array is null
-                            shouldDisplay = false;
-                        }
-    
-    
-                        var removedInstance = [] ;
-                        if(shouldDisplay){
-                            this.renderOneView(viewId, bindData, cb) ;
-                        }else{
-                            //not displayed, remove all instance
-                            removedInstance = view.instances.splice(0);
-                            for(var a=0; a<removedInstance.length; a++){
-                                var instance = removedInstance[a] ;
-                                instance.container.parentElement.removeChild(instance.container);
-                            }
-                            cb() ;
-                        }
-                    }.bind(this)) ;
-                }).bind(this));
-    
-                asyncSeries(calls, (function () {
-                    this.emit("load",null, this, true);
-                    this.emit("render",null, this, true);
-                    callback();
-                }).bind(this));
-            }.bind(this));  
-        // }.bind(this)) ;
-        
+                bindData = pathExtract(this.bindObject, pathConcat);
+            }
+
+            if(bindPath.length >0 && bindPath[bindPath.length - 1][bindPath[bindPath.length - 1].length-1] === "]" && !bindData){
+                //array binding but array is null
+                shouldDisplay = false;
+            }
+
+
+            var removedInstance = [] ;
+            if(shouldDisplay){
+                this.renderOneView(viewId, bindData) ;
+            }else{
+                //not displayed, remove all instance
+                removedInstance = view.instances.splice(0);
+                for(var a=0; a<removedInstance.length; a++){
+                    var instance = removedInstance[a] ;
+                    instance.container.parentElement.removeChild(instance.container);
+                }
+            }
+        }
+        this.emit("load",null, this, true);
+        this.emit("render",null, this, true);
+        callback();
     };
 
 
-    VeloxWebView.prototype.renderOneView = function (viewId, bindData, callback) {
+    VeloxWebView.prototype.renderOneView = function (viewId, bindData) {
         var view = this.views[viewId];
         if(!Array.isArray(bindData)){
             bindData = [bindData] ;
         }
-        var calls = [];
-        bindData.forEach(function (d, y) {
-            calls.push(function(cb){
-                if (!view.instances[y]) {
-                    //this instance does not exist yet, create it
-                    this.addViewInstance(viewId, cb) ;
-                } else {
-                    //this instance already exist, just reload data in it
-                    if(view.instances[y].bindPath && view.instances[y].bindPath[view.instances[y].bindPath.length-1] === "]"){
-                        //update bind path because the index in array may have change with user remove line in list auto
-                        view.instances[y].bindPath = view.instances[y].bindPath.substring(0, view.instances[y].bindPath.lastIndexOf("[")+1)+y+"]" ;
-                    }
-                    view.instances[y].bindObject = this.bindObject ;
-                    view.instances[y].render(cb) ;
+        for(var y=0; y<bindData.length; y++){
+            //var d = bindData[y] ;
+            if (!view.instances[y]) {
+                //this instance does not exist yet, create it
+                this.addViewInstance(viewId) ;
+            } else {
+                //this instance already exist, just reload data in it
+                if(view.instances[y].bindPath && view.instances[y].bindPath[view.instances[y].bindPath.length-1] === "]"){
+                    //update bind path because the index in array may have change with user remove line in list auto
+                    view.instances[y].bindPath = view.instances[y].bindPath.substring(0, view.instances[y].bindPath.lastIndexOf("[")+1)+y+"]" ;
                 }
-            }.bind(this));
-        }.bind(this)) ;
-
+                view.instances[y].bindObject = this.bindObject ;
+                view.instances[y].render() ;
+            }
+        }
         
         var removedInstance = view.instances.splice(bindData.length);
         
@@ -1933,9 +1916,6 @@
             var instance = removedInstance[i] ;
             instance.container.parentElement.removeChild(instance.container);
         }
-        asyncSeries(calls, (function () {
-            callback();
-        }).bind(this));
     } ;
 
     /**
@@ -1961,7 +1941,7 @@
      * @param {string} viewId id of the sub view
      * @param {function} callback called when the view is created
      */
-    VeloxWebView.prototype.addViewInstance = function (viewId, callback) {
+    VeloxWebView.prototype.addViewInstance = function (viewId) {
         var view = this.views[viewId];
         var bindPath = view.bindPath || [];
 
@@ -1996,7 +1976,10 @@
             //thisBindPath[thisBindPath.length - 1] = thisBindPath[thisBindPath.length - 1].replace(/\[\]$/, "[" + view.instances.length + "]") ;
             thisBindPath[thisBindPath.length - 1] = thisBindPath[thisBindPath.length - 1].replace(/\[\]$/, "") ;
         }
-        thisBindPath.push(""+view.instances.length) ;
+        if(view.multiple){
+            //linked to an array, add the index
+            thisBindPath.push(""+view.instances.length) ;
+        }
 
         var baseData = pathExtract(this.bindObject, thisBindPath) ;
 
@@ -2025,45 +2008,39 @@
                 this.emit(event, data, v) ; //propagate on this view
             }
         }.bind(this) ;
-        //setImmediate(function(){
-            v.open(function(err){
-                if(err){return callback(err);}
-                //propagate event listener from containing view to subview created elements
-                var parents = [] ;
-                var loopV = v;
-                while(loopV.parentView){
-                    parents.push(loopV.parentView) ;
-                    loopV = loopV.parentView ;
-                }
-                for(var i=0; i<parents.length; i++){
-                    parent = parents[i] ;
-                    
-                    for(var y=0; y<parent.innerViewIds.length; y++){
-                        var innerViewId = parent.innerViewIds[y] ;
-                        if(v.ids[innerViewId.id] && v.EL[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
-                            innerViewId.realEl = v.EL[innerViewId.id] ;
-                            var listenerKeys = Object.keys(innerViewId.listeners) ;
-                            for(var z=0; z<listenerKeys.length; z++){
-                                event = listenerKeys[y] ;
-                                var listeners = innerViewId.listeners[event] ;
-                                for(var a=0; a<listeners.length; a++){
-                                    var l = listeners[a] ;
-                                    v.EL[innerViewId.id].addEventListener(event, l) ;
-                                }
-                            }
+        v.openCompiled() ;
+        
+        //propagate event listener from containing view to subview created elements
+        var parents = [] ;
+        var loopV = v;
+        while(loopV.parentView){
+            parents.push(loopV.parentView) ;
+            loopV = loopV.parentView ;
+        }
+        for(var i=0; i<parents.length; i++){
+            parent = parents[i] ;
+            
+            for(var y=0; y<parent.innerViewIds.length; y++){
+                var innerViewId = parent.innerViewIds[y] ;
+                if(v.ids[innerViewId.id] && v.EL[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
+                    innerViewId.realEl = v.EL[innerViewId.id] ;
+                    var listenerKeys = Object.keys(innerViewId.listeners) ;
+                    for(var z=0; z<listenerKeys.length; z++){
+                        event = listenerKeys[z] ;
+                        var listeners = innerViewId.listeners[event] ;
+                        for(var a=0; a<listeners.length; a++){
+                            var l = listeners[a] ;
+                            v.EL[innerViewId.id].addEventListener(event, l) ;
                         }
                     }
                 }
+            }
+        }
 
-                //render after propagate event to be sure bound listener are called
-                v.bindObject = baseData; //this.bindObject ;
-                v.render(function(err){
-                    if(err){return callback(err);}
-                    callback() ;
-                    this.emit("viewInstanceAdded", {viewId: viewId, index : view.instances.length-1}, this, true) ;
-                }.bind(this));
-            }.bind(this)) ;
-        //}.bind(this)) ;
+        //render after propagate event to be sure bound listener are called
+        v.bindObject = baseData; //this.bindObject ;
+        v.render() ;
+        this.emit("viewInstanceAdded", {viewId: viewId, index : view.instances.length-1}, this, true) ;
     } ;
 
     

@@ -28,15 +28,12 @@ describe("render", function () {
 			});
 		});
 
-		it("should do a second render", function (done) {
-			view.render(animals[3], function (err) {
-				expect(err).to.not.exist;
+		it("should do a second render", function () {
+			view.render(animals[3]) ;
 
-				expect(view.EL.animal.style.color).to.equal(animals[3].color);
-				expect(view.EL.family.innerHTML).to.equal(animals[3].family);
-				expect(view.EL.name.innerHTML).to.equal(animals[3].name);
-				done();
-			});
+			expect(view.EL.animal.style.color).to.equal(animals[3].color);
+			expect(view.EL.family.innerHTML).to.equal(animals[3].family);
+			expect(view.EL.name.innerHTML).to.equal(animals[3].name);
 		});
 	});
 
@@ -226,14 +223,12 @@ describe("render", function () {
 			expect(view.container.querySelector('[data-test="saved-show"]')).to.not.exist;;
 		});
 
-		it("should have 1 saved animals", function (done) {
+		it("should have 1 saved animals", function () {
 			data.saved.push(data.tosave[0]);
 			data.tosave.splice(0, 1);
-			view.render(function(){
-				expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length - 1);
-				expect(view.container.querySelectorAll('[data-test="saved"]').length).to.equal(1);
-				done() ;
-			});
+			view.render();
+			expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length - 1);
+			expect(view.container.querySelectorAll('[data-test="saved"]').length).to.equal(1);
 		});
 
 		it("should have saved animals displayed after to save animals", function () {
@@ -241,18 +236,16 @@ describe("render", function () {
 			expect(view.container.querySelector('[data-test="tosave-show"]').nextElementSibling).to.equal(view.container.querySelector('[data-test="saved-show"]'));
 		});
 
-		it("should have no more animals to save", function (done) {
+		it("should have no more animals to save", function () {
 			data.tosave.forEach(function(s){
 				data.saved.push(s);
 			}) ;
 			data.tosave.splice(0) ;
 
-			view.render(function(){
-				expect(view.container.querySelector('[data-test="tosave-show"]')).to.not.exist;
-				expect(view.container.querySelector('[data-test="tosave-hide"]')).to.exist;
-				expect(view.container.querySelector('[data-test="tosave-hide"]').nextElementSibling).to.equal(view.container.querySelector('[data-test="saved-show"]'));
-				done() ;
-			});
+			view.render();
+			expect(view.container.querySelector('[data-test="tosave-show"]')).to.not.exist;
+			expect(view.container.querySelector('[data-test="tosave-hide"]')).to.exist;
+			expect(view.container.querySelector('[data-test="tosave-hide"]').nextElementSibling).to.equal(view.container.querySelector('[data-test="saved-show"]'));
 		});
 
 	});
@@ -488,12 +481,14 @@ describe("Concurrent open", function () {
 			this.sinon.stub(console, 'warn');
 		});
 
-		var view = new VeloxWebView("views", "animal", { container: "container" });
+		var view = new VeloxWebView("views", "animal_concurrent", { container: "container" });
 
 		it("should add a warning when open twice", function (done) {
 			view.open();
-			view.open(done);
-			expect(console.warn.calledOnce).to.be.true;
+			view.open(function(){
+				expect(console.warn.calledOnce).to.be.true;
+				done() ;
+			});
 		});
 
 	});
