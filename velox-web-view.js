@@ -1,3 +1,7 @@
+
+
+
+
 ; (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
         typeof define === 'function' && define.amd ? define(factory) :
@@ -140,10 +144,12 @@
             // prepare function arguments definition and value
             var argNames = [] ;
             var argValues = [] ;
-            Object.keys(currentData).forEach(function(k){
+            var dataKeys  = Object.keys(currentData);
+            for(var i=0; i<dataKeys.length; i++){
+                var k = dataKeys[i] ;
                 argNames.push(k);
                 argValues.push(currentData[k]);
-            }) ;
+            }
 
             /*
             we run in a loop to handle the undefined properties. consider the following example
@@ -178,6 +184,7 @@
         return false;
     }
 
+    
     /**
      * Extract a sub object use a path
      * 
@@ -189,29 +196,43 @@
      * @return {object} - The extracted sub object
      */
     function pathExtract(obj, path, getParent) {
+        //console.log("extract path", path) ;
         if(!path){
             return obj ;
         }
         var pathArray = path ;
         if (!Array.isArray(path)) {
             pathArray = path.split(".");
-        }else{
-            pathArray = path.slice();
+        // }else{
+        //     pathArray = path.slice();
         }
-        if(getParent){
-            pathArray.pop() ;
-        }
-        var objectPath = [] ;
+        // if(getParent){
+        //     pathArray.pop() ;
+        // }
+        var objectPath = [];
+        var i ;
         var dataObject = obj;
-        while (pathArray.length > 0) {
+        var len = pathArray.length ;
+        if(getParent){
+            len--;
+        }
+        var ind=0;
+        // while (pathArray.length > 0) {
+        while (ind < len) {
             //property name
-            var p = pathArray.shift().trim();
-            var index = null;
-            if (p.indexOf("[") != -1) {
-                //has index
-                index = p.substring(p.indexOf("[") + 1, p.indexOf("]")).trim();
-                p = p.substring(0, p.indexOf("[")).trim();
-            }
+            // var p = pathArray.shift().trim();
+            var p = pathArray[ind].trim();
+            // var index = null;
+            // if (p[p.length-1] === "]") {
+            //     //has index
+            //     i = p.length-3;
+            //     while(i>0 && p[i] !== "["){
+            //         i--;
+            //     }
+            //     index = p.substring(i + 1, p.length-1).trim();
+            //     p = p.substring(0, i).trim();
+            // }
+            
 
             if (dataObject) {
                 if (p && p === "$parent"){
@@ -220,10 +241,11 @@
                     objectPath.push(dataObject);
                     dataObject = dataObject[p];
                 }
-                if (dataObject && index !== null) {
-                    dataObject = dataObject[index];
-                }
+                // if (dataObject && index !== null) {
+                //     dataObject = dataObject[index];
+                // }
             }
+            ind++ ;
         }
         return dataObject;
     }
@@ -231,13 +253,14 @@
     function convertRelativeToAbsolutePath(base, relative) {
         var path = base.split("/").concat(relative.split("/")) ;
         var finalPath = [] ;
-        path.forEach(function(p){
+        for(var i=0; i<path.length; i++){
+            var p = path[i] ;
             if(p === ".."){
                 finalPath.pop() ;
             } else if(p !== "."){
                 finalPath.push(p) ;
             }
-        }) ;
+        }
         return finalPath.join("/") ;
     }
 
@@ -256,57 +279,56 @@
      */
     function pathSetValue(obj, path, value) {
         var pathArray = path.slice();
-        if (!Array.isArray(path)) {
-            pathArray = path.split(".");
-        }
+        
         var dataObject = obj;
         while (pathArray.length > 0) {
             //property name
             var p = pathArray.shift().trim();
-            var index = null;
-            if (p.indexOf("[") !== -1) {
-                //has index
-                index = parseInt(p.substring(p.indexOf("[") + 1, p.indexOf("]")).trim(), 10);
-                p = p.substring(0, p.indexOf("[")).trim();
-            }
+            // var index = null;
+            // if (p.indexOf("[") !== -1) {
+            //     //has index
+            //     index = parseInt(p.substring(p.indexOf("[") + 1, p.indexOf("]")).trim(), 10);
+            //     p = p.substring(0, p.indexOf("[")).trim();
+            // }
 
             if (dataObject) {
                 if (pathArray.length === 0) {
                     //last part, set the value
-                    if (index !== null) {
-                        if (p && p !== "this") {
-                            if (!dataObject[p]) {
-                                dataObject[p] = [];
-                            }
-                            dataObject = dataObject[p];
-                        }
-                        dataObject[index] = value;
-                    } else {
+                    // if (index !== null) {
+                    //     if (p && p !== "this") {
+                    //         if (!dataObject[p]) {
+                    //             dataObject[p] = [];
+                    //         }
+                    //         dataObject = dataObject[p];
+                    //     }
+                    //     dataObject[index] = value;
+                    // } else {
                         dataObject[p] = value;
-                    }
+                    // }
                 } else {
                     //not last part, continue to dig
                     if (p && p !== "this") {
                         if (!dataObject[p]) {
-                            if (index !== null) {
-                                dataObject[p] = [];
-                            } else {
+                            // if (index !== null) {
+                            //     dataObject[p] = [];
+                            // } else {
                                 dataObject[p] = {};
-                            }
+                            // }
                         }
                         dataObject = dataObject[p];
                     }
-                    if (dataObject && index !== null) {
-                        if (!dataObject[index]) {
-                            dataObject[index] = {};
-                        }
-                        dataObject = dataObject[index];
-                    }
+                    // if (dataObject && index !== null) {
+                    //     if (!dataObject[index]) {
+                    //         dataObject[index] = {};
+                    //     }
+                    //     dataObject = dataObject[index];
+                    // }
                 }
 
             }
         }
     }
+
 
     /**
      * Execute async function (functions that take callback) in series
@@ -316,28 +338,42 @@
      * @param {function(err)} callback - Called when all functions are finished 
      */
     function asyncSeries(calls, callback) {
-        if (calls.length === 0) {
+        var len = calls.length;
+        if (len === 0) {
             //nothing more to call
             return callback();
         }
         var call = calls[0];
         call(function (err) {
             if (err) { return callback(err); }
-            if(calls.length > 50 && calls.length % 50 === 0){
-                //call setimmediate to avoid too much recursion
-                setImmediate(function(){
-                    asyncSeries(calls.slice(1), callback);
-                }) ;
-            }else{
-                asyncSeries(calls.slice(1), callback);
+
+            if (len === 1) {
+                //nothing more to call
+                return callback();
             }
+
+            // if(len > 20 && len % 20 === 0){
+            //     //call setimmediate to avoid too much recursion
+            //     // setTimeout(function(){
+            //     //     asyncSeries(calls, ++index, callback);
+            //     // }, 0) ;
+            //     // setImmediate(function(){
+            //     //     asyncSeries(calls, ++index, callback);
+            //     // }) ;
+            //     setImmediate(function(){
+            //         asyncSeries(calls.slice(1), callback);
+            //     }) ;
+            // }else{
+                asyncSeries(calls.slice(1), callback);
+            // }
         });
+
     }
 
     function insertChild(parentElement, element, insertBefore, insertAfter){
         var nextElement = null;
         var previousElement = null;
-        if(insertBefore || insertAfter){
+        if(insertBefore /*|| insertAfter*/){
             var children = parentElement.children ;
             if(insertBefore){
                 //must be inserted before another element in parent
@@ -345,7 +381,9 @@
                 if(!Array.isArray(afterChain)){
                     afterChain = [afterChain] ;
                 }else{
-                    afterChain = afterChain.slice() ;
+                    var copy = [];
+                    for ( var i=0;i<afterChain.length; i++ ) {copy[i] = afterChain[i];}
+                    afterChain = copy ;
                 }
                 while(nextElement === null && afterChain.length>0){
                     var afterId = afterChain.shift() ;
@@ -373,7 +411,9 @@
                     if(!Array.isArray(beforeChain)){
                         beforeChain = [beforeChain] ;
                     }else{
-                        beforeChain = beforeChain.slice() ;
+                        var copy = [];
+                        for ( var i=0;i<beforeChain.length; i++ ) {copy[i] = beforeChain[i];}
+                        beforeChain = copy ;
                     }
                     while(previousElement === null && beforeChain.length>0){
                         var beforeId = beforeChain.shift() ;
@@ -434,60 +474,20 @@
         this.bindPath = null;
         this.innerViewIds = [] ;
         this.waitCount = 0;
-
-        Object.defineProperty(this, "EL", {
-            get: (function () {
-
-                if (!this.ids) {
-                    throw "Try to access element before initialization, consider to use ensureInit()";
-                }
-                var els = this.elements;
-                var elFound = false;
-                if (!els) {
-                    els = {};
-                    Object.keys(this.ids).forEach((function (id) {
-                        //use querySelector and not document.getElementById because the container maybe not yet inserted in the document
-                        if(this.container.id === this.ids[id]){
-                            els[id] = this.container;
-                        }else{
-                            try {
-                                els[id] = this.container.querySelector("#"+this.ids[id]);
-                            } catch (e){
-                                els[id] = null;
-                            }
-                        }
-                        if (els[id]) {
-                            var view = this;
-                            var elAddEventListener = els[id].addEventListener ;
-                            els[id].addEventListener = function(event, listener){
-                                elAddEventListener.call(els[id],event, function(ev){
-                                    ev.viewOfElement = view;
-                                    listener.bind(els[id])(ev) ;
-                                }) ;
-                            } ;
-                            els[id].on = els[id].addEventListener ;
-                            elFound = true;
-                        }
-                    }).bind(this));
-                    this.innerViewIds.forEach(function(innerViewId){
-                        els[innerViewId.id] = innerViewId ;
-                    }.bind(this)) ;
-                }
-                if (elFound) {
-                    this.elements = els; //remember only if found
-                }
-                return els;
-            }).bind(this)
-        });
+        this.EL = {} ;
+        
 
         //add extension features
-        VeloxWebView.extensions.forEach(function(extension){
+        for(var i=0; i<VeloxWebView.extensions.length; i++){
+            var extension = VeloxWebView.extensions[i] ;
             if (extension.extendsObj) {
-                Object.keys(extension.extendsObj).forEach(function (key) {
+                var keys = Object.keys(extension.extendsObj) ;
+                for(var y=0; y<keys.length; y++){
+                    var key = keys[y] ;
                     this[key] = extension.extendsObj[key].bind(this) ;
-                }.bind(this));
+                }
             }
-        }.bind(this));
+        }
 
     }
 
@@ -534,8 +534,11 @@
             //check if the container is still around there
             if(this.container && document.documentElement.contains(this.container)){
                 //OK the container is still here, just refresh data
-                this.bindObject = data;
-                return this.render(callback) ;
+                if(data){
+                    this.bindObject = data;
+                }
+                this.render() ;
+                return callback() ;
             }else{
                 //the container has been wipped out (probably a parent DOM element has been removed)
                 //the view is in unstable state, it should have been closed with close() before being take out the DOM
@@ -549,90 +552,244 @@
         }
 
         
-        this.container = this.options.container;
-        this.bindObject = data || this.options.bindObject;
-        this.bindPath = this.options.bindPath;
-        this.containerParent = this.options.containerParent;
+        
         this.staticHTML = this.options.html;
         this.staticCSS = this.options.css;
 
-       
+        this.compileView((function viewCompiled(err, parsed){
+            if(err){ throw err; }
 
-        this.getHTML((function (html) {
-            this.ids = {};
+            this.openCompiled(data, parsed) ;
 
-            this.parseHTML(html, function(err, parsed){
-                if(err){ throw err; }
-                var cssStatics = parsed.cssStatics;
-                var cssFiles = parsed.cssFiles;
-                var functionInView = parsed.functionInView;
-                //html = parsed.html ;
-                //var htmlReplaced = html ;
-    
-    
-                this._loadCSS(cssStatics, cssFiles, function(){
-                    var clonedBody = parsed.xmlDoc.body.cloneNode(true) ;
-                    //htmlReplaced = 
-                    this.replaceIds(clonedBody) ;
-                    
-        
-                    this.addToContainer(clonedBody, parsed) ;
-        
-                    this.prepareSubView() ;
-        
-                    var calls = [];
-        
-                    VeloxWebView.extensions.forEach((function (extension) {
-                        if (extension.init) {
-                            calls.push((function (cb) {
-                                if (extension.init.length === 0) {
-                                    //no callback
-                                    try{
-                                        extension.init.bind(this)();
-                                        cb() ;
-                                    }catch(err){
-                                        cb(err) ;
-                                    }
-                                } else {
-                                    extension.init.bind(this)(function(err){
-                                        cb(err) ;
-                                    }.bind(this));
-                                }
-                            }).bind(this));
-                        }
-                    }).bind(this));
-        
-                    asyncSeries(calls, (function (err) {
-                        if(err){  return callback(err) ; }
-        
-                        if(functionInView){
-                            functionInView(this) ;
-                        }
-    
-                        this.initAutoEmit();
-    
-                        this.initDone = true;
-                        this.emit("initDone");
-        
-                        this.render((function (err) {
-                            if(err){ return callback(err) ;}
-                            this.show();      
-                            if(this.mustHide){
-                                this.hide(); //hide has been called while init running
-                                this.mustHide = false ;
-                            }
-                            callback();
-                            this.emit("openDone", {view: this});
-                        }).bind(this));
-                    }).bind(this));
-                }.bind(this)) ;
-            }.bind(this)) ;
+            callback() ;
         }).bind(this));
         return this;
     };
 
+    /**
+     * Open the view
+     * 
+     * @param {function(Error)} [callback] - Called when init is done
+     */
+    VeloxWebView.prototype.openCompiled = function (data, parsed) {
+        
+        if(!parsed){
+            this.staticHTML = this.options.html;
+            this.staticCSS = this.options.css;
     
-    VeloxWebView.prototype.addToContainer = function(clonedBody, parsedHTML){
+            var key = this.directory + "/" + this.name;
+            if(this.staticHTML !== null && this.staticHTML !== undefined){
+                key = this.staticHTML ;
+            }
+            
+            parsed = parsedHTMLCache[key] ;
+        }
+
+        if(!parsed){ throw "try open compiled view but it is not compiled" ; }
+
+        this.container = this.options.container;
+        this.bindObject = data || this.options.bindObject;
+
+        this.bindPath = this.options.bindPath;
+        if(!this.bindPath){
+            this.bindPath = [] ;
+        }else if(typeof(this.bindPath) === "string"){
+            this.bindPath = this.bindPath.split(".") ;
+        }
+        this.containerParent = this.options.containerParent;
+            
+        this.prepareView(parsed);
+
+        this.render() ;
+        this.addToContainer(this.viewRootEl) ;
+        this.show();      
+        if(this.mustHide){
+            this.hide(); //hide has been called while init running
+            this.mustHide = false ;
+        }
+        this.opening = false ;
+        this.emit("openDone", {view: this}, this, true);
+        
+        return;
+    };
+
+    VeloxWebView.prototype.compileView = function(callback){
+        this.staticHTML = this.options.html;
+        this.staticCSS = this.options.css;
+
+        var key = this.directory + "/" + this.name;
+        if(this.staticHTML !== null && this.staticHTML !== undefined){
+            key = this.staticHTML ;
+        }
+        
+        var parsed = parsedHTMLCache[key] ;
+        if(parsed){
+            return callback(null, parsed) ;
+        }else{
+            this.getHTML(function (html) {
+                this.parseHTML(html, function(err, parsed){
+                    if(err){ throw err; }
+
+                    parsedHTMLCache[key] = parsed;
+
+                    this._loadCSS(parsed.cssStatics, parsed.cssFiles, function(){
+                        var calls = [];
+                        
+                        VeloxWebView.extensions.forEach((function (extension) {
+                            if (extension.prepare) {
+                                calls.push((function (cb) {
+                                    if (extension.prepare.length === 0) {
+                                        //no callback
+                                        try{
+                                            extension.prepare.bind(this)();
+                                            cb() ;
+                                        }catch(err){
+                                            cb(err) ;
+                                        }
+                                    } else {
+                                        extension.prepare.bind(this)(function(err){
+                                            cb(err) ;
+                                        }.bind(this));
+                                    }
+                                }).bind(this));
+                            }
+                        }).bind(this));
+
+                        var calls = [];
+                        
+                        Object.keys(parsed.subviews).forEach((function (viewId) {
+                            calls.push(function(cb){
+                                var view = parsed.subviews[viewId] ;
+                                var viewOptions = {
+                                    containerParent: null,
+                                    container: null,
+                                    containerIsInside : null,
+                                    insertBefore : null,
+                                    insertAfter : null,
+                                    file: view.file,
+                                    html: view.html,
+                                    css: view.html?"":undefined,
+                                    bindObject: null,
+                                    bindPath: []
+                                } ;
+                                
+                                var v = new VeloxWebView(view.dir, view.file, viewOptions);
+                                v.compileView(cb) ;
+                            });
+                        }));
+
+                        asyncSeries(calls, function(err){
+                            if(err){ throw err; }
+                            callback(null, parsed) ;
+                        }) ;
+                    }.bind(this));
+                }.bind(this));
+            }.bind(this));
+        }
+    } ;
+
+    VeloxWebView.prototype.prepareView = function(parsed){
+        var functionInView = parsed.functionInView;
+        var clonedBody = parsed.xmlDoc.body.cloneNode(true) ;
+
+        this.replaceIds(clonedBody, parsed) ;
+        
+        this.prepareContainer(clonedBody, parsed) ;
+
+        //clone the sub views definitions
+        this.views = {} ;
+        var subViewsKeys = Object.keys(parsed.subviews) ;
+        for(var i=0; i<subViewsKeys.length; i++){
+            var k = subViewsKeys[i] ;
+            var subViewDef = parsed.subviews[k] ;
+
+            //search the parent element in current instance
+            var idParent = subViewDef.elParent.getAttribute("data-vieworder-id") ;
+            var parentInThisInstance = this.viewRootEl.querySelector('[data-vieworder-id="'+idParent+'"]') ;
+            if(!parentInThisInstance) {// && (subViewDef.elParent.tagName === "BODY" || this.viewRootEl.getAttribute("data-vieworder-id") === idParent)){
+                //parent is the view root
+                parentInThisInstance = this.viewRootEl ;
+            }
+            
+            this.views[k] = {
+                elParent: parentInThisInstance,
+                el: subViewDef.el,
+                isBefore : subViewDef.isBefore,
+                isAfter : subViewDef.isAfter,
+                bindPath: subViewDef.bindPath,
+                dir: subViewDef.dir,
+                html: subViewDef.html,
+                file: subViewDef.file,
+                showIf: subViewDef.showIf,
+                hideIf: subViewDef.hideIf,
+                multiple: subViewDef.multiple,
+                ids: subViewDef.ids,
+                instances: []
+            } ;
+            this.prepareSubViewsSubElements(subViewDef) ;
+        }
+
+        //prepare the bound elements
+        this.boundElements = [] ;
+        for(var i=0; i<parsed.boundElements.length; i++){
+            var boundEl = parsed.boundElements[i] ;
+            var el = boundEl.el ;
+            var idEl = el.getAttribute("data-vieworder-id") ;
+            var elInThisInstance = this.viewRootEl.querySelector('[data-vieworder-id="'+idEl+'"]') ;
+            if(!elInThisInstance){// && (el.tagName === "BODY" || this.viewRootEl.getAttribute("data-vieworder-id") === idEl)){
+                //parent is the view root
+                elInThisInstance = this.viewRootEl ;
+            }
+
+            var boundElCopy = {
+                bindPath : boundEl.bindPath,
+                boundAttributes: boundEl.boundAttributes,
+                boundTextNodes: boundEl.boundTextNodes,
+                el: elInThisInstance
+            } ;
+
+            this.boundElements.push(boundElCopy) ;
+        }
+
+    
+        for(var i=0; i<VeloxWebView.extensions.length; i++){
+            var extension = VeloxWebView.extensions[i] ;
+            if (extension.init) {
+                extension.init.bind(this)();
+            }
+        }
+
+
+        if(functionInView){
+            functionInView(this) ;
+        }
+
+        this.initAutoEmit();
+
+        this.initDone = true;
+        this.emit("initDone", null, this, true);
+    };
+
+    
+    VeloxWebView.prototype.prepareContainer = function(clonedBody, parsedHTML){
+        if(parsedHTML.childrenCount === 1 && clonedBody.firstChild.nodeType !== Node.TEXT_NODE){
+            //only 1 root element in view, use it as container
+            this.viewRootEl = clonedBody.firstChild;
+        }else{
+            //many root element in the view, use the div as container
+            var div = document.createElement("DIV");
+            //div.innerHTML = htmlReplaced.trim();
+            while(clonedBody.firstChild){
+                div.appendChild(clonedBody.firstChild) ;
+            }
+            this.viewRootEl = div;
+            this.viewRootElIsPacked = true; //flag to know that we created an artificial DIV arround the content of the view
+        }
+        // this.viewRootEl = clonedBody;
+        // this.viewRootElIsPacked = true; //flag to know that we created an artificial DIV arround the content of the view
+    };
+
+    VeloxWebView.prototype.addToContainer = function(){
         if (typeof (this.container) === "string") {
             this.containerId = this.container;
             this.container = document.getElementById(this.container);
@@ -640,19 +797,8 @@
 
         if (!this.container) {
             if (this.containerParent) {
-                //automatically create container in parent if not exist
-                if(parsedHTML.childrenCount === 1){
-                    //only 1 root element in view, use it as container
-                    this.container = clonedBody.firstChild;
-                    //this.container = div.firstElementChild ;
-                }else{
-                    //many root element in the view, use the div as container
-                    var div = document.createElement("DIV");
-                    //div.innerHTML = htmlReplaced.trim();
-                    div.appendChild(clonedBody) ;
-                    this.container = div ;
-                }
-
+                this.container = this.viewRootEl;
+                
                 if (this.containerId) {
                     this.container.id = this.containerId;
                 }
@@ -660,26 +806,42 @@
                 if (typeof (this.containerParent) === "string") {
                     this.containerParent = document.getElementById(this.containerParent);
                 }
-                this.container.style.display = "none"; //hide during init
                 insertChild(this.containerParent, this.container, this.options.insertBefore, this.options.insertAfter) ;
-                
             } else {
                 throw this.containerId + " is not found";
             }
         } else {
-            this.container.style.display = "none"; //hide during init
-            if(this.options.containerIsInside && this.container.id){
-                //this container is considered to be inside the view
-                //this is the case when we have a repeating view with external file, ex :
-                //<div data-bind="foo[]" data-view="oneFoo" id="fooLine">
-                //in this case the container can't be handled by parent view because it may happens 0 or many time
-                //it must be handle by the sub view (we are here initializing this subview)
-                this.container.setAttribute("data-original-id", this.container.id) ;
-                var modifiedId = this.container.id+ID_SEP + uuidv4() ; ;
-                this.ids[this.container.id] = modifiedId;
-                this.container.id = modifiedId ;
+            // if(this.options.containerIsInside && this.container.id){
+            //     //this container is considered to be inside the view
+            //     //this is the case when we have a repeating view with external file, ex :
+            //     //<div data-bind="foo[]" data-view="oneFoo" id="fooLine">
+            //     //in this case the container can't be handled by parent view because it may happens 0 or many time
+            //     //it must be handle by the sub view (we are here initializing this subview)
+            //     this.container.setAttribute("data-original-id", this.container.id) ;
+            //     var modifiedId = this.container.id+ID_SEP + uuidv4() ; ;
+            //     this.ids[this.container.id] = modifiedId;
+            //     this.container.id = modifiedId ;
+            // }
+            while (this.container.firstChild) {
+                this.container.removeChild(this.container.firstChild);
             }
-            this.container.innerHTML = clonedBody.innerHTML;
+            if(this.viewRootElIsPacked){
+                //this view contains many sub element, add them
+                while(this.viewRootEl.firstChild){
+                    this.container.appendChild(this.viewRootEl.firstChild) ;
+                }
+                //update the root in subview parent element references
+                var viewsKeys = Object.keys(this.views) ;
+                for(var a=0; a<viewsKeys.length; a++){
+                    var k = viewsKeys[a] ;
+                    if(this.views[k].elParent === this.viewRootEl){
+                        this.views[k].elParent = this.container ;
+                    }
+                }
+                this.viewRootEl = this.container ;
+            }else{
+                this.container.appendChild(this.viewRootEl);
+            }
         }
     };
 
@@ -688,40 +850,64 @@
      * 
      * @param {Element} bodyNode the body node of the HTML contents
      */
-    VeloxWebView.prototype.replaceIds = function(bodyNode){
-        var elWithId = bodyNode.querySelectorAll("[id]") ;
-        for(var i=0; i<elWithId.length; i++){
-            var el = elWithId[i] ;
-            var id = el.id ;
-            var uuidEl = uuidv4();
-            if (id[0] === "#") {
-                //force keep this id
-                id = id.substring(1);
-                this.ids[id] = id;
-                el.id = id ;
-            } else {
-                //add UUID
-                var modifiedId = id + ID_SEP + uuidEl ;
-                this.ids[id] = modifiedId;
-                el.id = modifiedId ;
-                el.setAttribute("data-original-id", id) ;
+    VeloxWebView.prototype.replaceIds = function(bodyNode, parsed){
+        this.ids = {};
+        if(this.container && this.container.id && !this.container.hasAttribute("data-original-id")){
+            //this container is considered to be inside the view
+                //this is the case when we have a repeating view with external file, ex :
+                //<div data-bind="foo[]" data-view="oneFoo" id="fooLine">
+                //in this case the container can't be handled by parent view because it may happens 0 or many time
+                //it must be handle by the sub view (we are here initializing this subview)
+            this.changeId(this.container.id, this.container, bodyNode) ;
+        }
+        for(var i=0; i<parsed.ids.length; i++){
+            var id = parsed.ids[i] ;
+            var el = bodyNode.querySelector('[id="'+id+'"]') ;
+            
+            this.changeId(id, el, bodyNode) ;
+        }
+        
+    };
+    VeloxWebView.prototype.changeId = function(id, el, bodyNode){
+        this.EL[id] = el ;
+        var view = this;
+        var elAddEventListener = el.addEventListener ;
+        el.addEventListener = function(event, listener){
+            elAddEventListener.call(el,event, function(ev){
+                ev.viewOfElement = view;
+                listener.bind(el)(ev) ;
+            }) ;
+        } ;
+        el.on = el.addEventListener ;
 
-                //modify references
-                var elTarget = bodyNode.querySelectorAll('[data-target="#'+id+'"]') ;
-                for(var y=0; y<elTarget.length; y++){
-                    elTarget[y].setAttribute("data-target", "#"+modifiedId) ;
-                }
-                var elHref = bodyNode.querySelectorAll('[href="#'+id+'"]') ;
-                for(var y=0; y<elHref.length; y++){
-                    elHref[y].setAttribute("href", "#"+modifiedId) ;
-                }
-                var elFor = bodyNode.querySelectorAll('[for="'+id+'"]') ;
-                for(var y=0; y<elFor.length; y++){
-                    elFor[y].setAttribute("data-target", modifiedId) ;
-                }
+        var uuidEl = uuidv4();
+        if (id[0] === "#") {
+            //force keep this id
+            id = id.substring(1);
+            this.ids[id] = id;
+            el.id = id ;
+        } else {
+            //add UUID
+            var modifiedId = id + ID_SEP + uuidEl ;
+            this.ids[id] = modifiedId;
+            el.id = modifiedId ;
+            el.setAttribute("data-original-id", id) ;
+
+            //modify references
+            var elTarget = bodyNode.querySelectorAll('[data-target="#'+id+'"]') ;
+            for(var y=0; y<elTarget.length; y++){
+                elTarget[y].setAttribute("data-target", "#"+modifiedId) ;
+            }
+            var elHref = bodyNode.querySelectorAll('[href="#'+id+'"]') ;
+            for(var y=0; y<elHref.length; y++){
+                elHref[y].setAttribute("href", "#"+modifiedId) ;
+            }
+            var elFor = bodyNode.querySelectorAll('[for="'+id+'"]') ;
+            for(var y=0; y<elFor.length; y++){
+                elFor[y].setAttribute("data-target", modifiedId) ;
             }
         }
-    };
+    }
 
     /**
      * Replace relative path
@@ -742,7 +928,7 @@
     VeloxWebView.prototype.hide = function(){
         if(this.container && this.initDone){
             this.container.style.display = "none";
-            this.emit("hidden");      
+            this.emit("hidden", null, this, true);      
         }else{
             //init not done, add a flag to hide when init will be done
             this.mustHide = true ;
@@ -754,8 +940,10 @@
      */
     VeloxWebView.prototype.show = function(){
         if(this.container){
-            this.container.style.display = ""; 
-            this.emit("displayed", {view : this});      
+            if(this.container.style.display === "none"){
+                this.container.style.display = ""; 
+            }
+            this.emit("displayed", {view : this}, this, true);      
         }
     } ;
 
@@ -767,13 +955,15 @@
      * @param {boolean} withIgnore return the element contains in ignore blocks
      */
     VeloxWebView.prototype.elementsHavingAttribute = function(attributeName, withIgnore){
-        var elements = Array.prototype.slice.apply(this.container.querySelectorAll('['+attributeName+']'));
-        if(this.container.hasAttribute(attributeName)){//add the container himself if it has this attribute
-            elements.push(this.container) ;
+        var elements = [];
+        var foundEls = this.viewRootEl.querySelectorAll('['+attributeName+']');
+        for ( var i=0;i<foundEls.length; i++ ) {elements[i] = foundEls[i];}
+        if(this.viewRootEl.hasAttribute(attributeName)){//add the container himself if it has this attribute
+            elements.push(this.viewRootEl) ;
         }
         if(elements.length>0){
             //remove the elements contained in data-dont-process block
-            var blockToIgnore = this.container.querySelectorAll('[data-dont-process]');
+            var blockToIgnore = this.viewRootEl.querySelectorAll('[data-dont-process]');
             
             if(blockToIgnore.length>0){
                 elements = elements.filter(function(el){
@@ -795,7 +985,7 @@
 
 
     VeloxWebView.prototype.close = function(){
-        this.emit("close");   
+        this.emit("close",null, this, true);   
         if(!this.options.container && this.options.containerParent && this.containerParent && this.container){
             this.containerParent.removeChild(this.container) ;
         }else if(this.container){
@@ -829,7 +1019,7 @@
      * @param {function(html)} callback - Called with HTML contents when fetched
      */
     VeloxWebView.prototype.getHTML = function (callback) {
-        if (this.staticHTML) {
+        if (this.staticHTML !== null && this.staticHTML !== undefined) {
             callback(this.staticHTML);
         } else {
             var htmlUrl = this.directory + "/" + this.name + ".html";
@@ -857,11 +1047,8 @@
      * @param {sting} html the HTML of the view
      */
     VeloxWebView.prototype.parseHTML = function (htmlOfView, callback) {
-        var parsed = parsedHTMLCache[htmlOfView] ;
-        if(parsed){
-            return callback(null, parsed) ;
-        }
-        var html = htmlOfView.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
+        var parsed = null;
+        var html = htmlOfView; //.replace(/data-original-id=['"]{1}[^'"]*['"]{1}/g, "") ; //remove any original id
         
         var cssStatics = [] ;
         if(this.staticCSS){
@@ -917,22 +1104,94 @@
 
         this.replacePaths(xmlDoc.body) ;
 
-        asyncSeries(calls, function(err){
+        asyncSeries(calls,  function(err){
             if(err){
                 return callback(err) ;
             }
 
+            var subviews = this.prepareSubViews(xmlDoc.body) ;
+
+            var ids = [] ;
+            var elIds = xmlDoc.querySelectorAll("[id]") ;
+            for(var i=0; i<elIds.length; i++){
+                ids.push(elIds[i].id) ;
+            }
+
+            var boundElements = [];
+            var allElements = [];
+            var foundEls = xmlDoc.getElementsByTagName("*");
+            for ( var i=0;i<foundEls.length; i++ ) {allElements[i] = foundEls[i];}
+            for(var z=0; z<allElements.length; z++){
+                var el = allElements[z] ;
+                var bindPath = el.getAttribute("data-bind");
+                var bindEl = {el: el} ;
+                var isContainerOfNestedView = false;
+                if(el === xmlDoc){
+                    if(el.getAttribute("data-view")){
+                        isContainerOfNestedView = true;
+                    } else if(el.children.length > 0) {
+                        isContainerOfNestedView = true;
+                    }
+                }
+                if(
+                    !isContainerOfNestedView &&
+                    bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
+                    bindEl.bindPath = bindPath.split(".");
+                }
+                var attributes = el.attributes ;
+                var boundAttributes = {} ;
+                var hasBoundAttribute = false ;
+                for(var i=0; i<attributes.length; i++){
+                    if(attributes[i].value.indexOf("${") !== -1 && attributes[i].value.indexOf("}") !== -1){
+                        boundAttributes[attributes[i].name] = attributes[i].value ;
+                        hasBoundAttribute = true ;
+                    }
+                }
+                if(hasBoundAttribute){
+                    bindEl.boundAttributes = boundAttributes;
+                }
+
+                var textNodes = [];
+                for ( var i=0;i<el.childNodes.length; i++ ) {
+                    if(el.childNodes[i].nodeType === Node.TEXT_NODE){
+                        textNodes.push(el.childNodes[i]);
+                    }
+                }
+
+                var boundTextNodes = {} ;
+                var hasBoundTextNodes = false ;
+                for(var i=0; i<textNodes.length; i++){
+                    if(textNodes[i].textContent.indexOf("${") !== -1 && textNodes[i].textContent.indexOf("}") !== -1){
+                        boundTextNodes[i] = textNodes[i].textContent ;
+                        hasBoundTextNodes = true ;
+                    }
+                }
+                if(hasBoundTextNodes){
+                    bindEl.boundTextNodes = boundTextNodes;
+                }
+
+
+                if(bindEl.bindPath || bindEl.boundAttributes || bindEl.boundTextNodes){
+                    if(!bindEl.el.hasAttribute("data-vieworder-id")){
+                        bindEl.el.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+                    }
+                    boundElements.push(bindEl);
+                }
+            } ;
+
             parsed = {
-                childrenCount: xmlDoc.body.children.length,
+                childrenCount: xmlDoc.body.childNodes.length,
                 xmlDoc :xmlDoc,
                 //html: html,
                 cssStatics: cssStatics,
                 cssFiles: cssFiles,
-                functionInView: functionInView
+                subviews: subviews,
+                functionInView: functionInView,
+                ids: ids,
+                boundElements: boundElements
             } ;
-            parsedHTMLCache[htmlOfView] = parsed;
             callback(null, parsed) ;
-        }) ;
+        }.bind(this)) ;
     };
 
 
@@ -954,9 +1213,9 @@
 
     VeloxWebView.prototype._loadCSS = function (cssStrings, cssFiles, callback) {
         var calls = [] ;
-        cssStrings.forEach(function(cssContent){
-            this.loadStaticCss(cssContent) ;
-        }.bind(this)) ;
+        for(var i=0; i<cssStrings.length; i++){
+            this.loadStaticCss(cssStrings[i]) ;
+        }
         cssFiles.forEach(function(cssFile){
             calls.push(function(cb){
                 this.loadCSSFile(cssFile, cb);
@@ -1029,6 +1288,7 @@
             return; //already added
         }
 
+        var elClone = el.cloneNode() ;
 
         var viewId = el.getAttribute("data-view-id");
         if (!viewId) {
@@ -1061,6 +1321,7 @@
             var bindAttr = el.getAttribute("data-bind");
             var showIfAttr = el.getAttribute("data-show-if");
             var hideIfAttr = el.getAttribute("data-hide-if");
+            
             var dir = this.directory ;
             if(viewAttr){
                 var lastSlash = viewAttr.lastIndexOf("/") ;
@@ -1074,7 +1335,7 @@
                     el: el,
                     isBefore : nextElementIds.length>0?nextElementIds:null,
                     isAfter : previousElementIds.length>0?previousElementIds:null,
-                    bindPath: bindAttr,
+                    bindPath: bindAttr?bindAttr.split("."):[],
                     dir: dir,
                     file: file,
                     showIf: showIfAttr,
@@ -1082,27 +1343,32 @@
                     instances: []
                 };
             }else if(showIfAttr || hideIfAttr){
+                elClone.removeAttribute("data-show-if");
+                elClone.removeAttribute("data-hide-if");
                 this.views[viewId] = {
                     elParent: el.parentElement,
                     el: el,
                     isBefore :  nextElementIds.length>0?nextElementIds:null,
                     isAfter : previousElementIds.length>0?previousElementIds:null,
-                    bindPath: bindAttr,
+                    bindPath: bindAttr?bindAttr.split("."):[],
                     dir: dir,
-                    html: el.outerHTML,
+                    html: elClone.outerHTML,
                     showIf: showIfAttr,
                     hideIf: hideIfAttr,
                     instances: []
                 };
             }else{
+                if(bindAttr && /\[\]$/.test(bindAttr)){
+                    elClone.removeAttribute("data-bind");
+                }
                 this.views[viewId] = {
                     elParent: el.parentElement,
                     el: el,
                     isBefore :  nextElementIds.length>0?nextElementIds:null,
                     isAfter : previousElementIds.length>0?previousElementIds:null,
-                    bindPath: bindAttr,
+                    bindPath: bindAttr?bindAttr.split("."):[],
                     dir: dir,
-                    html: el.outerHTML,
+                    html: elClone.outerHTML,
                     showIf: showIfAttr,
                     hideIf: hideIfAttr,
                     instances: []
@@ -1111,45 +1377,26 @@
         }
     } ;
 
-    VeloxWebView.prototype.prepareSubView = function () {
-        var elementsSubs = [] ;
-        var i, el, bindPath;
+    VeloxWebView.prototype.prepareSubViews = function (bodyEl) {
         
+        var elementsSubs = [], i, els;
         
-
-        //views linked to data-show-if
-        var elementsShowIf = this.container.querySelectorAll('[data-show-if]');
-        for (i = 0; i < elementsShowIf.length; i++) {
-            elementsSubs.push(elementsShowIf[i]) ;
-        }
-
-        //views linked to data-show-if
-        var elementsHideIf = this.container.querySelectorAll('[data-hide-if]');
-        for (i = 0; i < elementsHideIf.length; i++) {
-            elementsSubs.push(elementsHideIf[i]) ;
-        }
-
-        
-        //views linked to data bind of array like data-bind="obj.listOfSomething[]"
-        var elements = this.container.querySelectorAll('[data-bind]');
-        for (i = 0; i < elements.length; i++) {
-            el = elements[i];
-            bindPath = el.getAttribute("data-bind");
-            if (bindPath.replace(/\s/g, "").match(/\[\]$/)) {
-                elementsSubs.push(el) ;
+        els = bodyEl.querySelectorAll("[data-show-if]") ;
+        for(i=0; i<els.length; i++){ elementsSubs.push(els[i]) ; }
+        els = bodyEl.querySelectorAll("[data-hide-if]") ;
+        for(i=0; i<els.length; i++){ elementsSubs.push(els[i]) ; }
+        els = bodyEl.querySelectorAll("[data-bind]") ;
+        for(i=0; i<els.length; i++){ 
+            if(/\[\]$/.test(els[i].getAttribute("data-bind").replace(/\s/g, ""))){
+                elementsSubs.push(els[i]) ; 
             }
         }
-
-        //view explicitelly referenced with data-view="dir/myview"
-        var elementsView = this.container.querySelectorAll('[data-view]');
-        for (i = 0; i < elementsView.length; i++) {
-            elementsSubs.push(elementsView[i]) ;
-        }
+        els = bodyEl.querySelectorAll("[data-view]") ;
+        for(i=0; i<els.length; i++){ elementsSubs.push(els[i]) ; }
 
         if(elementsSubs.length>0){
             //remove the elements contained in data-dont-process block
-            var blockToIgnore = this.container.querySelectorAll('[data-dont-process]');
-            
+            var blockToIgnore = bodyEl.querySelectorAll("[data-dont-process]") ;;
             if(blockToIgnore.length>0){
                 elementsSubs = elementsSubs.filter(function(el){
                     var toIgnore = false ;
@@ -1165,11 +1412,19 @@
             }
         }
 
+        elementsSubs = elementsSubs.filter(function(el, y){
+            return !elementsSubs.some(function(otherEl, i){
+                return  (i > y && otherEl === el) || //duplicated
+                        (y !== i && otherEl !== el && otherEl.contains(el)) ; //contained by another element, will be handled by subview
+            }) ;
+        }) ;
+
         //do a first loop to prepare the order ids. Because containers of conditinal subviews
         //are removed from DOM, we must add id to all elements and remember the positions
         //of each others. This loop initialize order ids before creating view definition
         //to be sure that we have id on all when get HTML of views
-        elementsSubs.forEach(function(el){
+        for(var i=0; i<elementsSubs.length; i++){
+            var el = elementsSubs[i] ;
             var nextElementInParent = el.nextElementSibling ;
             while(nextElementInParent){
                 if(!nextElementInParent.hasAttribute("data-vieworder-id")){
@@ -1184,111 +1439,189 @@
                 }
                 previousElementInParent = previousElementInParent.previousElementSibling ;
             }
-        }) ;
+        }
 
-        for (i = 0; i < elementsSubs.length; i++) {
-            el = elementsSubs[i] ;
-            //check if it is a sub element of a subview
-            var parent = el.parentElement ;
-            var isAlreadyInSubView = false;
-            while(parent && parent !== this.container){
-                if(elementsSubs.indexOf(parent) !== -1){
-                     isAlreadyInSubView = true;
-                     break;   
-                }
-                parent = parent.parentElement ;
-            }
-
-            //reset the id has it will be parsed again when sub view will be instancied
-            var elementsSubViews = Array.prototype.slice.apply(el.querySelectorAll('[data-original-id]'));
-            if(el.hasAttribute("data-original-id")){
-                elementsSubViews.push(el) ;
-            }
-            elementsSubViews.forEach(function(elInner, z){
-                var elInner = elementsSubViews[z] ;
-                elInner.id = elInner.getAttribute("data-original-id") ; 
-                if(elInner.id){
-
-                    elInner.removeAttribute("data-original-id") ;
-    
-                    //for the anonymous subviews, remember all internal id to give access in EL (because there is no explicit view to access to them)
-                    var fakeEl = {
-                        id : elInner.id,
-                        el: el,
-                        listeners: {},
-                        addEventListener: function(event, listener){
-                            if(!this.listeners[event]){
-                                this.listeners[event] = [] ;
-                            }
-                            this.listeners[event].push(listener) ;
-                        },
-                        isFake: true
-                    } ;
-                    //create decorator around element properties and function
-                    HTMLELEMENT_PROTO_KEYS.forEach(function(k){
-                        if(Object.keys(fakeEl).indexOf(k) === -1){
-                            if(typeof(elInner[k]) === "function"){
-                                fakeEl[k] = function(){
-                                    if(fakeEl.realEl){
-                                        return fakeEl.realEl[k].apply(fakeEl.realEl, arguments) ;
-                                    }
-                                } ;
-                            }else{
-                                Object.defineProperty(fakeEl, k, {
-                                    get: function(){
-                                        if(fakeEl.realEl){ return fakeEl.realEl[k] ;}
-                                        return null;
-                                    },
-                                    set : function(value){
-                                        if(fakeEl.realEl){ fakeEl.realEl[k] = value ;}
-                                    }
-                                }) ;
-                            }
-                        }
-                    }) ;
-                    this.innerViewIds.push(fakeEl) ;
-                }
-            }.bind(this)) ;
+        var subViews = {} ;
+        for(var i=0; i<elementsSubs.length; i++){
+            var el = elementsSubs[i] ;
+            var elClone = el.cloneNode(true) ;
             
-            if(!isAlreadyInSubView){
-                //we reference only the direct subview, subviews of subviews will be handled by the subview
-                this._addSubView(el) ;
+            var viewId = el.getAttribute("data-view-id");
+            if (!viewId) {
+                viewId = el.id; 
+                if (!viewId) {
+                    viewId = "v_"+uuidv4();
+                }
+                el.setAttribute("data-view-id", viewId);
+            }
+            var nextElementInParent = el.nextElementSibling ;
+            var nextElementIds = [];
+            while(nextElementInParent){
+                if(!nextElementInParent.hasAttribute("data-vieworder-id")){
+                    nextElementInParent.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+                }
+                nextElementIds.push(nextElementInParent.getAttribute("data-vieworder-id")) ;
+                nextElementInParent = nextElementInParent.nextElementSibling ;
+            }
+            var previousElementInParent = el.previousElementSibling ;
+            var previousElementIds = [];
+            while(previousElementInParent){
+                if(!previousElementInParent.hasAttribute("data-vieworder-id")){
+                    previousElementInParent.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+                }
+                previousElementIds.push(previousElementInParent.getAttribute("data-vieworder-id")) ;
+                previousElementInParent = previousElementInParent.previousElementSibling ;
+            }
+            if (!subViews[viewId]) {
+                var viewAttr = el.getAttribute("data-view");
+                var bindAttr = el.getAttribute("data-bind");
+                var showIfAttr = el.getAttribute("data-show-if");
+                var hideIfAttr = el.getAttribute("data-hide-if");
+                if(!el.parentElement.hasAttribute("data-vieworder-id")){
+                    el.parentElement.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+                }
+                var ids = [];
+                var elIds = el.querySelectorAll('[id]');
+                for(i=0; i<elIds.length; i++){
+                    ids.push(elIds[i].id) ;
+                }
+                var dir = this.directory ;
+                if(viewAttr){
+                    var lastSlash = viewAttr.lastIndexOf("/") ;
+                    var file = viewAttr ;
+                    if(lastSlash !== -1){
+                        dir = viewAttr.substring(0, lastSlash) ;
+                        file= viewAttr.substring(lastSlash+1) ;
+                    }
+                    var isMultiple = false ;
+                    if(bindAttr && /\[\]$/.test(bindAttr)){
+                        isMultiple = true ;
+                    }
+                    subViews[viewId] = {
+                        elParent: el.parentElement,
+                        el: el,
+                        isBefore : nextElementIds.length>0?nextElementIds:null,
+                        isAfter : previousElementIds.length>0?previousElementIds:null,
+                        bindPath: bindAttr?bindAttr.split("."):[],
+                        dir: dir,
+                        file: file,
+                        showIf: showIfAttr,
+                        hideIf: hideIfAttr,
+                        multiple: isMultiple,
+                        ids:ids,
+                        instances: []
+                    };
+                }else{
+                    if(showIfAttr){
+                        elClone.removeAttribute("data-show-if");
+                    }
+                    if(hideIfAttr){
+                        elClone.removeAttribute("data-hide-if");
+                    }
+                    var isMultiple = false ;
+                    if(bindAttr && /\[\]$/.test(bindAttr)){
+                        isMultiple = true ;
+                        elClone.removeAttribute("data-bind");
+                    }
+                    if(el.id){ids.push(el.id) ;}
+                    subViews[viewId] = {
+                        elParent: el.parentElement,
+                        el: el,
+                        isBefore :  nextElementIds.length>0?nextElementIds:null,
+                        isAfter : previousElementIds.length>0?previousElementIds:null,
+                        bindPath: bindAttr?bindAttr.split("."):[],
+                        dir: dir,
+                        html: elClone.outerHTML,
+                        multiple: isMultiple,
+                        showIf: showIfAttr,
+                        hideIf: hideIfAttr,
+                        ids:ids,
+                        instances: []
+                    };
+                } 
             }
         }
-
-        //remove element after all views are defined because we need the el position each other in all view definition
-        //because we need to know which view is before/after which view in a parent when 2 views are in the same parent
-        //to put them at the right place we create instances on render
-        Object.keys(this.views).forEach(function(viewId){
-            this.views[viewId].elParent.removeChild(this.views[viewId].el) ;
-        }.bind(this)) ;
         
-    };
-
-    VeloxWebView.prototype._transformData = function (callback) {
-        if(!this.options.transformData){
-            return callback() ;
+        //remove from parent (should be done in a separate loop to avoid loosing order relations between elements)
+        for(var i=0; i<elementsSubs.length; i++){
+            var el = elementsSubs[i] ;
+            el.parentElement.removeChild(el) ;
         }
-        if(this.options.transformData.length === 1){
-            try{
-                var transformed = this.options.transformData(this.bindObject);
-                if(!transformed){ return callback("The transformData function should return the modified value") ; }
-                this.bindObject = transformed;
-                callback() ;
-            }catch(err){
-                callback(err) ;
+
+
+        return subViews ;
+    } ;
+
+    VeloxWebView.prototype.prepareSubViewsSubElements = function (viewDef) {
+
+        for(var y=0; y<viewDef.ids.length; y++){
+            var id = viewDef.ids[y] ;
+            var fakeEl = {
+                id : id,
+                //el: el,
+                listeners: {},
+                addEventListener: function(event, listener){
+                    if(!this.listeners[event]){
+                        this.listeners[event] = [] ;
+                    }
+                    this.listeners[event].push(listener) ;
+                },
+                isFake: true
+            } ;
+            //create decorator around element properties and function
+            var fakeElKeys = Object.keys(fakeEl) ;
+            for(var i=0; i<HTMLELEMENT_PROTO_KEYS.length; i++){
+                var k = HTMLELEMENT_PROTO_KEYS[i] ;
+                if(fakeElKeys.indexOf(k) === -1){
+                    if(typeof(HTMLELEMENT_PROTO_KEYS[k]) === "function"){
+                        fakeEl[k] = function(){
+                            if(fakeEl.realEl){
+                                return fakeEl.realEl[k].apply(fakeEl.realEl, arguments) ;
+                            }
+                        } ;
+                    }else{
+                        Object.defineProperty(fakeEl, k, {
+                            get: function(){
+                                if(fakeEl.realEl){ return fakeEl.realEl[k] ;}
+                                return null;
+                            },
+                            set : function(value){
+                                if(fakeEl.realEl){ fakeEl.realEl[k] = value ;}
+                            }
+                        }) ;
+                    }
+                }
             }
-        }else if(this.options.transformData.length === 1){
-            this.options.transformData(this.bindObject, function(err, transformed){
-                if(err){ return callback(err); }
-                if(!transformed){ return callback("The transformData function should give back the modified value on callback (err, modifiedValue)") ; }
-                this.bindObject = transformed ;
-                callback() ;
-            }) ;
-        }else{
-            callback("The transformData function should take argument (data) or (data, callback)") ;
+            this.innerViewIds.push(fakeEl) ;
+            this.EL[id] = fakeEl;
         }
     } ;
+    
+
+    // VeloxWebView.prototype._transformData = function (callback) {
+    //     if(!this.options.transformData){
+    //         return callback() ;
+    //     }
+    //     if(this.options.transformData.length === 1){
+    //         try{
+    //             var transformed = this.options.transformData(this.bindObject);
+    //             if(!transformed){ return callback("The transformData function should return the modified value") ; }
+    //             this.bindObject = transformed;
+    //             callback() ;
+    //         }catch(err){
+    //             callback(err) ;
+    //         }
+    //     }else if(this.options.transformData.length === 1){
+    //         this.options.transformData(this.bindObject, function(err, transformed){
+    //             if(err){ return callback(err); }
+    //             if(!transformed){ return callback("The transformData function should give back the modified value on callback (err, modifiedValue)") ; }
+    //             this.bindObject = transformed ;
+    //             callback() ;
+    //         }) ;
+    //     }else{
+    //         callback("The transformData function should take argument (data) or (data, callback)") ;
+    //     }
+    // } ;
 
     /**
      * Get the subview instance
@@ -1306,339 +1639,283 @@
      * @param {object} [dataToRender] - The data to render. If not given, it use the object given on init or on previous render
      * @param {function} [callback] - Called when render is done
      */
-    VeloxWebView.prototype.render = function (dataToRender, callbackParam) {
-        this.ensureInit(function(){
-            //ensure init because we can arrive here while init is running (for example a new view refresh is called while a first one is not yet done)
+    VeloxWebView.prototype.render = function (dataToRender) {
+        if (!this.initDone) {
+            this.once("initDone", function(){
+                this.render(dataToRender) ;
+            }.bind(this));
+            return;
+        }
 
-            
-
-            this.elements = null; //clear EL collection to force recompute as some sub element may change on render
-            
-            if (typeof (dataToRender) === "function") {
-                callbackParam = dataToRender;
-                dataToRender = undefined;
-            }
-            if (dataToRender !== undefined) {
-                if(this.bindPath){
-                    pathSetValue(this.bindObject, this.bindPath, dataToRender) ;
-                }else{
-                    this.bindObject = dataToRender;
-                }
-            }
-            if (!callbackParam) {
-                callbackParam = function () { };
-            }
-
-            if(this.rendering){
-                //render is not re-entrant. try to render when you are already rendering
-                //is likely to be loop due to some change event listener
-                return callbackParam() ;
-            }
-
-            this.rendering = true ;
-            var callback = function(err){
-                this.rendering = false ;
-                if(err){ return callbackParam(err) ;}
-                callbackParam() ;
-            }.bind(this) ;
-            
-    
-    
-            if (!this.boundElements) {
-                this.boundElements = [];
-    
-                var allElements = Array.prototype.slice.apply(this.container.getElementsByTagName("*")) ;
-                allElements.push(this.container) ;
-                allElements.forEach(function(el){
-                    var bindPath = el.getAttribute("data-bind");
-                    var bindEl = {el: el} ;
-                    var isContainerOfNestedView = false;
-                    if(el === this.container){
-                        if(el.getAttribute("data-view")){
-                            isContainerOfNestedView = true;
-                        } else if(el.children.length > 0) {
-                            isContainerOfNestedView = true;
-                        }
-                    }
-                    if(
-                        !isContainerOfNestedView &&
-                        bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
-                        bindEl.bindPath = bindPath;
-                    }
-                    var attributes = el.attributes ;
-                    var boundAttributes = {} ;
-                    var hasBoundAttribute = false ;
-                    for(var i=0; i<attributes.length; i++){
-                        if(attributes[i].value.indexOf("${") !== -1 && attributes[i].value.indexOf("}") !== -1){
-                            boundAttributes[attributes[i].name] = attributes[i].value ;
-                            hasBoundAttribute = true ;
-                        }
-                    }
-                    if(hasBoundAttribute){
-                        bindEl.boundAttributes = boundAttributes;
-                    }
-
-                    var textNodes = Array.prototype.slice.apply(el.childNodes).filter(function(n){ return n.nodeType === Node.TEXT_NODE; }) ;
-                    var boundTextNodes = {} ;
-                    var hasBoundTextNodes = false ;
-                    for(var i=0; i<textNodes.length; i++){
-                        if(textNodes[i].textContent.indexOf("${") !== -1 && textNodes[i].textContent.indexOf("}") !== -1){
-                            boundTextNodes[i] = textNodes[i].textContent ;
-                            hasBoundTextNodes = true ;
-                        }
-                    }
-                    if(hasBoundTextNodes){
-                        bindEl.boundTextNodes = boundTextNodes;
-                    }
-
-
-                    if(bindEl.bindPath || bindEl.boundAttributes || bindEl.boundTextNodes){
-                        this.boundElements.push(bindEl);
-                    }
-                }.bind(this)) ;
-            }
-    
-            if (!this.bindObject) { return callback(); }
-    
-            this._transformData(function(err){
-                if(err){ return callback(err); }
-    
-                var baseData = this.bindObject;
-                if (this.bindPath) {
-                    baseData = pathExtract(this.bindObject, this.bindPath);
-                }
-    
-                //set simple elements
-                this.boundElements.forEach((function (boundEl) {
-                    var el = boundEl.el;
-                    var bindPath = boundEl.bindPath;
-                    if(bindPath){
-                        var fullBindPath = (this.bindPath||"$this")+"."+bindPath ;
-                        if(el === this.container){
-                            //the container is bound, so its data is not inside is path
-                            fullBindPath = this.bindPath ;
-                        }
-                        var bindData = pathExtract(this.bindObject, fullBindPath);
-                        
-                        if (el.setValue){
-                            if(el.getValue() != bindData){
-                                el.setValue(bindData) ;
-                            }
-                        }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-                            if(el.tagName === "INPUT" && el.type === "checkbox"){
-                                var checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
-                                if(el.checked !== checked){
-                                    el.checked = checked ;
-                                }
-                            }else{
-                                if (bindData === null || bindData === undefined) {
-                                    bindData = "";
-                                }
-                                if(el.value != bindData){
-                                    el.value = bindData;
-                                }
-                            }
-                            
-                        } else {
-                            if (bindData === null || bindData === undefined) {
-                                bindData = "";
-                            }
-                            if(typeof(bindData) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(bindData)){
-                                //if is a date like "2017-07-24T22:00:00.000Z"
-                                bindData = new Date(bindData) ;
-                            }
-                            if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(bindData)){
-                                //if is a date like "2017-07-24"
-                                bindData = new Date(bindData) ;
-                            }
-                            if(bindData instanceof Date){
-                                //try to guess if it is a date or a date time
-                                if(bindData.getHours() === 0 && bindData.getMinutes() === 0 && bindData.getSeconds() === 0 && bindData.getMilliseconds() === 0){
-                                    //the date is exactly midnight, assume it is date only data
-                                    if(bindData.toLocaleDateString){
-                                        bindData = bindData.toLocaleDateString() ;
-                                    }else{
-                                        bindData = bindData.toDateString() ; //IE10...
-                                    }
-                                }else{
-                                    //the date has a date with time information, it is probably a data/time
-                                    if(bindData.toLocaleDateString){
-                                        bindData = bindData.toLocaleDateString()+" "+bindData.toLocaleTimeString() ;
-                                    }else{
-                                        bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
-                                    }
-                                }
-                            }
-                            if(el.textContent != bindData){
-                                el.textContent = bindData;
-                            }
-                        }
-                    }
-
-                    if(boundEl.boundAttributes){
-                        Object.keys(boundEl.boundAttributes).forEach(function(name){
-                            var originalValue = boundEl.boundAttributes[name] ;
-                            var value = originalValue ;
-                            while(value.indexOf("${") !== -1){
-                                var indexStart = value.indexOf("${") ;
-                                var indexEnd = value.indexOf("}") ;
-                                if(indexEnd < indexStart){ 
-                                    console.error("Wrong syntax in "+originalValue) ;
-                                    break;
-                                }
-                                var expr = value.substring(indexStart+2, indexEnd) ;
-                                var exprValue = evalExpr(baseData, expr) ;
-                                value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
-                            }
-                            if(name.indexOf("attr-") === 0){
-                                name = name.substring(name.indexOf("-")+1) ;
-                            }
-                            if(boundEl.el.getAttribute(name) != value){
-                                boundEl.el.setAttribute(name, value) ;
-                            }
-                        }.bind(this)) ;
-                    }
-
-                    if(boundEl.boundTextNodes){
-                        var textNodes = Array.prototype.slice.apply(el.childNodes).filter(function(n){ return n.nodeType === Node.TEXT_NODE; }) ;
-                        Object.keys(boundEl.boundTextNodes).forEach(function(index){
-                            var originalValue = boundEl.boundTextNodes[index] ;
-                            var value = originalValue ;
-                            while(value.indexOf("${") !== -1){
-                                var indexStart = value.indexOf("${") ;
-                                var indexEnd = value.indexOf("}") ;
-                                if(indexEnd < indexStart){ 
-                                    console.error("Wrong syntax in "+originalValue) ;
-                                    break;
-                                }
-                                var expr = value.substring(indexStart+2, indexEnd) ;
-                                var exprValue = evalExpr(baseData, expr) ;
-                                value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
-                            }
-                            if(textNodes[index].textContent != value){
-                                textNodes[index].textContent = value;
-                            }
-                        }.bind(this)) ;
-                    }
-    
-                    //dispatch bound event on this element
-                    var event = document.createEvent('CustomEvent');
-                    event.initCustomEvent('bound', false, true, {
-                        value: bindData,
-                        baseData: pathExtract(this.bindObject, this.bindPath),
-                        bindPath: bindPath,
-                        view: this,
-                        data: pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath, true)
-                    });
-                    Object.keys(event.detail).forEach(function(k){
-                        event[k] = event.detail[k] ;
-                    });
-                    el.dispatchEvent(event);
-                }).bind(this));
-    
-                //dispatch bound event on container element
-                var event = document.createEvent('CustomEvent');
-                event.initCustomEvent('bound', false, true, {
-                    value: this.getBoundObject(),
-                    baseData: this.bindObject,
-                    bindPath: this.bindPath,
-                    view: this,
-                    data: pathExtract(this.bindObject, this.bindPath, true)
-                });
-                Object.keys(event.detail).forEach(function(k){
-                    event[k] = event.detail[k] ;
-                });
-                this.container.dispatchEvent(event);
-    
-                //set sub views
-                var calls = [];
-                
-                Object.keys(this.views).forEach((function (viewId) {
-                    calls.push(function(cb){
-                        var view = this.views[viewId];
-                        var bindPath = view.bindPath || "";
-                        var shouldDisplay = true;
-                        if(view.showIf){
-                            var showIfData = evalExpr(baseData, view.showIf) ;
-                            if(!showIfData || (Array.isArray(showIfData) && showIfData.length === 0)){
-                                shouldDisplay = false ; 
-                            }
-                        }
-                        if(view.hideIf){
-                            var hideIfData = evalExpr(baseData, view.hideIf) ;
-                            shouldDisplay = false;
-                            if(!hideIfData){
-                                shouldDisplay = true; //no data should display
-                            }else if(hideIfData && Array.isArray(hideIfData) && hideIfData.length === 0) {
-                                shouldDisplay = true; //empty array, should display
-                            }
-                        }
-    
-                        var bindData = pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath.replace(/\s/g, "").replace(/\[\]$/, ""));
-                        if(bindPath.length >0 && bindPath[bindPath.length - 1] === "]" && !bindData){
-                            //array binding but array is null
-                            shouldDisplay = false;
-                        }
-    
-    
-                        var removedInstance = [] ;
-                        if(shouldDisplay){
-                            this.renderOneView(viewId, bindData, cb) ;
-                        }else{
-                            //not displayed, remove all instance
-                            removedInstance = view.instances.splice(0);
-                            removedInstance.forEach((function (instance) {
-                                instance.container.parentElement.removeChild(instance.container);
-                            }).bind(this));
-                            cb() ;
-                        }
-                    }.bind(this)) ;
-                }).bind(this));
-    
-                asyncSeries(calls, (function () {
-                    this.emit("load");
-                    this.emit("render");
-                    callback();
-                }).bind(this));
-            }.bind(this));  
-        }.bind(this)) ;
+        this.elements = null; //clear EL collection to force recompute as some sub element may change on render
         
+        if (dataToRender !== undefined) {
+            if(this.bindPath && this.bindPath.length > 0){
+                //FIXME : handle extractor cache
+                pathSetValue(this.bindObject, this.bindPath, dataToRender) ;
+            }else{
+                this.bindObject = dataToRender;
+            }
+        }
+
+        if(this.rendering){
+            //render is not re-entrant. try to render when you are already rendering
+            //is likely to be loop due to some change event listener
+            return ;
+        }
+
+        this.rendering = true ;
+        var callback = function(){
+            this.rendering = false ;
+        }.bind(this) ;
+        
+
+        if (!this.bindObject) { return callback(); }
+
+
+        var baseData = this.bindObject;
+        if (this.bindPath) {
+            baseData = pathExtract(this.bindObject, this.bindPath);
+        }
+
+        //set simple elements
+        for(var i=0; i<this.boundElements.length; i++){
+            var boundEl = this.boundElements[i] ;
+            var el = boundEl.el;
+            var bindPath = boundEl.bindPath;
+            if(bindPath){
+                var fullBindPath = (this.bindPath||["$this"]).concat(bindPath) ;
+                if(el === this.container){
+                    //the container is bound, so its data is not inside is path
+                    fullBindPath = this.bindPath ;
+                }
+                var bindData = pathExtract(this.bindObject, fullBindPath);
+                
+                if (el.setValue){
+                    if(el.getValue() != bindData){
+                        el.setValue(bindData) ;
+                    }
+                }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
+                    if(el.tagName === "INPUT" && el.type === "checkbox"){
+                        var checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
+                        if(el.checked !== checked){
+                            el.checked = checked ;
+                        }
+                    }else{
+                        if (bindData === null || bindData === undefined) {
+                            bindData = "";
+                        }
+                        if(el.value != bindData){
+                            el.value = bindData;
+                        }
+                    }
+                    
+                } else {
+                    if (bindData === null || bindData === undefined) {
+                        bindData = "";
+                    }
+                    if(typeof(bindData) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(bindData)){
+                        //if is a date like "2017-07-24T22:00:00.000Z"
+                        bindData = new Date(bindData) ;
+                    }
+                    if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(bindData)){
+                        //if is a date like "2017-07-24"
+                        bindData = new Date(bindData) ;
+                    }
+                    if(bindData instanceof Date){
+                        //try to guess if it is a date or a date time
+                        if(bindData.getHours() === 0 && bindData.getMinutes() === 0 && bindData.getSeconds() === 0 && bindData.getMilliseconds() === 0){
+                            //the date is exactly midnight, assume it is date only data
+                            if(bindData.toLocaleDateString){
+                                bindData = bindData.toLocaleDateString() ;
+                            }else{
+                                bindData = bindData.toDateString() ; //IE10...
+                            }
+                        }else{
+                            //the date has a date with time information, it is probably a data/time
+                            if(bindData.toLocaleDateString){
+                                bindData = bindData.toLocaleDateString()+" "+bindData.toLocaleTimeString() ;
+                            }else{
+                                bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
+                            }
+                        }
+                    }
+                    if(el.textContent != bindData){
+                        el.textContent = bindData;
+                    }
+                }
+            }
+
+            if(boundEl.boundAttributes){
+                var boundAttributesKeys = Object.keys(boundEl.boundAttributes) ;
+                for(var y=0; y<boundAttributesKeys.length; y++){
+                    var name = boundAttributesKeys[y] ;
+                    var originalValue = boundEl.boundAttributes[name] ;
+                    var value = originalValue ;
+                    while(value.indexOf("${") !== -1){
+                        var indexStart = value.indexOf("${") ;
+                        var indexEnd = value.indexOf("}") ;
+                        if(indexEnd < indexStart){ 
+                            console.error("Wrong syntax in "+originalValue) ;
+                            break;
+                        }
+                        var expr = value.substring(indexStart+2, indexEnd) ;
+                        var exprValue = evalExpr(baseData, expr) ;
+                        value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
+                    }
+                    if(name.indexOf("attr-") === 0){
+                        name = name.substring(name.indexOf("-")+1) ;
+                    }
+                    if(boundEl.el.getAttribute(name) != value){
+                        boundEl.el.setAttribute(name, value) ;
+                    }
+                } ;
+            }
+
+            if(boundEl.boundTextNodes){
+                var textNodes = [];
+                for ( var y=0;y<el.childNodes.length; y++ ) {
+                    if(el.childNodes[y].nodeType === Node.TEXT_NODE){
+                        textNodes.push(el.childNodes[y]);
+                    }
+                }
+                for(var y=0; y<boundEl.boundTextNodes.length; y++){
+                    var index = boundEl.boundTextNodes[y] ;
+                    var originalValue = boundEl.boundTextNodes[index] ;
+                    var value = originalValue ;
+                    while(value.indexOf("${") !== -1){
+                        var indexStart = value.indexOf("${") ;
+                        var indexEnd = value.indexOf("}") ;
+                        if(indexEnd < indexStart){ 
+                            console.error("Wrong syntax in "+originalValue) ;
+                            break;
+                        }
+                        var expr = value.substring(indexStart+2, indexEnd) ;
+                        var exprValue = evalExpr(baseData, expr) ;
+                        value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
+                    }
+                    if(textNodes[index].textContent != value){
+                        textNodes[index].textContent = value;
+                    }
+                }
+            }
+
+            //dispatch bound event on this element
+            var event = document.createEvent('CustomEvent');
+            event.initCustomEvent('bound', false, true, {
+                value: bindData,
+                baseData: pathExtract(this.bindObject, this.bindPath),
+                bindPath: bindPath,
+                view: this,
+                data: pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath, true)
+            });
+            var detailKeys = Object.keys(event.detail) ;
+            for(var y=0; y<detailKeys.length; y++){
+                var k = detailKeys[y] ;
+                event[k] = event.detail[k] ;
+            }
+            el.dispatchEvent(event);
+        }
+
+        //dispatch bound event on container element
+        var event = document.createEvent('CustomEvent');
+        event.initCustomEvent('bound', false, true, {
+            value: this.getBoundObject(),
+            baseData: this.bindObject,
+            bindPath: this.bindPath,
+            view: this,
+            data: pathExtract(this.bindObject, this.bindPath, true)
+        });
+        var detailKeys = Object.keys(event.detail) ;
+        for(var y=0; y<detailKeys.length; y++){
+            var k = detailKeys[y] ;
+            event[k] = event.detail[k] ;
+        }
+        this.viewRootEl.dispatchEvent(event);
+
+        //set sub views
+        var viewIds = Object.keys(this.views) ;
+        for(var b=0; b<viewIds.length; b++){
+            var viewId = viewIds[b] ;
+            var view = this.views[viewId];
+            var bindPath = view.bindPath || [];
+            var shouldDisplay = true;
+            if(view.showIf){
+                var showIfData = evalExpr(baseData, view.showIf) ;
+                if(!showIfData || (Array.isArray(showIfData) && showIfData.length === 0)){
+                    shouldDisplay = false ; 
+                }
+            }
+            if(view.hideIf){
+                var hideIfData = evalExpr(baseData, view.hideIf) ;
+                shouldDisplay = false;
+                if(!hideIfData){
+                    shouldDisplay = true; //no data should display
+                }else if(hideIfData && Array.isArray(hideIfData) && hideIfData.length === 0) {
+                    shouldDisplay = true; //empty array, should display
+                }
+            }
+
+            var bindData = this.bindObject;
+            if(bindPath.length>0){
+                var pathConcat = (this.bindPath||["$this"]).concat(bindPath) ;
+                pathConcat[pathConcat.length-1] = pathConcat[pathConcat.length-1].replace(/\[\]$/, "") ;
+
+                bindData = pathExtract(this.bindObject, pathConcat);
+            }
+
+            if(bindPath.length >0 && bindPath[bindPath.length - 1][bindPath[bindPath.length - 1].length-1] === "]" && !bindData){
+                //array binding but array is null
+                shouldDisplay = false;
+            }
+
+
+            var removedInstance = [] ;
+            if(shouldDisplay){
+                this.renderOneView(viewId, bindData) ;
+            }else{
+                //not displayed, remove all instance
+                removedInstance = view.instances.splice(0);
+                for(var a=0; a<removedInstance.length; a++){
+                    var instance = removedInstance[a] ;
+                    instance.container.parentElement.removeChild(instance.container);
+                }
+            }
+        }
+        this.emit("load",null, this, true);
+        this.emit("render",null, this, true);
+        callback();
     };
 
 
-    VeloxWebView.prototype.renderOneView = function (viewId, bindData, callback) {
+    VeloxWebView.prototype.renderOneView = function (viewId, bindData) {
         var view = this.views[viewId];
         if(!Array.isArray(bindData)){
             bindData = [bindData] ;
         }
-        var calls = [];
-        bindData.forEach(function (d, y) {
-            calls.push(function(cb){
-                if (!view.instances[y]) {
-                    //this instance does not exist yet, create it
-                    this.addViewInstance(viewId, cb) ;
-                } else {
-                    //this instance already exist, just reload data in it
-                    if(view.instances[y].bindPath && view.instances[y].bindPath[view.instances[y].bindPath.length-1] === "]"){
-                        //update bind path because the index in array may have change with user remove line in list auto
-                        view.instances[y].bindPath = view.instances[y].bindPath.substring(0, view.instances[y].bindPath.lastIndexOf("[")+1)+y+"]" ;
-                    }
-                    view.instances[y].bindObject = this.bindObject ;
-                    view.instances[y].render(cb) ;
+        for(var y=0; y<bindData.length; y++){
+            //var d = bindData[y] ;
+            if (!view.instances[y]) {
+                //this instance does not exist yet, create it
+                this.addViewInstance(viewId) ;
+            } else {
+                //this instance already exist, just reload data in it
+                if(view.instances[y].bindPath && view.instances[y].bindPath[view.instances[y].bindPath.length-1] === "]"){
+                    //update bind path because the index in array may have change with user remove line in list auto
+                    view.instances[y].bindPath = view.instances[y].bindPath.substring(0, view.instances[y].bindPath.lastIndexOf("[")+1)+y+"]" ;
                 }
-            }.bind(this));
-        }.bind(this)) ;
-
+                view.instances[y].bindObject = this.bindObject ;
+                view.instances[y].render() ;
+            }
+        }
         
         var removedInstance = view.instances.splice(bindData.length);
         
         //delete removed elements
-        removedInstance.forEach((function (instance) {
+        for(var i=0; i<removedInstance.length; i++){
+            var instance = removedInstance[i] ;
             instance.container.parentElement.removeChild(instance.container);
-        }).bind(this));
-        asyncSeries(calls, (function () {
-            callback();
-        }).bind(this));
+        }
     } ;
 
     /**
@@ -1652,10 +1929,11 @@
         var removedInstance = view.instances.splice(index, 1);
         
         //delete removed elements
-        removedInstance.forEach((function (instance) {
+        for(var i=0; i<removedInstance.length; i++){
+            var instance = removedInstance[i] ;
             instance.container.parentElement.removeChild(instance.container);
-        }).bind(this));
-        this.emit("viewInstanceRemoved", {viewId: viewId, index : index}) ;
+        }
+        this.emit("viewInstanceRemoved", {viewId: viewId, index : index}, this, true) ;
     } ;
     /**
      * Add a new instance of a sub view (usefull for list)
@@ -1663,9 +1941,9 @@
      * @param {string} viewId id of the sub view
      * @param {function} callback called when the view is created
      */
-    VeloxWebView.prototype.addViewInstance = function (viewId, callback) {
+    VeloxWebView.prototype.addViewInstance = function (viewId) {
         var view = this.views[viewId];
-        var bindPath = view.bindPath || "";
+        var bindPath = view.bindPath || [];
 
         var isAfter = view.isAfter;
         if(view.instances.length > 0){
@@ -1677,6 +1955,13 @@
         }
 
         var parentEl = view.elParent; //default parent
+
+        // var container = view.el.cloneNode() ;
+        // while(container.firstChild){
+        //     container.removeChild(container.firstChild) ;
+        // }
+        // insertChild(view.elParent, container, view.isBefore, isAfter) ;
+
         var container = null;
         if(view.file){
             //in case of nested view, the view file contains the view innerHTML but not
@@ -1685,6 +1970,18 @@
             insertChild(view.elParent, container, view.isBefore, isAfter) ;
         }
 
+        var thisBindPath = [];
+        if(bindPath.length>0){
+            for ( var i=0;i<bindPath.length; i++ ) {thisBindPath[i] = bindPath[i];}
+            //thisBindPath[thisBindPath.length - 1] = thisBindPath[thisBindPath.length - 1].replace(/\[\]$/, "[" + view.instances.length + "]") ;
+            thisBindPath[thisBindPath.length - 1] = thisBindPath[thisBindPath.length - 1].replace(/\[\]$/, "") ;
+        }
+        if(view.multiple){
+            //linked to an array, add the index
+            thisBindPath.push(""+view.instances.length) ;
+        }
+
+        var baseData = pathExtract(this.bindObject, thisBindPath) ;
 
         var viewOptions = {
             containerParent: parentEl,
@@ -1695,7 +1992,7 @@
             html: view.html,
             css: view.html?"":undefined,
             bindObject: null,
-            bindPath: (this.bindPath ? this.bindPath + "." : "") + bindPath.replace(/\s/g, "").replace(/\[\]$/, "[" + view.instances.length + "]")
+            bindPath: []// (this.bindPath ? this.bindPath : []).concat(thisBindPath) 
         } ;
         
         var v = new VeloxWebView(view.dir, view.file, viewOptions);
@@ -1705,40 +2002,45 @@
             
         //the emitted event are propagated to this view
         var _emit = v.emit ;
-        v.emit = function(event, data){
-            _emit.bind(v)(event, data) ; //emit the event inside the view
-            this.emit(event, data, v) ; //propagate on this view
-        }.bind(this) ;
-        v.open(function(err){
-            if(err){return callback(err);}
-            //propagate event listener from containing view to subview created elements
-            var parents = [] ;
-            var loopV = v;
-            while(loopV.parentView){
-                parents.push(loopV.parentView) ;
-                loopV = loopV.parentView ;
+        v.emit = function(event, data, source, dontPropagate){
+            _emit.bind(v)(event, data, source) ; //emit the event inside the view
+            if(!dontPropagate){
+                this.emit(event, data, v) ; //propagate on this view
             }
-            parents.forEach(function(parent){
-                parent.innerViewIds.forEach(function(innerViewId){
-                    if(v.ids[innerViewId.id] && v.EL[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
-                        innerViewId.realEl = v.EL[innerViewId.id] ;
-                        Object.keys(innerViewId.listeners).forEach(function(event){
-                            innerViewId.listeners[event].forEach(function(l){
-                                v.EL[innerViewId.id].addEventListener(event, l) ;
-                            }) ;
-                        }) ;  
+        }.bind(this) ;
+        v.openCompiled() ;
+        
+        //propagate event listener from containing view to subview created elements
+        var parents = [] ;
+        var loopV = v;
+        while(loopV.parentView){
+            parents.push(loopV.parentView) ;
+            loopV = loopV.parentView ;
+        }
+        for(var i=0; i<parents.length; i++){
+            parent = parents[i] ;
+            
+            for(var y=0; y<parent.innerViewIds.length; y++){
+                var innerViewId = parent.innerViewIds[y] ;
+                if(v.ids[innerViewId.id] && v.EL[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
+                    innerViewId.realEl = v.EL[innerViewId.id] ;
+                    var listenerKeys = Object.keys(innerViewId.listeners) ;
+                    for(var z=0; z<listenerKeys.length; z++){
+                        event = listenerKeys[z] ;
+                        var listeners = innerViewId.listeners[event] ;
+                        for(var a=0; a<listeners.length; a++){
+                            var l = listeners[a] ;
+                            v.EL[innerViewId.id].addEventListener(event, l) ;
+                        }
                     }
-                }) ;
-            }.bind(this)) ;
+                }
+            }
+        }
 
-            //render after propagate event to be sure bound listener are called
-            v.bindObject = this.bindObject ;
-            v.render(function(err){
-                if(err){return callback(err);}
-                callback() ;
-                this.emit("viewInstanceAdded", {viewId: viewId, index : view.instances.length-1}) ;
-            }.bind(this));
-        }.bind(this)) ;
+        //render after propagate event to be sure bound listener are called
+        v.bindObject = baseData; //this.bindObject ;
+        v.render() ;
+        this.emit("viewInstanceAdded", {viewId: viewId, index : view.instances.length-1}, this, true) ;
     } ;
 
     
@@ -1778,7 +2080,8 @@
         }
         
         //set simple elements
-        this.boundElements.forEach((function (boundEl) {
+        for(var i=0; i<this.boundElements.length; i++){
+            var boundEl = this.boundElements[i] ;
             if(boundEl.bindPath){
                 var el = boundEl.el;
                 var bindPath = boundEl.bindPath;
@@ -1797,12 +2100,14 @@
                 }
             }
             
-        }).bind(this));
+        }
 
         //set sub views
-        Object.keys(this.views).forEach((function (viewId) {
+        var viewsKeys = Object.keys(this.views) ;
+        for(var i=0; i< viewsKeys.length; i++){
+            var viewId = viewsKeys[i] ;
             this._updateDataFromView(viewId, baseData, dataToUpdate) ;
-        }).bind(this));
+        }
         return baseData ;
     };
 
@@ -1819,15 +2124,15 @@
         if(viewBindPath){
             viewBindPath = viewBindPath.replace(/\s/g, "").replace(/\[\]$/, "") ;
         }
+        //FIXME : update extractor cache
         var viewData = pathExtract(baseData, viewBindPath);
         if (!viewData) {
             viewData = [];
             pathSetValue(baseData, viewBindPath, viewData);
         }
         
-            
-        view.instances.forEach((function (instance, i) {
-
+        for(var i=0; i<view.instances.length; i++){
+            var instance = view.instances[i] ;
             if(instance.bindPath[instance.bindPath.length-1] === "]"){
                 //refresh the path index because it may have changed from user manual remove
                 instance.bindPath = instance.bindPath.substring(0, instance.bindPath.lastIndexOf("[")+1)+i+"]" ;
@@ -1837,7 +2142,7 @@
                 }
             };
             instance.updateData(viewData[i]);
-        }).bind(this));
+        }
 
         if(Array.isArray(viewData) && viewData.length>0){
             viewData.splice(view.instances.length);
