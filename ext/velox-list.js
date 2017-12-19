@@ -22,83 +22,60 @@
     /**
      * called on view init
      */
-    extension.init = function(cb){
+    extension.init = function(){
         var view = this ;
         doInitView.bind(view)() ;
-        cb() ;
     } ;
     extension.extendsGlobal = {} ;
 
     extension.extendsProto = {} ;
     
-    extension.extendsProto.startListAuto = function(viewId, callback){
-        this.setListAuto(viewId, true, callback) ;
+    extension.extendsProto.startListAuto = function(viewId){
+        this.setListAuto(viewId, true) ;
     } ;
     
-    extension.extendsProto.stopListAuto = function(viewId, callback){
-        this.setListAuto(viewId, false, callback) ;
+    extension.extendsProto.stopListAuto = function(viewId){
+        this.setListAuto(viewId, false) ;
     } ;
 
-    extension.extendsProto.setListAuto = function(active, callback){
-        if(!callback){ callback = function(){}; }
-
+    extension.extendsProto.setListAuto = function(active){
         if(this.isListAuto){
             //if this view is a list auto view, set its active flag
             this.listAutoActive = active ;
         }
-        var calls = [] ;
         //apply on sub views if there is any one of them that may be a list auto
         Object.keys(this.views).forEach(function(viewId){
-            calls.push(function(cb){
-                var viewDef = this.views[viewId] ;
+            var viewDef = this.views[viewId] ;
+            if(viewDef.el.hasAttribute("data-list-auto")){
+                viewDef.listAutoActive = active ;
+            }
+
+
+            this.views[viewId].instances.forEach(function(subView){
+                subView.setListAuto(active) ;
+            }) ;
+            if(active){
                 if(viewDef.el.hasAttribute("data-list-auto")){
-                    viewDef.listAutoActive = active ;
-                }
-
-                var instancesCalls = [];
-
-                this.views[viewId].instances.forEach(function(subView){
-                    instancesCalls.push(function(cbInstance){
-                        subView.setListAuto(active, cbInstance) ;
-                    }) ;
-                }) ;
-                this._asyncSeries(instancesCalls, function(err){
-                    if(err){ return cb(err) ;}
-                    if(active){
-                        if(viewDef.el.hasAttribute("data-list-auto")){
-                            var mustAddLine = false; 
-                            if(this.views[viewId].instances.length === 0){
-                                //no line at all
-                                mustAddLine = true ;
-                            }else{
-                                var lastObj = this.views[viewId].instances[this.views[viewId].instances.length-1].getBoundObject() ;
-                                if(lastObj && JSON.stringify(lastObj) !== "{}"){
-                                    //last line is not an empty line
-                                    mustAddLine = true;
-                                }
-                            }
-                            if(mustAddLine){
-                                //add an instance to start input
-                                this.addViewInstance(viewId, cb) ;
-                            }else{
-                                cb() ;
-                            }
-                        }else{
-                            cb() ;
-                        }
+                    var mustAddLine = false; 
+                    if(this.views[viewId].instances.length === 0){
+                        //no line at all
+                        mustAddLine = true ;
                     }else{
-                        cb() ;
+                        var lastObj = this.views[viewId].instances[this.views[viewId].instances.length-1].getBoundObject() ;
+                        if(lastObj && JSON.stringify(lastObj) !== "{}"){
+                            //last line is not an empty line
+                            mustAddLine = true;
+                        }
                     }
-                }.bind(this)) ;
-            }.bind(this)) ;
+                    if(mustAddLine){
+                        //add an instance to start input
+                        this.addViewInstance(viewId) ;
+                    }
+                }
+            }
         }.bind(this));
 
-        this._asyncSeries(calls, function(err){
-            if(err){ return callback(err); }
-            toggleRemoveEls.bind(this)() ;
-            callback() ;
-        }.bind(this)) ;
-
+        toggleRemoveEls.bind(this)() ;
     } ;
 
     extension.extendsObj = {} ;
@@ -157,55 +134,53 @@
         }.bind(this)) ;
 
        
-        if(this.bindPath && this.bindPath[this.bindPath.length-1] === "]"){
+        if(this.isMultiple){
             //I am a view 'item' of a list
-            var indexBracket = this.bindPath.lastIndexOf("[") ;
-            if(indexBracket !== -1){
-                //get my view definition from parent
-                var viewDef = this.parentView.views[this.viewId] ;
+            
+            //get my view definition from parent
+            var viewDef = this.parentView.views[this.viewId] ;
 
-                if(viewDef.el.hasAttribute("data-list-auto")){
-                    this.isListAuto = true ;
-                }
-                
-                this.once("load", function(){
-                    //first time render on this item, search for all fields to listen on changes
-                    
-                    //get the list array from data
-                    var elements = this.elementsHavingAttribute("data-bind");
-                    elements.forEach(function(element){
-                        element.addEventListener("change", function(){
-                            //a change happen 
-                            if(this.listAutoActive){ //the list is active
-                                var listIndex = viewDef.instances.indexOf(this) ; //recompute because it may have change with remove actions
-                                if(listIndex === viewDef.instances.length - 1){
-                                    //where are on the last line, add a line
-                                    this.parentView.addViewInstance(this.viewId, function(){}) ;
-                                }
-                            }
-                        }.bind(this)) ;
-                    }.bind(this));
-
-                    //get the potential remove buttons
-                    var elsRemove = this.elementsHavingAttribute("data-list-remove");
-                    elsRemove.forEach(function(elRemove){
-                        elRemove.addEventListener("click", function(){
-                            //click on remove button
-                            if(this.listAutoActive){ //the list is active
-                                //remove the line
-                                var listIndex = viewDef.instances.indexOf(this) ;
-                                this.parentView.removeViewInstance(this.viewId, listIndex) ;
-                            }
-                        }.bind(this)) ;
-                    }.bind(this)) ;
-
-                    
-                    //listen to load (render), remove and add instance events in parent view
-                    this.parentView.on('load', toggleRemoveEls.bind(this)) ;
-                    this.parentView.on('viewInstanceRemoved', toggleRemoveEls.bind(this)) ;
-                    this.parentView.on('viewInstanceAdded', toggleRemoveEls.bind(this)) ;    
-                }.bind(this)) ;
+            if(viewDef.el.hasAttribute("data-list-auto")){
+                this.isListAuto = true ;
             }
+                
+            this.once("load", function(){
+                //first time render on this item, search for all fields to listen on changes
+                
+                //get the list array from data
+                var elements = this.elementsHavingAttribute("data-bind");
+                elements.forEach(function(element){
+                    element.addEventListener("change", function(){
+                        //a change happen 
+                        if(this.listAutoActive){ //the list is active
+                            var listIndex = viewDef.instances.indexOf(this) ; //recompute because it may have change with remove actions
+                            if(listIndex === viewDef.instances.length - 1){
+                                //where are on the last line, add a line
+                                this.parentView.addViewInstance(this.viewId, function(){}) ;
+                            }
+                        }
+                    }.bind(this)) ;
+                }.bind(this));
+
+                //get the potential remove buttons
+                var elsRemove = this.elementsHavingAttribute("data-list-remove");
+                elsRemove.forEach(function(elRemove){
+                    elRemove.addEventListener("click", function(){
+                        //click on remove button
+                        if(this.listAutoActive){ //the list is active
+                            //remove the line
+                            var listIndex = viewDef.instances.indexOf(this) ;
+                            this.parentView.removeViewInstance(this.viewId, listIndex) ;
+                        }
+                    }.bind(this)) ;
+                }.bind(this)) ;
+
+                
+                //listen to load (render), remove and add instance events in parent view
+                this.parentView.on('load', toggleRemoveEls.bind(this)) ;
+                this.parentView.on('viewInstanceRemoved', toggleRemoveEls.bind(this)) ;
+                this.parentView.on('viewInstanceAdded', toggleRemoveEls.bind(this)) ;    
+            }.bind(this)) ;
         }
     }
 

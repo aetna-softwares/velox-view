@@ -65,6 +65,7 @@ describe("Fields with i18n", function() {
       veloxScriptLoader.loadScript("../ext/velox-i18next.js", function(err){
         if(err){ return done(err);}
         VeloxWebView.i18n.setLang("vi") ;
+        VeloxWebView.clearCache() ;
         done() ;
       }) ;
     }) ;

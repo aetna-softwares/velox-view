@@ -59,20 +59,19 @@
     var extension = {} ;
     extension.name = "i18n" ;
 
-    extension.init = function(cb){
-        var view = this ;
+    extension.prepare = function(params, cb){
         if(!i18nextInitDone) {
             //i18next is not inistialized
             console.debug("i18next is not initialized, initialization with default parameters")
-            configureI18Next({}, function(err){
-                if(err){ return cb(err); }
-                doInitView.bind(view)() ;
-                cb() ;
-            }) ;
+            configureI18Next({}, cb) ;
         } else {
-            doInitView.bind(view)() ;
             cb() ;
         }  
+    } ;
+
+    extension.init = function(){
+        var view = this ;
+        doInitView.bind(view)() ;
     } ;
     extension.extendsProto = {} ;
 
@@ -152,6 +151,7 @@
         }) ;
         doTranslateView.bind(view)() ;
     }
+
 
     /**
      * translate in the view

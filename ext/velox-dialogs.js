@@ -63,7 +63,7 @@
     var extension = {} ;
     extension.name = "dialogs" ;
 
-    extension.init = function(callback){
+    extension.prepare = function(params, callback){
         loadW2ui(callback) ;
     } ;
     extension.extendsProto = {} ;

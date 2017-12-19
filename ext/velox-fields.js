@@ -48,11 +48,18 @@
     var uploadCSSLoaded = false;
 
     /**
-     * called on view init
+     * called on view prepare
      */
-    extension.init = function(cb){
+    extension.init = function(){
         var view = this ;
-        doInitView.bind(view)(cb) ;
+        doInitView.bind(view)() ;
+    } ;
+    /**
+     * called on view compile
+     */
+    extension.prepare = function(params, cb){
+        var view = this ;
+        doPrepareView.bind(view)(params, cb) ;
     } ;
     extension.extendsGlobal = {} ;
 
@@ -96,6 +103,10 @@
 
         resetLocale: function(){
             currentLocale=null;
+        },
+
+        loadFieldLib: function(fieldType, fieldOptions, callback){
+            loadNeededLib(fieldType, fieldOptions, callback) ;
         }
     } ;
 
@@ -387,14 +398,12 @@
      * 
      * @private
      */
-    function doInitView(callback){
-        var view = this;
-        var elements = this.elementsHavingAttribute("data-field");
+    function doPrepareView(params, callback){
+        var elements = params.doc.querySelectorAll("[data-field]");
         var calls = [] ;
         elements.forEach(function(element){
             calls.push(function(cb){
                 var fieldType = element.getAttribute("data-field") ;
-                var fieldSize = element.getAttribute("data-field-size") ;
                 var fieldOptions = {} ;
                 Array.prototype.slice.call(element.attributes).forEach(function(att){
                     var startIndex = "data-field-".length ;
@@ -403,10 +412,36 @@
                         fieldOptions[attKey.substring(startIndex)] = element.getAttribute(attKey) ;
                     }
                 }) ;
-                createField(view, element, fieldType, fieldSize, fieldOptions, cb) ;
+                loadNeededLib(fieldType, fieldOptions, cb) ;
             }) ;
         });
         series(calls, callback) ;
+    }
+
+    /**
+     * init view fields
+     * 
+     * get all HTML elements having data-field attribute
+     * 
+     * @private
+     */
+    function doInitView(){
+        var view = this;
+        var elements = this.elementsHavingAttribute("data-field");
+        for(var i=0; i<elements.length; i++){
+            var element = elements[i] ;
+            var fieldType = element.getAttribute("data-field") ;
+            var fieldSize = element.getAttribute("data-field-size") ;
+            var fieldOptions = {} ;
+            Array.prototype.slice.call(element.attributes).forEach(function(att){
+                var startIndex = "data-field-".length ;
+                var attKey = att.name ;
+                if(attKey.indexOf("data-field") === 0 && attKey.length > startIndex){
+                    fieldOptions[attKey.substring(startIndex)] = element.getAttribute(attKey) ;
+                }
+            }) ;
+            createField(view, element, fieldType, fieldSize, fieldOptions) ;
+        }
         this.on("displayed", function(ev){
             if(ev.data.view === this){
                 var grids = this.container.querySelectorAll("[data-field=grid]");
@@ -417,29 +452,60 @@
         }.bind(this)) ;
     }
 
-    /**
-     * Create the field
-     * 
-     * @param {HTMLElement} element the HTML element to transform to field
-     * @param {string} fieldType the field type
-     * @param {string} fieldSize the field size
-     * @param {object} fieldOptions field options map (from element attributes)
-     * @param {function(Error)} callback called when the field is created
-     */
-    function createField(view, element, fieldType, fieldSize, fieldOptions, callback){
-        //dispatch bound event on container element
-        view.emit('beforeInitField', {id: element.getAttribute("data-original-id"), element: element, fieldType: fieldType, fieldOptions: fieldOptions});
-        _createField(element, fieldType, fieldSize, fieldOptions, function(err){
-            if(err){ return callback(err); }
-            decorators.forEach(function(deco){
-                deco(element, fieldType, fieldSize, fieldOptions) ;
-            }) ;
-            if(element.hasAttribute("readonly")){
-                element.setReadOnly(true) ;
+    function loadNeededLib(fieldType, fieldOptions, callback){
+        if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
+            if(fieldOptions && fieldOptions.mask){
+                loadInputMask(callback) ;
+            }else{
+                callback() ;
             }
-            view.emit('afterInitField', {id: element.getAttribute("data-original-id"), element: element, fieldType: fieldType, fieldOptions: fieldOptions});
+        } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
+            fieldType==="double" || fieldType==="float" || fieldType==="currency" || fieldType==="percent"){
+            loadLib("Decimal", DECIMALJS_VERSION, DECIMALJS_LIB, function(err){
+                if(err){ return callback(err) ;}
+                loadInputMask(function(err){
+                    if(err){ return callback(err) ;}
+                    if(fieldType === "int" || fieldType === "integer" || fieldType==="number") {
+                        getLocale(callback);
+                    }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="percent" || fieldType==="currency"){
+                        getLocale(callback) ;
+                    }
+                }) ;
+            }) ;
+        } else if(fieldType === "email"){
+            loadInputMask(callback) ;
+        } else if(["date", "datetime", "time", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
+            loadLib("flatpickr", FLATPICKR_VERSION, FLATPICKR_LIB, function(err){
+                if(err){ return callback(err) ;}
+                loadInputMask(function(err){
+                    if(err){ return callback(err) ;}
+                    getLocale(function(err){
+                        if(err){ return callback(err); }
+                        loadDateLibLocale(callback) ;
+                    }) ;
+                }) ;
+            }) ;
+        } else if(fieldType === "selection" || fieldType === "select"){
+            loadLib("selectize", SELECTIZE_VERSION, SELECTIZE_LIB, callback) ;
+        } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
+            //no lib
             callback() ;
-        }) ;
+        } else if(fieldType === "grid"){
+            loadLib("w2ui", W2UI_VERSION, W2UI_LIB, function(err){
+                if(err){ return callback(err); }
+                getLocale(function(err){
+                    if(err){ return callback(err); }
+                    loadW2uiLibLocale(callback) ;
+                }) ;
+            }) ;
+        } else if(fieldType === "upload"){
+            //no lib
+            callback() ;
+        } else if(fieldType === "pdf"){
+            loadLib("PDFObject", PDFOBJECT_VERSION, PDFOBJECT_LIB, callback) ;
+        } else {
+            callback("Unknow field type "+fieldType) ; 
+        }
     }
 
     /**
@@ -451,28 +517,50 @@
      * @param {object} fieldOptions field options map (from element attributes)
      * @param {function(Error)} callback called when the field is created
      */
-    function _createField(element, fieldType, fieldSize, fieldOptions, callback){
+    function createField(view, element, fieldType, fieldSize, fieldOptions){
+        //dispatch bound event on container element
+        view.emit('beforeInitField', {id: element.getAttribute("data-original-id"), element: element, fieldType: fieldType, fieldOptions: fieldOptions});
+        _createField(element, fieldType, fieldSize, fieldOptions) ;
+        decorators.forEach(function(deco){
+            deco(element, fieldType, fieldSize, fieldOptions) ;
+        }) ;
+        if(element.hasAttribute("readonly")){
+            element.setReadOnly(true) ;
+        }
+        view.emit('afterInitField', {id: element.getAttribute("data-original-id"), element: element, fieldType: fieldType, fieldOptions: fieldOptions});
+    }
+
+    /**
+     * Create the field
+     * 
+     * @param {HTMLElement} element the HTML element to transform to field
+     * @param {string} fieldType the field type
+     * @param {string} fieldSize the field size
+     * @param {object} fieldOptions field options map (from element attributes)
+     * @param {function(Error)} callback called when the field is created
+     */
+    function _createField(element, fieldType, fieldSize, fieldOptions){
         if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
-            createTextField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createTextField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
             fieldType==="double" || fieldType==="float" || fieldType==="currency" || fieldType==="percent"){
-            createNumberField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createNumberField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "email"){
-            createEmailField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createEmailField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(["date", "datetime", "time", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
-            createDateField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createDateField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "selection" || fieldType === "select"){
-            createSelectField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createSelectField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
-            createCheckboxField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createCheckboxField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "grid"){
-            createGridField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createGridField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "upload"){
-            createUploadField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createUploadField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "pdf"){
-            createPdfField(element, fieldType, fieldSize, fieldOptions, callback) ;
+            createPdfField(element, fieldType, fieldSize, fieldOptions) ;
         } else {
-            callback("Unknow field type "+fieldType) ; 
+            throw "Unknow field type "+fieldType ; 
         }
     }
 
@@ -576,7 +664,7 @@
      * @param {object} fieldOptions field option (from attributes)
      * @param {function(Error)} callback called when finished
      */
-    function createTextField(element, fieldType, fieldSize, fieldOptions, callback){
+    function createTextField(element, fieldType, fieldSize, fieldOptions){
         var input = appendInputHtml(element) ;
         if(fieldType === "password"){
             input.type = "password" ;
@@ -585,7 +673,7 @@
         if(fieldSize){
             var fieldSize = parseInt(fieldSize, 10) ;
             if(isNaN(fieldSize)){
-                return callback("Incorrect field size option : "+fieldSize+" on "+elToString(element)) ;
+                throw ("Incorrect field size option : "+fieldSize+" on "+elToString(element)) ;
             }
             input.maxLength = fieldSize ;
         }
@@ -620,14 +708,8 @@
         // }) ;
 
         if( fieldOptions.mask){
-            loadInputMask(function(err){
-                if(err){ return callback(err) ;}
-                var im = new libs.Inputmask(fieldOptions.mask);
-                maskField = im.mask(input) ;
-                callback() ;
-            }.bind(this)) ;
-        }else{
-            callback() ;
+            var im = new libs.Inputmask(fieldOptions.mask);
+            maskField = im.mask(input) ;
         }
     }
 
@@ -726,7 +808,7 @@
      * @param {object} fieldOptions field options (from attributes)
      * @param {function(Error)} callback called when field is created
      */
-    function createNumberField(element, fieldType, fieldSize, fieldOptions, callback){
+    function createNumberField(element, fieldType, fieldSize, fieldOptions){
         var input = appendInputHtml(element) ;
         var maskField = null;
         var maskOptions = null;
@@ -770,57 +852,38 @@
             }) ;
         }) ;
 
-        loadLib("Decimal", DECIMALJS_VERSION, DECIMALJS_LIB, function(err){
-            if(err){ return callback(err) ;}
-            loadInputMask(function(err){
-                if(err){ return callback(err) ;}
 
-                if(fieldType === "int" || fieldType === "integer" || fieldType==="number") {
-                    getLocale(function(err){
-                        if(err){ return callback(err); }
+        if(fieldType === "int" || fieldType === "integer" || fieldType==="number") {
+            maskOptions = { 
+                radixPoint: currentLocale.delimiters.decimal , 
+                groupSeparator : currentLocale.delimiters.thousands , 
+                prefix : "", suffix : "", positionCaretOnTab: false
+            } ;
 
-                        maskOptions = { 
-                            radixPoint: currentLocale.delimiters.decimal , 
-                            groupSeparator : currentLocale.delimiters.thousands , 
-                            prefix : "", suffix : "", positionCaretOnTab: false
-                        } ;
+            var im = new libs.Inputmask("integer", maskOptions);
+            maskField = im.mask(input) ;
+        }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="percent" || fieldType==="currency"){
+            maskOptions = { 
+                radixPoint: currentLocale.delimiters.decimal , 
+                groupSeparator : currentLocale.delimiters.thousands , 
+                prefix : "", suffix : "", positionCaretOnTab: false
+            } ;
 
-                        var im = new libs.Inputmask("integer", maskOptions);
-                        maskField = im.mask(input) ;
-                        callback() ;
-                    });
-                }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="percent" || fieldType==="currency"){
-                    getLocale(function(err){
-                        if(err){ return callback(err); }
-
-                        maskOptions = { 
-                            radixPoint: currentLocale.delimiters.decimal , 
-                            groupSeparator : currentLocale.delimiters.thousands , 
-                            prefix : "", suffix : "", positionCaretOnTab: false
-                        } ;
-
-                        if(fieldOptions.decimaldigits){
-                            var digits = parseInt(fieldOptions.decimaldigits, 10) ;
-                            if(isNaN(digits)){
-                                return callback("Invalid value for option decimaldigits, number expected") ;
-                            }
-                            maskOptions.digits = digits ;
-                        }
-                        
-                        if(fieldType === "percent"){
-                            maskOptions.suffix = " %";
-                        }
-
-                        var im = new libs.Inputmask("currency", maskOptions);
-                        maskField = im.mask(input) ;
-                        callback() ;
-                    }) ;
+            if(fieldOptions.decimaldigits){
+                var digits = parseInt(fieldOptions.decimaldigits, 10) ;
+                if(isNaN(digits)){
+                    throw "Invalid value for option decimaldigits, number expected" ;
                 }
-                
-            }.bind(this)) ;
-        }.bind(this)) ;
+                maskOptions.digits = digits ;
+            }
+            
+            if(fieldType === "percent"){
+                maskOptions.suffix = " %";
+            }
 
-        
+            var im = new libs.Inputmask("currency", maskOptions);
+            maskField = im.mask(input) ;
+        }
     }
 
     /**
@@ -831,9 +894,8 @@
      * @param {string} fieldType the field type
      * @param {string} fieldSize the field size
      * @param {object} fieldOptions field options (from attributes)
-     * @param {function(Error)} callback called when field is created
      */
-    function createEmailField(element, fieldType, fieldSize, fieldOptions, callback){
+    function createEmailField(element, fieldType, fieldSize, fieldOptions){
         var input = appendInputHtml(element) ;
         var maskField = null;
 
@@ -859,14 +921,9 @@
             }) ;
         }) ;
 
-        loadInputMask(function(err){
-            if(err){ return callback(err) ;}
-
-            
-            var im = new libs.Inputmask("email");
-            maskField = im.mask(input) ;
-            callback() ;
-        }.bind(this)) ;
+        
+        var im = new libs.Inputmask("email");
+        maskField = im.mask(input) ;
     }
 
     /**
@@ -880,9 +937,8 @@
      * @param {"date"|"datetime"|"time"} fieldType the field type
      * @param {string} fieldSize the field size
      * @param {object} fieldOptions field options (from attributes)
-     * @param {function(Error)} callback called on field created
      */
-    function createDateField(element, fieldType, fieldSize, fieldOptions, callback){
+    function createDateField(element, fieldType, fieldSize, fieldOptions){
         var input = appendInputHtml(element) ;
         var maskField = null;
         var pickrField = null;
@@ -908,75 +964,60 @@
             }) ;
         }) ;
         
-        loadLib("flatpickr", FLATPICKR_VERSION, FLATPICKR_LIB, function(err){
-            if(err){ return callback(err) ;}
-            loadInputMask(function(err){
-                if(err){ return callback(err) ;}
-                getLocale(function(err){
-                    if(err){ return callback(err); }
-                    loadDateLibLocale(function(err){
-                        if(err){ return callback(err); }
 
-                        var localeData = libs.moment.localeData(momentLocaleCode(currentLocale.lang)) ;
-                        var localeDateFormat = localeData._longDateFormat.L ;
-                        if(["datetime", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
-                            localeDateFormat = localeData._longDateFormat.L + " "+localeData._longDateFormat.LT ;
-                        }else if(fieldType === "time"){
-                            localeDateFormat = localeData._longDateFormat.LT ;
-                        }
+        var localeData = libs.moment.localeData(momentLocaleCode(currentLocale.lang)) ;
+        var localeDateFormat = localeData._longDateFormat.L ;
+        if(["datetime", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
+            localeDateFormat = localeData._longDateFormat.L + " "+localeData._longDateFormat.LT ;
+        }else if(fieldType === "time"){
+            localeDateFormat = localeData._longDateFormat.LT ;
+        }
 
-                        var useAMPM = localeData._longDateFormat.LT.indexOf("A") !== -1 ;
+        var useAMPM = localeData._longDateFormat.LT.indexOf("A") !== -1 ;
 
 
-                        var flatpickrOptions = {
-                            allowInput: true,
-                            //https://chmln.github.io/flatpickr/formatting/
-                            dateFormat : localeDateFormat
-                                .replace("YYYY", "Y").replace("YY", "y").replace("DD", "d").replace("MM", "m")
-                                .replace("HH", "H").replace("mm", "i").replace("A", "K"),
-                            enableTime : fieldType.indexOf("time") !== -1,
-                            noCalendar: fieldType === "time",
-                            time_24hr: !useAMPM
-                        } ;
-
-                        
-                        
-
-                        if(flatpickerLocaleCode(currentLocale.lang)){
-                            flatpickrOptions.locale = flatpickerLocaleCode(currentLocale.lang) ;
-                        }
-
-                        pickrField = libs.flatpickr(input, flatpickrOptions);
-                        
-                        var maskFormat = localeDateFormat.toLowerCase() ;
-                        if(fieldType === "datetime" || fieldType === "timestamp" || fieldType === "timestamptz"){
-                            maskFormat = "datetime" ;
-                            if(useAMPM){
-                                maskFormat = "datetime12" ;
-                                if(localeDateFormat.indexOf("MM") === 0){
-                                    //start by month (US)
-                                    maskFormat = "mm/dd/yyyy hh:mm xm" ;
-                                }
-                            }
-                        }else if(fieldType === "time"){
-                            maskFormat = "hh:mm" ;
-                            if(useAMPM){
-                                maskFormat = "hh:mm t" ;
-                            }
-                        }
-                        var im = new libs.Inputmask(maskFormat, {placeholder: "_"});
-                        maskField = im.mask(input) ;
-
-                        input.addEventListener("blur", function(){
-                            pickrField.setDate(maskField._valueGet(), false) ;
-                        }) ;
-                        callback() ;
-                    }.bind(this)) ;
-                }.bind(this)) ;
-            }.bind(this)) ;
-        }.bind(this)) ;
+        var flatpickrOptions = {
+            allowInput: true,
+            //https://chmln.github.io/flatpickr/formatting/
+            dateFormat : localeDateFormat
+                .replace("YYYY", "Y").replace("YY", "y").replace("DD", "d").replace("MM", "m")
+                .replace("HH", "H").replace("mm", "i").replace("A", "K"),
+            enableTime : fieldType.indexOf("time") !== -1,
+            noCalendar: fieldType === "time",
+            time_24hr: !useAMPM
+        } ;
 
         
+        
+
+        if(flatpickerLocaleCode(currentLocale.lang)){
+            flatpickrOptions.locale = flatpickerLocaleCode(currentLocale.lang) ;
+        }
+
+        pickrField = libs.flatpickr(input, flatpickrOptions);
+        
+        var maskFormat = localeDateFormat.toLowerCase() ;
+        if(fieldType === "datetime" || fieldType === "timestamp" || fieldType === "timestamptz"){
+            maskFormat = "datetime" ;
+            if(useAMPM){
+                maskFormat = "datetime12" ;
+                if(localeDateFormat.indexOf("MM") === 0){
+                    //start by month (US)
+                    maskFormat = "mm/dd/yyyy hh:mm xm" ;
+                }
+            }
+        }else if(fieldType === "time"){
+            maskFormat = "hh:mm" ;
+            if(useAMPM){
+                maskFormat = "hh:mm t" ;
+            }
+        }
+        var im = new libs.Inputmask(maskFormat, {placeholder: "_"});
+        maskField = im.mask(input) ;
+
+        input.addEventListener("blur", function(){
+            pickrField.setDate(maskField._valueGet(), false) ;
+        }) ;
     }
 
     /**
@@ -1039,92 +1080,86 @@
      * @param {"select"|"selection"} fieldType the field type
      * @param {string} fieldSize the field size
      * @param {object} fieldOptions option from attribute
-     * @param {*} callback 
      */
-    function createSelectField(element, fieldType, fieldSize, fieldOptions, callback){
-        loadLib("selectize", SELECTIZE_VERSION, SELECTIZE_LIB, function(err){
-            if(err){ return callback(err); }
+    function createSelectField(element, fieldType, fieldSize, fieldOptions){
 
-            //get from https://github.com/selectize/selectize.js/pull/936
-            window.Selectize.prototype.positionDropdown = function () {
-                var $control = this.$control;
-                var offset = this.settings.dropdownParent === 'body' ? $control.offset() : $control.position();
-                var controlHeight = $control.outerHeight(true);
-                var dropdownHeight = this.$dropdown.outerHeight(true);
-        
-                var optDirection = "auto"; //this.settings.dropdownDirection;
-                if (optDirection === 'auto') {
-                    var dropdownBottom = $control.offset().top + controlHeight + dropdownHeight;
-                    var windowBottom = window.jQuery(window).height();
-                    optDirection = dropdownBottom < windowBottom ? 'down' : 'up';
-                }
-        
-                if (optDirection === 'down') {
-                    offset.top += controlHeight;
-                    self.isDropUp = false;
-                } else if (optDirection === 'up') {
-                    offset.top -= dropdownHeight;
-                    self.isDropUp = true;
-                }
-        
-                this.$dropdown.css({
-                    width : $control.outerWidth(),
-                    top   : offset.top,
-                    left  : offset.left
-                });
-            };
-
-            loadSelectCSS() ;
-
-            var select = null ;
-            if(element.tagName ===  "SELECT"){
-                select = element ;
-            }else{
-                var subSelects = element.getElementsByTagName("SELECT") ;
-                if(subSelects.length === 0){
-                    return callback("Your data field select should be a SELECT tag or contain a SELECT tag") ;
-                }
-                select = subSelects[0];
+        //get from https://github.com/selectize/selectize.js/pull/936
+        window.Selectize.prototype.positionDropdown = function () {
+            var $control = this.$control;
+            var offset = this.settings.dropdownParent === 'body' ? $control.offset() : $control.position();
+            var controlHeight = $control.outerHeight(true);
+            var dropdownHeight = this.$dropdown.outerHeight(true);
+    
+            var optDirection = "auto"; //this.settings.dropdownDirection;
+            if (optDirection === 'auto') {
+                var dropdownBottom = $control.offset().top + controlHeight + dropdownHeight;
+                var windowBottom = window.jQuery(window).height();
+                optDirection = dropdownBottom < windowBottom ? 'down' : 'up';
             }
-            //element.style.visibility = "hidden";
+    
+            if (optDirection === 'down') {
+                offset.top += controlHeight;
+                self.isDropUp = false;
+            } else if (optDirection === 'up') {
+                offset.top -= dropdownHeight;
+                self.isDropUp = true;
+            }
+    
+            this.$dropdown.css({
+                width : $control.outerWidth(),
+                top   : offset.top,
+                left  : offset.left
+            });
+        };
 
-            var $select = window.jQuery(select) ;
-            $select.selectize();
-            var selectize = $select[0].selectize;
-            selectize.setValue("") ;
-            //element.style.visibility = "visible";
+        loadSelectCSS() ;
 
-            element.getValue = function(){
-                var value = selectize.getValue()  ;
-                return value||null ;
-            } ;
-            element.setValue = function(value){
-                return selectize.setValue(value) ;
-            } ;
-            element.setReadOnly = function(readOnly){
-                if(readOnly) {
-                    selectize.lock();
-                }else{
-                    selectize.unlock();
-                }
-            } ;
-            element.addEventListener = function(event, listener){
-                $select.on(event, function(ev){
-                    ev.target = element;
-                    listener(ev) ;
-                }); 
-            } ;
+        var select = null ;
+        if(element.tagName ===  "SELECT"){
+            select = element ;
+        }else{
+            var subSelects = element.getElementsByTagName("SELECT") ;
+            if(subSelects.length === 0){
+                throw ("Your data field select should be a SELECT tag or contain a SELECT tag") ;
+            }
+            select = subSelects[0];
+        }
+        //element.style.visibility = "hidden";
 
-            element.setOptions = function(options){
-                selectize.clearOptions() ;
-                selectize.addOption(options) ;
-            } ;
-            element.getOptions = function(){
-                return selectize.options;
-            } ;
+        var $select = window.jQuery(select) ;
+        $select.selectize();
+        var selectize = $select[0].selectize;
+        selectize.setValue("") ;
+        //element.style.visibility = "visible";
 
-            callback() ;
-        }) ;
+        element.getValue = function(){
+            var value = selectize.getValue()  ;
+            return value||null ;
+        } ;
+        element.setValue = function(value){
+            return selectize.setValue(value) ;
+        } ;
+        element.setReadOnly = function(readOnly){
+            if(readOnly) {
+                selectize.lock();
+            }else{
+                selectize.unlock();
+            }
+        } ;
+        element.addEventListener = function(event, listener){
+            $select.on(event, function(ev){
+                ev.target = element;
+                listener(ev) ;
+            }); 
+        } ;
+
+        element.setOptions = function(options){
+            selectize.clearOptions() ;
+            selectize.addOption(options) ;
+        } ;
+        element.getOptions = function(){
+            return selectize.options;
+        } ;
     }
 
     /**
@@ -1150,12 +1185,11 @@
      * @param {"grid"} fieldType the field type
      * @param {string} fieldSize the field size
      * @param {object} fieldOptions the field options (from attributes)
-     * @param {function(Error)} callback called when field is created
      */
-    function createGridField(element, fieldType, fieldSize, fieldOptions, callback){
+    function createGridField(element, fieldType, fieldSize, fieldOptions){
         var subTables = element.getElementsByTagName("TABLE") ;
         if(subTables.length === 0){
-            return callback("Your data field grid should contain a TABLE tag") ;
+            throw ("Your data field grid should contain a TABLE tag") ;
         }
         var table = subTables[0];
         var listThead = table.getElementsByTagName("THEAD") ;
@@ -1169,284 +1203,267 @@
 
         var listTh = Array.prototype.slice.call(table.getElementsByTagName("TH")) ;
         if(listTh.length === 0){
-            return callback("Your data field grid should have at least a TH tag") ;
+            throw ("Your data field grid should have at least a TH tag") ;
         }
 
         var listTr = Array.prototype.slice.call(table.getElementsByTagName("TR")) ;
         
 
-        loadLib("w2ui", W2UI_VERSION, W2UI_LIB, function(err){
-            if(err){ return callback(err); }
 
-            getLocale(function(err){
-                if(err){ return callback(err); }
-                
-                loadW2uiLibLocale(function(err){
-                    if(err){ return callback(err); }
+        var idPath = Array.prototype.slice.call(
+        window.jQuery(element).parents()).map(function(p){ 
+            return p.getAttribute("data-original-id"); 
+        }).filter(function(c){ return !!c;}).reverse().join(".") ;
 
-                    var idPath = Array.prototype.slice.call(
-                    window.jQuery(element).parents()).map(function(p){ 
-                        return p.getAttribute("data-original-id"); 
-                    }).filter(function(c){ return !!c;}).reverse().join(".") ;
+        var gridOptions = {
+            name: idPath||"grid_"+uuidv4(),
+            textSearch: "contains",
+            columns   : [],
+            show      : {},
+            searches : []
+        } ;
 
-                    var gridOptions = {
-                        name: idPath||"grid_"+uuidv4(),
-                        textSearch: "contains",
-                        columns   : [],
-                        show      : {},
-                        searches : []
-                    } ;
+        ["keyboard", "recid", "markSearch", "multiSearch", "multiSelect", "multiSort", 
+            "recordHeight", "reorderColumns", "reorderRows", "selectType"].forEach(function(optionAttribute){
+            var optionValue = table.getAttribute(optionAttribute);
+            if(optionValue){
+                if(optionValue === "false"){ optionValue = false ;}
+                if(optionValue === "true"){ optionValue = true ;}
+                gridOptions[optionAttribute] = optionValue ;
+            }
+        }) ;
 
-                    ["keyboard", "recid", "markSearch", "multiSearch", "multiSelect", "multiSort", 
-                        "recordHeight", "reorderColumns", "reorderRows", "selectType"].forEach(function(optionAttribute){
-                        var optionValue = table.getAttribute(optionAttribute);
-                        if(optionValue){
-                            if(optionValue === "false"){ optionValue = false ;}
-                            if(optionValue === "true"){ optionValue = true ;}
-                            gridOptions[optionAttribute] = optionValue ;
-                        }
-                    }) ;
+        if(thead){
 
-                    if(thead){
-
-                        ["header"         ,
-                        "toolbar"        ,
-                        "footer"         ,
-                        "columnHeaders"  ,
-                        "lineNumbers"    ,
-                        "expandColumn"   ,
-                        "selectColumn"   ,
-                        "emptyRecords"   ,
-                        "toolbarInput"  ,
-                        "toolbarReload"  ,
-                        "toolbarColumns" ,
-                        "toolbarSearch"  ,
-                        "toolbarAdd"     ,
-                        "toolbarEdit"    ,
-                        "toolbarDelete"  ,
-                        "toolbarSave"    ,
-                        "selectionBorder",
-                        "recordTitles"   ,
-                        "skipRecords"].forEach(function(showAttr){
-                            var showValue = thead.getAttribute(showAttr);
-                            if(showValue){
-                                gridOptions.show[showAttr] = showValue.trim().toLowerCase() === "true" ;
-                            }
-                        }) ;
-                    }
-
-                    
-
-                    if(toolbar){
-                        gridOptions.toolbar = {
-                            items: []
-                        };
-                        gridOptions.show.toolbar = true ;
-                        Array.prototype.slice.apply(toolbar.children).forEach(function(item){
-                            var toolbarItem = {
-                                id : item.getAttribute("data-original-id") ,
-                                text: item.innerHTML
-                            } ;
-                            ["type", "tooltip", "count", "img", "icon", "style", "group"].forEach(function(k){
-                                if(item.hasAttribute("data-"+k)){
-                                    toolbarItem[k] = item.getAttribute("data-"+k) ;
-                                }
-                            }) ;
-                            ["hidden", "hidden", "checked"].forEach(function(k){
-                                if(item.hasAttribute("data-"+k)){
-                                    toolbarItem[k] = item.getAttribute("data-"+k) !== "false" ;
-                                }
-                            }) ;
-                            if(toolbarItem.type === "html"){
-                                toolbarItem.html = toolbarItem.text ;
-                                delete toolbarItem.text ;
-                            }
-                            gridOptions.toolbar.items.push(toolbarItem) ;
-                        }.bind(this)) ;
-                    }
-
-
-                    if(Object.keys(gridOptions.show).length === 0){
-                        delete gridOptions.show;
-                    }
-
-                    var totalColsWithSizePx  = 0;
-                    var totalColsWithSizePercent  = 0;
-                    
-                    listTh.forEach(function(th, i){
-                        var colDef = {
-                            field     : th.getAttribute("data-field-name")||"f"+i,
-                            size      : th.getAttribute("data-field-size")
-                        };
-
-                        var scriptRender = th.querySelector("script") ;
-                        if(scriptRender){
-                            var scriptBody = scriptRender.text ;
-                            scriptBody +=  "//# sourceURL=/column/render/"+element.getAttribute("data-original-id")+"/"+colDef.field+".js" ;
-                            var functionRender = new Function("record", "index", "column_index", scriptBody) ;
-                            colDef.render = functionRender ;
-                            th.removeChild(scriptRender) ;
-                        }
-
-                        var labelEl = th.querySelector("label") ;
-                        if(labelEl){
-                             colDef.caption = labelEl.innerHTML ;
-                        }else{
-                            colDef.caption = th.innerHTML ;
-                        }
-
-                        
-                        
-                        if(colDef.size){
-                            if(colDef.size.indexOf("px") === -1 && colDef.size.indexOf("%") === -1){
-                                //no unit given, assuming px
-                                colDef.size = colDef.size+"px" ;
-                            }
-
-                            if(colDef.size.indexOf("px") !== -1){
-                                totalColsWithSizePx += parseInt(colDef.size.replace("px", ""), 10) ;
-                            }else if(colDef.size.indexOf("%") !== -1){
-                                totalColsWithSizePercent += parseInt(colDef.size.replace("%", ""), 10) ;
-                            }
-                        }
-                        
-
-                        ["sortable", "searchable", "hidden"].forEach(function(colAtt){
-                                var colValue = th.getAttribute(colAtt);
-                                if(colValue !== null){
-                                    colDef[colAtt] = colValue.trim().toLowerCase() !== "false" ;
-                                }
-                        });
-                        if(colDef.searchable === undefined){
-                            colDef.searchable = true ;
-                        }
-                        if(colDef.sortable === undefined){
-                            colDef.sortable = true ;
-                        }
-                        var type = th.getAttribute("data-field-type") ;
-                        colDef.fieldType = type;
-                        if(!colDef.render && type){
-                            colDef.render = createGridRenderer(type, colDef.field) ;
-                        }
-                        gridOptions.columns.push(colDef) ;
-                    }) ;
-                    var totalColsNoSize = gridOptions.columns.filter(function(c){ return !c.size;}).length ;
-                    if(totalColsNoSize > 0){
-                        //there is some column with no size, we must compute ideal size
-
-                        var totalWidth = element.offsetWidth-3 ;
-                        var totalPercent = 100 ;
-                        var defaultColSize = "10%" ;
-                        if(totalColsWithSizePx === 0){
-                            //no size is defined in px, use %
-                            var colPercent = (totalPercent - totalColsWithSizePercent)/totalColsNoSize ;
-                            if(colPercent>0){
-                                defaultColSize = (colPercent)+"%" ;
-                            }
-                        }else{
-                            //there is pixel column, compute in pixels
-                            var percentPixels = (totalColsWithSizePercent/100) * totalWidth ;
-                            var remainingWidth = totalWidth - percentPixels - totalColsWithSizePx ;
-                            var colPixel = (remainingWidth / totalColsNoSize) ;
-                            if(colPixel > 10){
-                                defaultColSize = colPixel + "px" ;
-                            }
-                        }
-
-                        gridOptions.columns.forEach(function(c){ 
-                            if(!c.size){
-                                c.size = defaultColSize ;
-                            }
-                        }) ;
-                    }
-
-                    var records = [] ;
-                    var recid = 1 ;
-                    listTr.forEach(function(tr){
-                        var listTd = Array.prototype.slice.call(tr.getElementsByTagName("TD")) ;
-                        if(listTd.length > 0){
-                            var record = {recid: recid++} ;
-                            listTd.forEach(function(td, i){
-                                var value = td.innerHTML ;
-                                if(gridOptions.columns[i].fieldType){
-                                    if(gridOptions.columns[i].fieldType.indexOf("date") !== -1){
-                                        value = new Date(value) ;
-                                    }else if(["int", "integer", "double", "decimal", "number"].indexOf(gridOptions.columns[i].fieldType) !== -1){
-                                        value = parseFloat(value) ;
-                                    }
-                                }
-                                record[gridOptions.columns[i].field] = value ;
-                            }) ;
-                            records.push(record) ;
-                        }
-                    }) ;
-                    if(records.length>0){
-                        gridOptions.records = records ;
-                    }
-
-                    if(libs.w2ui[gridOptions.name]){
-                        //destroy existing grid before recreate
-                        libs.w2ui[gridOptions.name].destroy();
-                    }
-                    element.innerHTML = "" ;
-                    var grid = window.jQuery(element).w2grid(gridOptions) ;
-                
-                    element.getValue = function(){
-                        var records = grid.records.slice() ;
-                        records.forEach(function(r){
-                            delete r.recid ;
-                        }) ;
-                        return records;
-                    } ;
-                    element.setValue = function(value){
-                        grid.clear() ;
-                        if(value){
-                            value.forEach(function(d,i){
-                                if(!d.recid){
-                                    if(gridOptions.recid){
-                                        d.recid = d[gridOptions.recid] ;
-                                    }else{
-                                        d.recid = i ;
-                                    }
-                                }
-                            });
-                            grid.add(value) ;
-                        }
-                    } ;
-                    element.setReadOnly = function(readOnly){
-                        //FIXME
-                        console.log("implement read only on grid ?") ;
-                    } ;
-                    element.addEventListener = function(event, listener){
-                        grid.on(event, function(ev){
-                            if(ev.recid){
-                                ev.record = grid.get(ev.recid) ;
-                            }
-                            listener(ev) ;
-                        }); 
-                    } ;
-                    //copy grid methods to the elements
-                    Object.keys(Object.getPrototypeOf(grid)).concat(Object.keys(grid)).forEach(function(k){
-                        if(element[k] === undefined){
-                            if(typeof(grid[k]) === "function"){
-                                element[k] = function(){
-                                    return grid[k].apply(grid, arguments) ;
-                                };
-                            }else{
-                                Object.defineProperty(element, k, {
-                                    get: function(){
-                                        return grid[k] ;
-                                    }
-                                }) ;
-                            }
-                        }
-                    }) ;
-
-                    
-                    
-                    callback() ;
-                }) ;
+            ["header"         ,
+            "toolbar"        ,
+            "footer"         ,
+            "columnHeaders"  ,
+            "lineNumbers"    ,
+            "expandColumn"   ,
+            "selectColumn"   ,
+            "emptyRecords"   ,
+            "toolbarInput"  ,
+            "toolbarReload"  ,
+            "toolbarColumns" ,
+            "toolbarSearch"  ,
+            "toolbarAdd"     ,
+            "toolbarEdit"    ,
+            "toolbarDelete"  ,
+            "toolbarSave"    ,
+            "selectionBorder",
+            "recordTitles"   ,
+            "skipRecords"].forEach(function(showAttr){
+                var showValue = thead.getAttribute(showAttr);
+                if(showValue){
+                    gridOptions.show[showAttr] = showValue.trim().toLowerCase() === "true" ;
+                }
             }) ;
+        }
+
+        if(toolbar){
+            gridOptions.toolbar = {
+                items: []
+            };
+            gridOptions.show.toolbar = true ;
+            Array.prototype.slice.apply(toolbar.children).forEach(function(item){
+                var toolbarItem = {
+                    id : item.getAttribute("data-original-id") ,
+                    text: item.innerHTML
+                } ;
+                ["type", "tooltip", "count", "img", "icon", "style", "group"].forEach(function(k){
+                    if(item.hasAttribute("data-"+k)){
+                        toolbarItem[k] = item.getAttribute("data-"+k) ;
+                    }
+                }) ;
+                ["hidden", "hidden", "checked"].forEach(function(k){
+                    if(item.hasAttribute("data-"+k)){
+                        toolbarItem[k] = item.getAttribute("data-"+k) !== "false" ;
+                    }
+                }) ;
+                if(toolbarItem.type === "html"){
+                    toolbarItem.html = toolbarItem.text ;
+                    delete toolbarItem.text ;
+                }
+                gridOptions.toolbar.items.push(toolbarItem) ;
+            }.bind(this)) ;
+        }
+
+
+        if(Object.keys(gridOptions.show).length === 0){
+            delete gridOptions.show;
+        }
+
+        var totalColsWithSizePx  = 0;
+        var totalColsWithSizePercent  = 0;
+        
+        listTh.forEach(function(th, i){
+            var colDef = {
+                field     : th.getAttribute("data-field-name")||"f"+i,
+                size      : th.getAttribute("data-field-size")
+            };
+
+            var scriptRender = th.querySelector("script") ;
+            if(scriptRender){
+                var scriptBody = scriptRender.text ;
+                scriptBody +=  "//# sourceURL=/column/render/"+element.getAttribute("data-original-id")+"/"+colDef.field+".js" ;
+                var functionRender = new Function("record", "index", "column_index", scriptBody) ;
+                colDef.render = functionRender ;
+                th.removeChild(scriptRender) ;
+            }
+
+            var labelEl = th.querySelector("label") ;
+            if(labelEl){
+                    colDef.caption = labelEl.innerHTML ;
+            }else{
+                colDef.caption = th.innerHTML ;
+            }
+
+                        
+                        
+            if(colDef.size){
+                if(colDef.size.indexOf("px") === -1 && colDef.size.indexOf("%") === -1){
+                    //no unit given, assuming px
+                    colDef.size = colDef.size+"px" ;
+                }
+
+                if(colDef.size.indexOf("px") !== -1){
+                    totalColsWithSizePx += parseInt(colDef.size.replace("px", ""), 10) ;
+                }else if(colDef.size.indexOf("%") !== -1){
+                    totalColsWithSizePercent += parseInt(colDef.size.replace("%", ""), 10) ;
+                }
+            }
+            
+
+            ["sortable", "searchable", "hidden"].forEach(function(colAtt){
+                    var colValue = th.getAttribute(colAtt);
+                    if(colValue !== null){
+                        colDef[colAtt] = colValue.trim().toLowerCase() !== "false" ;
+                    }
+            });
+            if(colDef.searchable === undefined){
+                colDef.searchable = true ;
+            }
+            if(colDef.sortable === undefined){
+                colDef.sortable = true ;
+            }
+            var type = th.getAttribute("data-field-type") ;
+            colDef.fieldType = type;
+            if(!colDef.render && type){
+                colDef.render = createGridRenderer(type, colDef.field) ;
+            }
+            gridOptions.columns.push(colDef) ;
+        }) ;
+        var totalColsNoSize = gridOptions.columns.filter(function(c){ return !c.size;}).length ;
+        if(totalColsNoSize > 0){
+            //there is some column with no size, we must compute ideal size
+
+            var totalWidth = element.offsetWidth-3 ;
+            var totalPercent = 100 ;
+            var defaultColSize = "10%" ;
+            if(totalColsWithSizePx === 0){
+                //no size is defined in px, use %
+                var colPercent = (totalPercent - totalColsWithSizePercent)/totalColsNoSize ;
+                if(colPercent>0){
+                    defaultColSize = (colPercent)+"%" ;
+                }
+            }else{
+                //there is pixel column, compute in pixels
+                var percentPixels = (totalColsWithSizePercent/100) * totalWidth ;
+                var remainingWidth = totalWidth - percentPixels - totalColsWithSizePx ;
+                var colPixel = (remainingWidth / totalColsNoSize) ;
+                if(colPixel > 10){
+                    defaultColSize = colPixel + "px" ;
+                }
+            }
+
+            gridOptions.columns.forEach(function(c){ 
+                if(!c.size){
+                    c.size = defaultColSize ;
+                }
+            }) ;
+        }
+
+        var records = [] ;
+        var recid = 1 ;
+        listTr.forEach(function(tr){
+            var listTd = Array.prototype.slice.call(tr.getElementsByTagName("TD")) ;
+            if(listTd.length > 0){
+                var record = {recid: recid++} ;
+                listTd.forEach(function(td, i){
+                    var value = td.innerHTML ;
+                    if(gridOptions.columns[i].fieldType){
+                        if(gridOptions.columns[i].fieldType.indexOf("date") !== -1){
+                            value = new Date(value) ;
+                        }else if(["int", "integer", "double", "decimal", "number"].indexOf(gridOptions.columns[i].fieldType) !== -1){
+                            value = parseFloat(value) ;
+                        }
+                    }
+                    record[gridOptions.columns[i].field] = value ;
+                }) ;
+                records.push(record) ;
+            }
+        }) ;
+        if(records.length>0){
+            gridOptions.records = records ;
+        }
+
+        if(libs.w2ui[gridOptions.name]){
+            //destroy existing grid before recreate
+            libs.w2ui[gridOptions.name].destroy();
+        }
+        element.innerHTML = "" ;
+        var grid = window.jQuery(element).w2grid(gridOptions) ;
+    
+        element.getValue = function(){
+            var records = grid.records.slice() ;
+            records.forEach(function(r){
+                delete r.recid ;
+            }) ;
+            return records;
+        } ;
+        element.setValue = function(value){
+            grid.clear() ;
+            if(value){
+                value.forEach(function(d,i){
+                    if(!d.recid){
+                        if(gridOptions.recid){
+                            d.recid = d[gridOptions.recid] ;
+                        }else{
+                            d.recid = i ;
+                        }
+                    }
+                });
+                grid.add(value) ;
+            }
+        } ;
+        element.setReadOnly = function(readOnly){
+            //FIXME
+            console.log("implement read only on grid ?") ;
+        } ;
+        element.addEventListener = function(event, listener){
+            grid.on(event, function(ev){
+                if(ev.recid){
+                    ev.record = grid.get(ev.recid) ;
+                }
+                listener(ev) ;
+            }); 
+        } ;
+        //copy grid methods to the elements
+        Object.keys(Object.getPrototypeOf(grid)).concat(Object.keys(grid)).forEach(function(k){
+            if(element[k] === undefined){
+                if(typeof(grid[k]) === "function"){
+                    element[k] = function(){
+                        return grid[k].apply(grid, arguments) ;
+                    };
+                }else{
+                    Object.defineProperty(element, k, {
+                        get: function(){
+                            return grid[k] ;
+                        }
+                    }) ;
+                }
+            }
         }) ;
     }
 
@@ -1522,9 +1539,8 @@
      * @param {"grid"} fieldType the field type
      * @param {string} fieldSize the field size
      * @param {object} fieldOptions the field options (from attributes)
-     * @param {function(Error)} callback called when field is created
      */
-    function createUploadField(element, fieldType, fieldSize, fieldOptions, callback){
+    function createUploadField(element, fieldType, fieldSize, fieldOptions){
         loadUploadCSS() ;
 
         var input = appendInputHtml(element) ;
@@ -1618,7 +1634,6 @@
             setReadOnly(element, readOnly) ;
         } ;
 
-        callback() ;
     }
 
     /**
@@ -1628,9 +1643,8 @@
      * @param {"boolean"|"checkbox"|"switch"|"toggle"} fieldType the field type
      * @param {string} fieldSize the field size
      * @param {options} fieldOptions the field options (from attributes)
-     * @param {function(Error)} callback called when the field is created
      */
-    function createCheckboxField(element, fieldType, fieldSize, fieldOptions, callback){
+    function createCheckboxField(element, fieldType, fieldSize, fieldOptions){
         var input = null;
         if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
             input = appendInputHtml(element) ;
@@ -1670,7 +1684,6 @@
                 element.dispatchEvent(cloneEv);
             }) ;
         }) ;
-        callback() ;
     }
 
     /**
@@ -1682,49 +1695,41 @@
      * @param {object} fieldOptions the field options (from attributes)
      * @param {function(Error)} callback called when field is created
      */
-    function createPdfField(element, fieldType, fieldSize, fieldOptions, callback){
-        loadLib("PDFObject", PDFOBJECT_VERSION, PDFOBJECT_LIB, function(err){
-            if(err){ return callback(err); }
-
-            
-
-            var pdfEl = null;
-            var currentValue = null;
-            element.getValue = function(){
-                return currentValue ;
-            } ;
-            element.setValue = function(value){
-                currentValue = value;
-                if(pdfEl){
-                    element.removeChild(pdfEl) ;
-                }
-                pdfEl = document.createElement("div") ;
-                pdfEl.style.width = "100%";
-                pdfEl.style.height = "100%";
-                element.appendChild(pdfEl) ;
-                var options = {} ;
-                if(!libs.PDFObject.supportsPDFs){
-                    if(VeloxScriptLoader.options.policy === "cdn"){
-                        console.warn("This browser does not support PDF and PDF.js viewer cannot be load from CDN because it cannot run remotely")
-                    }else{
-                        options.PDFJS_URL = VeloxScriptLoader.options.bowerPath+"velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/viewer.html" ;
-                    }
-                }
-                
-                var embedEl = libs.PDFObject.embed(value, pdfEl, options);
-            } ;
-            element.showPDF = element.setValue ;
-                
-            element.setReadOnly = function(){
-                //not handled on PDF viewer
-            } ;
-
-            if(fieldOptions.pdfurl){
-                element.setValue(fieldOptions.pdfurl) ;
+    function createPdfField(element, fieldType, fieldSize, fieldOptions){
+        var pdfEl = null;
+        var currentValue = null;
+        element.getValue = function(){
+            return currentValue ;
+        } ;
+        element.setValue = function(value){
+            currentValue = value;
+            if(pdfEl){
+                element.removeChild(pdfEl) ;
             }
+            pdfEl = document.createElement("div") ;
+            pdfEl.style.width = "100%";
+            pdfEl.style.height = "100%";
+            element.appendChild(pdfEl) ;
+            var options = {} ;
+            if(!libs.PDFObject.supportsPDFs){
+                if(VeloxScriptLoader.options.policy === "cdn"){
+                    console.warn("This browser does not support PDF and PDF.js viewer cannot be load from CDN because it cannot run remotely")
+                }else{
+                    options.PDFJS_URL = VeloxScriptLoader.options.bowerPath+"velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/viewer.html" ;
+                }
+            }
+            
+            var embedEl = libs.PDFObject.embed(value, pdfEl, options);
+        } ;
+        element.showPDF = element.setValue ;
+            
+        element.setReadOnly = function(){
+            //not handled on PDF viewer
+        } ;
 
-            callback() ;
-        });
+        if(fieldOptions.pdfurl){
+            element.setValue(fieldOptions.pdfurl) ;
+        }
     }
 
     /**

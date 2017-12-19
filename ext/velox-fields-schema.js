@@ -18,40 +18,59 @@
     extension.name = "fieldsSchema" ;
 
     var schema; 
-    var schemaExtend; 
-    var apiClient; 
+    // var schemaExtend; 
+    // var apiClient; 
 
     //must run before fields extension
     extension.mustRunBefore = ["fields"] ;
 
-    extension.init = function(cb){
-        var view = this ;
-        getSchema(function(err, schema){
-            if(err){ return cb(err); }
-            if(schema) {
-                doInitView.bind(view)(cb) ;
-            } else {
-                var elements = view.elementsHavingAttribute('data-field-def');
-                if(elements.length > 0){
-                    console.error("You must set the schema with VeloxWebView.fieldsSchema.setSchema before instanciate your views") ;
-                }
-                cb() ;
+    extension.prepare = function(params, cb){
+        var elements = params.doc.querySelectorAll('[data-field-def]');
+        if(!schema) {
+            if(elements.length > 0){
+                console.error("You must set the schema with VeloxWebView.fieldsSchema.setSchema before instanciate your views") ;
+                return cb("You must set the schema with VeloxWebView.fieldsSchema.setSchema before instanciate your views") ;
             }
-        }) ;
-    } ;
+        }
+        var calls = [] ;
+        elements.forEach(function(element){
+            var schemaId = element.getAttribute("data-field-def").split(".") ;
+            if(schemaId.length !== 2){
+                throw ("Invalid data-field-def value : "+element.getAttribute("data-field-def")+", expected format is table.column") ;
+            }
 
-    function getSchema(callback){
-        if(schema){ return callback(null, schema) ;}
-        if(!apiClient) { return callback(null, null) ;}
-        apiClient.__velox_database.getSchema(function(err, schemaFromServer){
-            if(err){ return callback(err); }
-            schema = schemaFromServer ;
-            if(schema && schemaExtend){
-                extendsSchema(schema, schemaExtend) ;
+            var tableDef = schema[schemaId[0]];
+            if(!tableDef){
+                throw ("Unknow table : "+schemaId[0].trim()) ;
             }
-            callback(null, schema) ;
-        }) ;
-    }
+
+            if(schemaId[1] === "grid"){
+                calls.push(function(cb){
+                    VeloxWebView.fields.loadFieldLib("grid", null, cb) ;
+                }) ;
+            } else {
+                var colDef = null;
+                tableDef.columns.some(function(c){
+                    if(c.name === schemaId[1].trim()){
+                        colDef = c;
+                        return true ;
+                    }
+                }) ;
+                if(!colDef){
+                    throw ("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
+                }
+                calls.push(function(cb){
+                    VeloxWebView.fields.loadFieldLib(colDef.type, colDef.options, cb) ;
+                }) ;
+            }
+        });
+        VeloxWebView._asyncSeries(calls, cb) ;
+    } ;
+    
+    extension.init = function(){
+        var view = this ;
+        doInitView.bind(view)() ;
+    } ;
 
     /**
      * init view fields from schema
@@ -63,60 +82,50 @@
             return callback("You need to load the fields extension to use fields schema extension") ;
         }
         var elements = this.elementsHavingAttribute('data-field-def');
-        var calls = [] ;
         elements.forEach(function(element){
-            
-            calls.push(function(cb){
-                var schemaId = element.getAttribute("data-field-def").split(".") ;
-                if(schemaId.length !== 2){
-                    return cb("Invalid data-field-def value : "+element.getAttribute("data-field-def")+", expected format is table.column") ;
+            var schemaId = element.getAttribute("data-field-def").split(".") ;
+            if(schemaId.length !== 2){
+                throw ("Invalid data-field-def value : "+element.getAttribute("data-field-def")+", expected format is table.column") ;
+            }
+
+            var tableDef = schema[schemaId[0]];
+            if(!tableDef){
+                throw ("Unknow table : "+schemaId[0].trim()) ;
+            }
+
+            if(schemaId[1] === "grid"){
+                element.setAttribute("data-field", "grid") ;
+                prepareGrid(element, schemaId[0], tableDef) ;
+            } else {
+                var colDef = null;
+                tableDef.columns.some(function(c){
+                    if(c.name === schemaId[1].trim()){
+                        colDef = c;
+                        return true ;
+                    }
+                }) ;
+                if(!colDef){
+                    throw ("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
                 }
 
-                
 
-                var tableDef = schema[schemaId[0]];
-                if(!tableDef){
-                    return cb("Unknow table : "+schemaId[0].trim()) ;
+                if(!element.hasAttribute("data-bind")){
+                    element.setAttribute("data-bind", colDef.name) ;
                 }
 
-                
-
-                if(schemaId[1] === "grid"){
-                    element.setAttribute("data-field", "grid") ;
-                    prepareGrid(element, schemaId[0], tableDef, cb) ;
-                } else {
-                    var colDef = null;
-                    tableDef.columns.some(function(c){
-                        if(c.name === schemaId[1].trim()){
-                            colDef = c;
-                            return true ;
-                        }
+                element.setAttribute("data-field", colDef.type) ;
+                if(colDef.size){
+                    element.setAttribute("data-field-size", colDef.size) ;
+                }
+                if(colDef.options){
+                    Object.keys(colDef.options).forEach(function(k){
+                        element.setAttribute("data-field-"+k, colDef.options[k]) ;
                     }) ;
-                    if(!colDef){
-                        return cb("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
-                    }
-
-
-                    if(!element.hasAttribute("data-bind")){
-                        element.setAttribute("data-bind", colDef.name) ;
-                    }
-
-                    element.setAttribute("data-field", colDef.type) ;
-                    if(colDef.size){
-                        element.setAttribute("data-field-size", colDef.size) ;
-                    }
-                    if(colDef.options){
-                        Object.keys(colDef.options).forEach(function(k){
-                            element.setAttribute("data-field-"+k, colDef.options[k]) ;
-                        }) ;
-                    }
-
-                    prepareElement(element,schemaId[0], colDef, cb) ;
                 }
-                
-            }) ;
+
+                prepareElement(element,schemaId[0], colDef) ;
+            }
         });
-        series(calls, callback) ;
     }
 
     extension.extendsGlobal = {} ;
@@ -166,9 +175,9 @@
         if(!options.schema && !options.apiClient){
             throw "you should provide either a schema or an apiClient option" ;
         }
-        apiClient = options.apiClient ;
+        // apiClient = options.apiClient ;
         schema = options.schema;
-        schemaExtend = options.schemaExtend;
+        // schemaExtend = options.schemaExtend;
         if(schema && options.schemaExtend){
             extendsSchema(schema, options.schemaExtend) ;
         }
@@ -227,7 +236,7 @@
      * @param {string} table the table name
      * @param {object} colDef the column configuration to apply
      */
-    function prepareElement(element, table, colDef, callback){
+    function prepareElement(element, table, colDef){
         if(colDef.type === "selection" || colDef.type === "select"){
             if(element.tagName !== "SELECT" && element.getElementsByTagName("select").length === 0){
                 var select = document.createElement("SELECT") ;
@@ -248,7 +257,6 @@
                         }
                         select.appendChild(option) ;
                     }) ;
-                    callback() ;
                 }else if(colDef.values && typeof(colDef.values) === "object"){
                     //case where values are defined as key:label object
                     Object.keys(colDef.values).forEach(function(val){
@@ -257,94 +265,89 @@
                         option.innerHTML = colDef.values[val] ;
                         select.appendChild(option) ;
                     }) ;
-                    callback() ;
                 }else if(colDef.values === "2one"){
                     //case where values are content of another table
-                    getPossibleValues(table, colDef, function(err, values){
-                        if(err){ return callback(err);}
-                        Object.keys(values).forEach(function(k){
-                            var option = document.createElement("OPTION") ;
-                            option.value = k;
-                            option.innerHTML = values[k] ;
-                            select.appendChild(option) ;
-                        });
-                        callback() ;
-                    }) ;
+                    // getPossibleValues(table, colDef, function(err, values){
+                    //     if(err){ return callback(err);}
+                    //     Object.keys(values).forEach(function(k){
+                    //         var option = document.createElement("OPTION") ;
+                    //         option.value = k;
+                    //         option.innerHTML = values[k] ;
+                    //         select.appendChild(option) ;
+                    //     });
+                    //     callback() ;
+                    // }) ;
                 }
-            }else{
-                callback() ;
             }
-        }else{
-            callback() ;
         }
     }
 
-    function getPossibleValues(table, colDef, callback){
-        if(!apiClient){
-            return callback("You must give the VeloxServiceClient VeloxWebView.fieldsSchema.configure options to use the selection 2one fields") ;
-        }
-        var otherTable = colDef.otherTable ;
-        var valColumn = colDef.valFields ;
-        if(!otherTable || !valColumn){
-            //try to get in fk
-            schema[table].fk.some(function(fk){
-                if(fk.thisColumn === colDef.name){
-                    if(!otherTable){
-                        otherTable = fk.targetTable;
-                    }
-                    if(!valColumn){ //if val column in other table not explicitelly given, use the FK target column
-                        valColumn = fk.targetColumn;
-                    }
-                    return true ;
-                }
-            }) ;
-        }
-        if(!otherTable){
-            return  callback("Can't find target table for "+table+"."+colDef.name+" you should define a FK or give option otherTable in col def") ;
-        }
-        if(!valColumn){
-            //val column not given and not found in FK
-            return  callback("Can't find target column value for "+table+"."+colDef.name+" you should define a FK or give option valField in col def") ;
-        }
+    // function getPossibleValues(table, colDef, callback){
+    //     if(!apiClient){
+    //         return callback("You must give the VeloxServiceClient VeloxWebView.fieldsSchema.configure options to use the selection 2one fields") ;
+    //     }
+    //     var otherTable = colDef.otherTable ;
+    //     var valColumn = colDef.valFields ;
+    //     if(!otherTable || !valColumn){
+    //         //try to get in fk
+    //         schema[table].fk.some(function(fk){
+    //             if(fk.thisColumn === colDef.name){
+    //                 if(!otherTable){
+    //                     otherTable = fk.targetTable;
+    //                 }
+    //                 if(!valColumn){ //if val column in other table not explicitelly given, use the FK target column
+    //                     valColumn = fk.targetColumn;
+    //                 }
+    //                 return true ;
+    //             }
+    //         }) ;
+    //     }
+    //     if(!otherTable){
+    //         return  callback("Can't find target table for "+table+"."+colDef.name+" you should define a FK or give option otherTable in col def") ;
+    //     }
+    //     if(!valColumn){
+    //         //val column not given and not found in FK
+    //         return  callback("Can't find target column value for "+table+"."+colDef.name+" you should define a FK or give option valField in col def") ;
+    //     }
         
-        var orderBy = colDef.orderBy ;
+    //     var orderBy = colDef.orderBy ;
 
-        if(!orderBy && colDef.labelField){
-            //no order by specified, get columns from label
-            var orderFields = [] ;
-            schema[otherTable].columns.forEach(function(c){
-                if(colDef.labelField.indexOf(c.name) !== -1){
-                    orderFields.push(c.name) ;
-                }
-            }) ;
-            if(orderFields.length>0){
-                orderBy = orderFields.sort(function(f1, f2){
-                    //sort in the order it appear in label
-                    return colDef.labelField.indexOf(f1) - colDef.labelField.indexOf(f2) ;
-                }).join(",") ;
-            }
-        } 
+    //     if(!orderBy && colDef.labelField){
+    //         //no order by specified, get columns from label
+    //         var orderFields = [] ;
+    //         schema[otherTable].columns.forEach(function(c){
+    //             if(colDef.labelField.indexOf(c.name) !== -1){
+    //                 orderFields.push(c.name) ;
+    //             }
+    //         }) ;
+    //         if(orderFields.length>0){
+    //             orderBy = orderFields.sort(function(f1, f2){
+    //                 //sort in the order it appear in label
+    //                 return colDef.labelField.indexOf(f1) - colDef.labelField.indexOf(f2) ;
+    //             }).join(",") ;
+    //         }
+    //     } 
 
-        if(!orderBy){
-            //still not order by, use pk
-            orderBy = schema[otherTable].pk.join(',') ;
-        }
+    //     if(!orderBy){
+    //         //still not order by, use pk
+    //         orderBy = schema[otherTable].pk.join(',') ;
+    //     }
         
-        apiClient.__velox_database[otherTable].search(colDef.search||{}, orderBy, function(err, results){
-            if(err){ return callback(err); }
-            var values = {} ;
-            results.forEach(function(r){
-                var label = colDef.labelField || valColumn;
-                schema[otherTable].columns.forEach(function(c){
-                    label = label.replace(c.name, r[c.name]) ;
-                }) ;
-                values[r[valColumn]] = label ;
-            }.bind(this)) ;
-            callback(null, values) ;
-        }.bind(this));
-    }
+    //     apiClient.__velox_database[otherTable].search(colDef.search||{}, orderBy, function(err, results){
+    //         if(err){ return callback(err); }
+    //         var values = {} ;
+    //         results.forEach(function(r){
+    //             var label = colDef.labelField || valColumn;
+    //             schema[otherTable].columns.forEach(function(c){
+    //                 label = label.replace(c.name, r[c.name]) ;
+    //             }) ;
+    //             values[r[valColumn]] = label ;
+    //         }.bind(this)) ;
+    //         callback(null, values) ;
+    //     }.bind(this));
+    // }
 
-    function prepareGrid(element, tableName,tableDef, callback){
+    function prepareGrid(element, tableName,tableDef){
         var listTables = element.getElementsByTagName("TABLE") ;
         var table = null;
         if(listTables.length === 0){
@@ -359,7 +362,6 @@
         }
 
         var listTH = Array.prototype.slice.call(table.getElementsByTagName("TH")) ;
-        var calls = [] ;
         if(listTH.length === 0){
             listTH = [] ;
             var listThead = element.getElementsByTagName("THEAD") ;
@@ -380,24 +382,18 @@
             tableDef.columns.forEach(function(colDef){
                 if(colDef.name.indexOf("velox_") === 0) { return ; }
                 
-                calls.push(function(cb){
-                    var th = document.createElement("TH") ;
-                    tr.appendChild(th) ;
-                    th.setAttribute("data-field-name", colDef.name) ;
-    
-                    prepareGridThInnerHTML(tableName, colDef, function(err, innerHTML){
-                        if(err){ return cb(err); }
+                var th = document.createElement("TH") ;
+                tr.appendChild(th) ;
+                th.setAttribute("data-field-name", colDef.name) ;
 
-                        th.innerHTML = innerHTML ;
-                        th.setAttribute("data-field-type", colDef.type) ;
-                        if(colDef.options){
-                            Object.keys(colDef.options).forEach(function(k){
-                                th.setAttribute("data-field-"+k, colDef.options[k]) ;
-                            }) ;
-                        }
-                        cb() ;
+                var innerHTML = prepareGridThInnerHTML(tableName, colDef) ;
+                th.innerHTML = innerHTML ;
+                th.setAttribute("data-field-type", colDef.type) ;
+                if(colDef.options){
+                    Object.keys(colDef.options).forEach(function(k){
+                        th.setAttribute("data-field-"+k, colDef.options[k]) ;
                     }) ;
-                }.bind(this)) ;            
+                }
             }) ;
         }else{
             listTH.forEach(function(th){
@@ -410,47 +406,37 @@
                     }
                 }) ;
                 if(colDef){
-                    calls.push(function(cb){
-
-                        if(!th.getAttribute("data-field-type")){
-                            th.setAttribute("data-field-type", colDef.type) ;
-                        }
-                        if(colDef.options){
-                            Object.keys(colDef.options).forEach(function(k){
-                                if(!th.getAttribute("data-field-"+k)){
-                                    th.setAttribute("data-field-"+k, colDef.options[k]) ;
-                                }
-                            }) ;
-                        }
-                        if(!th.innerHTML){
-                            prepareGridThInnerHTML(tableName, colDef, function(err, innerHTML){
-                                if(err){ return cb(err); }
-        
-                                th.innerHTML = innerHTML ;
-                                cb() ;
-                            }.bind(this));
-                        }else{
-                            if(th.children.length === 1 && th.children[0].tagName === "SCRIPT"){
-                                //only a script renderer but no label
-                                var label = document.createElement("LABEL") ;
-                                if(VeloxWebView.i18n){
-                                    label.innerHTML = VeloxWebView.i18n.tr("fields."+tableName+"."+colDef.name) ;
-                                }else{
-                                    label.innerHTML = colDef.label || colDef.name ;
-                                }
-                                th.appendChild(label) ;
+                    if(!th.getAttribute("data-field-type")){
+                        th.setAttribute("data-field-type", colDef.type) ;
+                    }
+                    if(colDef.options){
+                        Object.keys(colDef.options).forEach(function(k){
+                            if(!th.getAttribute("data-field-"+k)){
+                                th.setAttribute("data-field-"+k, colDef.options[k]) ;
                             }
-                            cb() ;
+                        }) ;
+                    }
+                    if(!th.innerHTML){
+                        var innerHTML = prepareGridThInnerHTML(tableName, colDef);
+                        th.innerHTML = innerHTML ;
+                    }else{
+                        if(th.children.length === 1 && th.children[0].tagName === "SCRIPT"){
+                            //only a script renderer but no label
+                            var label = document.createElement("LABEL") ;
+                            if(VeloxWebView.i18n){
+                                label.innerHTML = VeloxWebView.i18n.tr("fields."+tableName+"."+colDef.name) ;
+                            }else{
+                                label.innerHTML = colDef.label || colDef.name ;
+                            }
+                            th.appendChild(label) ;
                         }
-                        
-                    }) ;
+                    }
                 }
             }) ;
         }
-        VeloxWebView._asyncSeries(calls, callback) ;
     }
 
-    function prepareGridThInnerHTML(table, colDef, callback){
+    function prepareGridThInnerHTML(table, colDef){
         var innerHTML = "" ;
         if(VeloxWebView.i18n){
             innerHTML = VeloxWebView.i18n.tr("fields."+table+"."+colDef.name) ;
@@ -459,15 +445,16 @@
         }
         
         if(colDef.values === "2one"){
-            getPossibleValues(table, colDef, function(err, values){
-                if(err){ return callback(err);}
-                var script = "<script>";
-                script += "var values = "+JSON.stringify(values)+";";
-                script += "return values[record['"+colDef.name+"']] || '';" ;
-                script += "</script>" ;
-                innerHTML = script + innerHTML ;
-                callback(null, innerHTML) ;
-            }) ;
+            return innerHTML ;
+            // getPossibleValues(table, colDef, function(err, values){
+            //     if(err){ return callback(err);}
+            //     var script = "<script>";
+            //     script += "var values = "+JSON.stringify(values)+";";
+            //     script += "return values[record['"+colDef.name+"']] || '';" ;
+            //     script += "</script>" ;
+            //     innerHTML = script + innerHTML ;
+            //     callback(null, innerHTML) ;
+            // }) ;
         }else if(Array.isArray(colDef.values)){
             var script = "<script>";
             if(VeloxWebView.i18n){
@@ -477,16 +464,16 @@
             }
             script += "</script>" ;
             innerHTML = script + innerHTML ;
-            callback(null, innerHTML) ;
+            return innerHTML ;
         }else if(typeof(colDef.values) === "object" ){
             var script = "<script>";
             script += 'var values = '+JSON.stringify(colDef.values) +" ;" ;
             script += "return values[record['"+colDef.name+"']] ;" ;
             script += "</script>" ;
             innerHTML = script + innerHTML ;
-            callback(null, innerHTML) ;
+            return innerHTML ;
         }else{
-            callback(null, innerHTML) ;
+            return innerHTML ;
         }           
     }
 
@@ -496,22 +483,22 @@
      * @param {function(Error)[]} calls array of function to run
      * @param {function(Error)} callback called when all calls are done
      */
-    var series = function(calls, callback){
-        if(calls.length === 0){ return callback(); }
-        calls = calls.slice() ;
-        var doOne = function(){
-            var call = calls.shift() ;
-            call(function(err){
-                if(err){ return callback(err) ;}
-                if(calls.length === 0){
-                    callback() ;
-                }else{
-                    doOne() ;
-                }
-            }) ;
-        } ;
-        doOne() ;
-    } ;
+    // var series = function(calls, callback){
+    //     if(calls.length === 0){ return callback(); }
+    //     calls = calls.slice() ;
+    //     var doOne = function(){
+    //         var call = calls.shift() ;
+    //         call(function(err){
+    //             if(err){ return callback(err) ;}
+    //             if(calls.length === 0){
+    //                 callback() ;
+    //             }else{
+    //                 doOne() ;
+    //             }
+    //         }) ;
+    //     } ;
+    //     doOne() ;
+    // } ;
 
     return extension ;
 
