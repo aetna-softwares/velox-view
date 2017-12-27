@@ -15,6 +15,21 @@ var animals = [
 
 describe("render", function () {
 	
+	describe("select text content", function () {
+		var view = new VeloxWebView("views", "text_content", { container: "container" });
+		it("should do the initial render", function (done) {
+			view.open({animals: animals}, function (err) {
+				expect(err).to.not.exist;
+
+				expect(view.container.querySelector("option").getAttribute("value")).to.equal(animals[0].family);
+				expect(view.container.querySelector("option").innerHTML).to.equal(animals[0].name);
+				done();
+			});
+		});
+
+	});
+
+
 	describe("simple render", function () {
 		var view = new VeloxWebView("views", "animal", { container: "container" });
 		it("should do the initial render", function (done) {

@@ -378,6 +378,9 @@
             };
             libs.moment = window.moment ;
         }
+        if(window.moment && !libs.moment){
+            libs.moment = window.moment ;
+        }
         if(!libs.moment.localeData(momentLocaleCode(currentLocale.lang))){
             if(!window.moment){
                 window.moment = libs.moment;

@@ -124,12 +124,13 @@
      * This function evaluate an expression against a data object
      * 
      * @example
-     * evalExpr({a: 1, b: 2}, "a > 0 && b < 5") //return true
+     * evalExpr({a: 1, b: 2}, {index: 1}, "a > 0 && b < 5") //return true
      * 
      * @param {object} currentData object data
+     * @param {object} contextData object data
      * @param {string} expr expression to evaluate
      */
-    function evalExpr(currentData, expr){
+    function evalExpr(currentData, contextData, expr){
         if(currentData){
             /*
             the expression will be run in a function receiving the object properties as argument
@@ -149,6 +150,12 @@
                 var k = dataKeys[i] ;
                 argNames.push(k);
                 argValues.push(currentData[k]);
+            }
+            dataKeys  = Object.keys(contextData);
+            for(var i=0; i<dataKeys.length; i++){
+                var k = dataKeys[i] ;
+                argNames.push(k);
+                argValues.push(contextData[k]);
             }
 
             /*
@@ -655,31 +662,40 @@
                             }
                         }).bind(this));
 
-                        Object.keys(parsed.subviews).forEach((function (viewId) {
-                            calls.push(function(cb){
-                                var view = parsed.subviews[viewId] ;
-                                var viewOptions = {
-                                    containerParent: null,
-                                    container: null,
-                                    containerIsInside : null,
-                                    insertBefore : null,
-                                    insertAfter : null,
-                                    file: view.file,
-                                    html: view.html,
-                                    css: view.html?"":undefined,
-                                    bindObject: null,
-                                    bindPath: []
-                                } ;
-                                
-                                var v = new VeloxWebView(view.dir, view.file, viewOptions);
-                                v.compileView(cb) ;
-                            });
-                        }));
-
                         asyncSeries(calls, function(err){
                             if(err){ throw err; }
-                            callback(null, parsed) ;
-                        }) ;
+                            parsed.subviews = this.prepareSubViews(parsed.xmlDoc.body) ;
+                            parsed.boundElements = this.computeBoundElements(parsed.xmlDoc) ;
+                            parsed.ids = this.prepareIds(parsed.xmlDoc) ;
+                            parsed.childrenCount = parsed.xmlDoc.body.childNodes.length ;
+                            
+                            calls = [] ;
+                            Object.keys(parsed.subviews).forEach((function (viewId) {
+                                calls.push(function(cb){
+                                    var view = parsed.subviews[viewId] ;
+                                    var viewOptions = {
+                                        containerParent: null,
+                                        container: null,
+                                        containerIsInside : null,
+                                        insertBefore : null,
+                                        insertAfter : null,
+                                        file: view.file,
+                                        html: view.html,
+                                        css: view.html?"":undefined,
+                                        bindObject: null,
+                                        bindPath: []
+                                    } ;
+                                    
+                                    var v = new VeloxWebView(view.dir, view.file, viewOptions);
+                                    v.compileView(cb) ;
+                                });
+                            }));
+
+                            asyncSeries(calls, function(err){
+                                if(err){ throw err; }
+                                callback(null, parsed) ;
+                            }.bind(this)) ;
+                        }.bind(this)) ;
                     }.bind(this));
                 }.bind(this));
             }.bind(this));
@@ -946,6 +962,15 @@
     } ;
 
     /**
+     * Check if the view is displayed
+     * 
+     * @returns {boolean} true if the view is displayed
+     */
+    VeloxWebView.prototype.isDisplayed = function(){
+        return this.container && this.container.style && this.container.style.display !== "none" ;
+    } ;
+
+    /**
      * Get all elements of the view having an attribute
      * This will also return the container if it has the attribute
      * 
@@ -986,7 +1011,7 @@
         this.emit("close",null, this, true);   
         if(!this.options.container && this.options.containerParent && this.containerParent && this.container){
             this.containerParent.removeChild(this.container) ;
-        }else if(this.container){
+        }else if(this.container && this.container.innerHTML){
             this.container.innerHTML = "" ;
         }
         this.ids = null;
@@ -1037,6 +1062,85 @@
             }
         }).bind(this);
         xhr.send();
+    } ;
+    
+    VeloxWebView.prototype.prepareIds = function (xmlDoc) {
+        var ids = [] ;
+        var elIds = xmlDoc.querySelectorAll("[id]") ;
+        for(var i=0; i<elIds.length; i++){
+            ids.push(elIds[i].id) ;
+        }
+
+        this.replacePaths(xmlDoc.body) ;
+        return ids;
+    } ;
+
+    /**
+     * Compute the bound elements
+     */
+    VeloxWebView.prototype.computeBoundElements = function (xmlDoc) {
+        var boundElements = [];
+        var allElements = [];
+        var foundEls = xmlDoc.body.getElementsByTagName("*");
+        for ( var i=0;i<foundEls.length; i++ ) {allElements[i] = foundEls[i];}
+        for(var z=0; z<allElements.length; z++){
+            var el = allElements[z] ;
+            var bindPath = el.getAttribute("data-bind");
+            var bindEl = {el: el} ;
+            var isContainerOfNestedView = false;
+            if(el === xmlDoc){
+                if(el.getAttribute("data-view")){
+                    isContainerOfNestedView = true;
+                } else if(el.children.length > 0) {
+                    isContainerOfNestedView = true;
+                }
+            }
+            if(
+                !isContainerOfNestedView &&
+                bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
+                bindEl.bindPath = bindPath.split(".");
+            }
+            var attributes = el.attributes ;
+            var boundAttributes = {} ;
+            var hasBoundAttribute = false ;
+            for(var i=0; i<attributes.length; i++){
+                if(attributes[i].value.indexOf("${") !== -1 && attributes[i].value.indexOf("}") !== -1){
+                    boundAttributes[attributes[i].name] = attributes[i].value ;
+                    hasBoundAttribute = true ;
+                }
+            }
+            if(hasBoundAttribute){
+                bindEl.boundAttributes = boundAttributes;
+            }
+
+            var textNodes = [];
+            for ( var i=0;i<el.childNodes.length; i++ ) {
+                if(el.childNodes[i].nodeType === Node.TEXT_NODE){
+                    textNodes.push(el.childNodes[i]);
+                }
+            }
+
+            var boundTextNodes = {} ;
+            var hasBoundTextNodes = false ;
+            for(var i=0; i<textNodes.length; i++){
+                if(textNodes[i].textContent.indexOf("${") !== -1 && textNodes[i].textContent.indexOf("}") !== -1){
+                    boundTextNodes[i] = textNodes[i].textContent ;
+                    hasBoundTextNodes = true ;
+                }
+            }
+            if(hasBoundTextNodes){
+                bindEl.boundTextNodes = boundTextNodes;
+            }
+
+
+            if(bindEl.bindPath || bindEl.boundAttributes || bindEl.boundTextNodes){
+                if(!bindEl.el.hasAttribute("data-vieworder-id")){
+                    bindEl.el.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
+                }
+                boundElements.push(bindEl);
+            }
+        } ;
+        return boundElements ;
     } ;
 
     /**
@@ -1100,93 +1204,16 @@
 
         //html = xmlDoc.body.innerHTML ;
 
-        this.replacePaths(xmlDoc.body) ;
-
         asyncSeries(calls,  function(err){
             if(err){
                 return callback(err) ;
             }
-
-            var subviews = this.prepareSubViews(xmlDoc.body) ;
-
-            var ids = [] ;
-            var elIds = xmlDoc.querySelectorAll("[id]") ;
-            for(var i=0; i<elIds.length; i++){
-                ids.push(elIds[i].id) ;
-            }
-
-            var boundElements = [];
-            var allElements = [];
-            var foundEls = xmlDoc.getElementsByTagName("*");
-            for ( var i=0;i<foundEls.length; i++ ) {allElements[i] = foundEls[i];}
-            for(var z=0; z<allElements.length; z++){
-                var el = allElements[z] ;
-                var bindPath = el.getAttribute("data-bind");
-                var bindEl = {el: el} ;
-                var isContainerOfNestedView = false;
-                if(el === xmlDoc){
-                    if(el.getAttribute("data-view")){
-                        isContainerOfNestedView = true;
-                    } else if(el.children.length > 0) {
-                        isContainerOfNestedView = true;
-                    }
-                }
-                if(
-                    !isContainerOfNestedView &&
-                    bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
-                    bindEl.bindPath = bindPath.split(".");
-                }
-                var attributes = el.attributes ;
-                var boundAttributes = {} ;
-                var hasBoundAttribute = false ;
-                for(var i=0; i<attributes.length; i++){
-                    if(attributes[i].value.indexOf("${") !== -1 && attributes[i].value.indexOf("}") !== -1){
-                        boundAttributes[attributes[i].name] = attributes[i].value ;
-                        hasBoundAttribute = true ;
-                    }
-                }
-                if(hasBoundAttribute){
-                    bindEl.boundAttributes = boundAttributes;
-                }
-
-                var textNodes = [];
-                for ( var i=0;i<el.childNodes.length; i++ ) {
-                    if(el.childNodes[i].nodeType === Node.TEXT_NODE){
-                        textNodes.push(el.childNodes[i]);
-                    }
-                }
-
-                var boundTextNodes = {} ;
-                var hasBoundTextNodes = false ;
-                for(var i=0; i<textNodes.length; i++){
-                    if(textNodes[i].textContent.indexOf("${") !== -1 && textNodes[i].textContent.indexOf("}") !== -1){
-                        boundTextNodes[i] = textNodes[i].textContent ;
-                        hasBoundTextNodes = true ;
-                    }
-                }
-                if(hasBoundTextNodes){
-                    bindEl.boundTextNodes = boundTextNodes;
-                }
-
-
-                if(bindEl.bindPath || bindEl.boundAttributes || bindEl.boundTextNodes){
-                    if(!bindEl.el.hasAttribute("data-vieworder-id")){
-                        bindEl.el.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
-                    }
-                    boundElements.push(bindEl);
-                }
-            } ;
-
             parsed = {
-                childrenCount: xmlDoc.body.childNodes.length,
                 xmlDoc :xmlDoc,
                 //html: html,
                 cssStatics: cssStatics,
                 cssFiles: cssFiles,
-                subviews: subviews,
                 functionInView: functionInView,
-                ids: ids,
-                boundElements: boundElements
             } ;
             callback(null, parsed) ;
         }.bind(this)) ;
@@ -1480,8 +1507,8 @@
                 }
                 var ids = [];
                 var elIds = el.querySelectorAll('[id]');
-                for(i=0; i<elIds.length; i++){
-                    ids.push(elIds[i].id) ;
+                for(var y=0; y<elIds.length; y++){
+                    ids.push(elIds[y].id) ;
                 }
                 var dir = this.directory ;
                 if(viewAttr){
@@ -1596,31 +1623,6 @@
     } ;
     
 
-    // VeloxWebView.prototype._transformData = function (callback) {
-    //     if(!this.options.transformData){
-    //         return callback() ;
-    //     }
-    //     if(this.options.transformData.length === 1){
-    //         try{
-    //             var transformed = this.options.transformData(this.bindObject);
-    //             if(!transformed){ return callback("The transformData function should return the modified value") ; }
-    //             this.bindObject = transformed;
-    //             callback() ;
-    //         }catch(err){
-    //             callback(err) ;
-    //         }
-    //     }else if(this.options.transformData.length === 1){
-    //         this.options.transformData(this.bindObject, function(err, transformed){
-    //             if(err){ return callback(err); }
-    //             if(!transformed){ return callback("The transformData function should give back the modified value on callback (err, modifiedValue)") ; }
-    //             this.bindObject = transformed ;
-    //             callback() ;
-    //         }) ;
-    //     }else{
-    //         callback("The transformData function should take argument (data) or (data, callback)") ;
-    //     }
-    // } ;
-
     /**
      * Get the subview instance
      * 
@@ -1662,6 +1664,8 @@
             return ;
         }
 
+        
+
         this.rendering = true ;
         var callback = function(){
             this.rendering = false ;
@@ -1675,6 +1679,8 @@
         if (this.bindPath) {
             baseData = pathExtract(this.bindObject, this.bindPath);
         }
+
+        this.emit("beforeRender",baseData, this, true);
 
         //set simple elements
         for(var i=0; i<this.boundElements.length; i++){
@@ -1758,7 +1764,7 @@
                             break;
                         }
                         var expr = value.substring(indexStart+2, indexEnd) ;
-                        var exprValue = evalExpr(baseData, expr) ;
+                        var exprValue = evalExpr(baseData, {index: this.indexMultiple, view: this}, expr) ;
                         value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
                     }
                     if(name.indexOf("attr-") === 0){
@@ -1777,9 +1783,8 @@
                         textNodes.push(el.childNodes[y]);
                     }
                 }
-                for(var y=0; y<boundEl.boundTextNodes.length; y++){
-                    var index = boundEl.boundTextNodes[y] ;
-                    var originalValue = boundEl.boundTextNodes[index] ;
+                for(var y=0; y<textNodes.length; y++){
+                    var originalValue = boundEl.boundTextNodes[y] ;
                     var value = originalValue ;
                     while(value.indexOf("${") !== -1){
                         var indexStart = value.indexOf("${") ;
@@ -1789,11 +1794,11 @@
                             break;
                         }
                         var expr = value.substring(indexStart+2, indexEnd) ;
-                        var exprValue = evalExpr(baseData, expr) ;
+                        var exprValue = evalExpr(baseData, {index: this.indexMultiple, view: this}, expr) ;
                         value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
                     }
-                    if(textNodes[index].textContent != value){
-                        textNodes[index].textContent = value;
+                    if(textNodes[y].textContent != value){
+                        textNodes[y].textContent = value;
                     }
                 }
             }
@@ -1839,13 +1844,13 @@
             var bindPath = view.bindPath || [];
             var shouldDisplay = true;
             if(view.showIf){
-                var showIfData = evalExpr(baseData, view.showIf) ;
+                var showIfData = evalExpr(baseData, {index: this.indexMultiple, view: this}, view.showIf) ;
                 if(!showIfData || (Array.isArray(showIfData) && showIfData.length === 0)){
                     shouldDisplay = false ; 
                 }
             }
             if(view.hideIf){
-                var hideIfData = evalExpr(baseData, view.hideIf) ;
+                var hideIfData = evalExpr(baseData, {index: this.indexMultiple, view: this}, view.hideIf) ;
                 shouldDisplay = false;
                 if(!hideIfData){
                     shouldDisplay = true; //no data should display
@@ -1997,6 +2002,7 @@
         v.viewId = viewId;
         v.parentView = this ;
         v.isMultiple = view.multiple;
+        v.indexMultiple = view.instances.length;
         view.instances.push(v);
             
         //the emitted event are propagated to this view
@@ -2039,7 +2045,7 @@
         //render after propagate event to be sure bound listener are called
         v.bindObject = this.bindObject ;
         v.render() ;
-        this.emit("viewInstanceAdded", {viewId: viewId, index : view.instances.length-1}, this, true) ;
+        this.emit("viewInstanceAdded", {view:v, viewId: viewId, index : view.instances.length-1}, this, false) ;
     } ;
 
     
@@ -2069,6 +2075,11 @@
      * @param {object} [dataToUpdate] - The data object to update. If not given the object used for render is updated
      */
     VeloxWebView.prototype.updateData = function (dataToUpdate) {
+
+        if(!this.boundElements){
+            throw "You try to call updateData() on a view that is not yet initialized or already closed" ;
+        }
+
         var baseData = dataToUpdate;
         if (dataToUpdate === undefined) {
             //object not given, update in the bound object
@@ -2120,10 +2131,7 @@
     VeloxWebView.prototype._updateDataFromView = function (viewId, baseData, dataObject) {
         var view = this.views[viewId];
         var viewBindPath =  view.bindPath;
-        if(viewBindPath){
-            viewBindPath = viewBindPath.replace(/\s/g, "").replace(/\[\]$/, "") ;
-        }
-        //FIXME : update extractor cache
+        
         var viewData = pathExtract(baseData, viewBindPath);
         if (!viewData) {
             viewData = [];
@@ -2305,12 +2313,12 @@
             doTask(function(error){
                 if(error){ this.endWaitError(error) ; return callback(error) ;}
                 this.endWait() ;
-                callback() ;
+                callback.apply(null, arguments) ;
             }.bind(this)) ;
         }else if(doTask.constructor && doTask.constructor.name === "Promise"){
             doTask.then(function(){
                 this.endWait() ;
-                callback() ;
+                callback.apply(null, [null].concat(arguments)) ;
             }.bind(this)).catch(function(error){
                 this.endWaitError(error) ;
                 callback(error) ;

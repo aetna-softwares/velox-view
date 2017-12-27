@@ -12,7 +12,7 @@
 
 
     /**
-     * i18next extension definition
+     * fieldsSchema extension definition
      */
     var extension = {} ;
     extension.name = "fieldsSchema" ;
@@ -45,57 +45,11 @@
             }
 
             if(schemaId[1] === "grid"){
+                element.setAttribute("data-field", "grid") ;
+                prepareGrid(element, schemaId[0], tableDef) ;
                 calls.push(function(cb){
                     VeloxWebView.fields.loadFieldLib("grid", null, cb) ;
                 }) ;
-            } else {
-                var colDef = null;
-                tableDef.columns.some(function(c){
-                    if(c.name === schemaId[1].trim()){
-                        colDef = c;
-                        return true ;
-                    }
-                }) ;
-                if(!colDef){
-                    throw ("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
-                }
-                calls.push(function(cb){
-                    VeloxWebView.fields.loadFieldLib(colDef.type, colDef.options, cb) ;
-                }) ;
-            }
-        });
-        VeloxWebView._asyncSeries(calls, cb) ;
-    } ;
-    
-    extension.init = function(){
-        var view = this ;
-        doInitView.bind(view)() ;
-    } ;
-
-    /**
-     * init view fields from schema
-     * 
-     * @private
-     */
-    function doInitView(callback){
-        if(!VeloxWebView.fields){
-            return callback("You need to load the fields extension to use fields schema extension") ;
-        }
-        var elements = this.elementsHavingAttribute('data-field-def');
-        elements.forEach(function(element){
-            var schemaId = element.getAttribute("data-field-def").split(".") ;
-            if(schemaId.length !== 2){
-                throw ("Invalid data-field-def value : "+element.getAttribute("data-field-def")+", expected format is table.column") ;
-            }
-
-            var tableDef = schema[schemaId[0]];
-            if(!tableDef){
-                throw ("Unknow table : "+schemaId[0].trim()) ;
-            }
-
-            if(schemaId[1] === "grid"){
-                element.setAttribute("data-field", "grid") ;
-                prepareGrid(element, schemaId[0], tableDef) ;
             } else {
                 var colDef = null;
                 tableDef.columns.some(function(c){
@@ -124,9 +78,22 @@
                 }
 
                 prepareElement(element,schemaId[0], colDef) ;
+
+               
+                calls.push(function(cb){
+                    VeloxWebView.fields.loadFieldLib(colDef.type, colDef.options, cb) ;
+                }) ;
             }
         });
-    }
+        VeloxWebView._asyncSeries(calls, cb) ;
+    } ;
+    
+    // extension.init = function(){
+    //     var view = this ;
+    //     doInitView.bind(view)() ;
+    // } ;
+
+    
 
     extension.extendsGlobal = {} ;
 
@@ -477,28 +444,6 @@
         }           
     }
 
-     /**
-     * Execute many function in series
-     * 
-     * @param {function(Error)[]} calls array of function to run
-     * @param {function(Error)} callback called when all calls are done
-     */
-    // var series = function(calls, callback){
-    //     if(calls.length === 0){ return callback(); }
-    //     calls = calls.slice() ;
-    //     var doOne = function(){
-    //         var call = calls.shift() ;
-    //         call(function(err){
-    //             if(err){ return callback(err) ;}
-    //             if(calls.length === 0){
-    //                 callback() ;
-    //             }else{
-    //                 doOne() ;
-    //             }
-    //         }) ;
-    //     } ;
-    //     doOne() ;
-    // } ;
 
     return extension ;
 
