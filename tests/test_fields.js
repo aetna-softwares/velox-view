@@ -36,7 +36,7 @@ describe("Fields extension", function() {
         expect(document.querySelector("[data-field=datetime]>input.flatpickr-input")).to.exist ;
     });
     it("should have select field", function() {
-        expect(document.querySelector("[data-field=select]>select.selectized")).to.exist ;
+        expect(document.querySelector("[data-field=select]>.choices")).to.exist ;
     });
     it("should have checkbox field", function() {
       expect(document.querySelector("[data-field=checkbox]>input")).to.exist ;
@@ -101,7 +101,7 @@ describe("Fields with i18n", function() {
           expect(document.querySelector("[data-field=datetime]>input.flatpickr-input")).to.exist ;
       });
       it("should have select field", function() {
-          expect(document.querySelector("[data-field=select]>select.selectized")).to.exist ;
+          expect(document.querySelector("[data-field=select]>.choices")).to.exist ;
       });
       it("should have checkbox field", function() {
         expect(document.querySelector("[data-field=checkbox]>input")).to.exist ;

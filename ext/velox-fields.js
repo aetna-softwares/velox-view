@@ -117,6 +117,16 @@
         this.elementsHavingAttribute("data-field").forEach(function(element){
             element.setReadOnly(readOnly) ;
         }) ;
+        var keys = Object.keys(this.views);
+        for(var i=0; i<keys.length; i++){
+            var instances = this.views[keys[i]].instances ;
+            for(var y=0; y<instances.length; y++){
+                var instance = instances[y] ;
+                if(instance.setReadOnly){
+                    instance.setReadOnly(readOnly) ;
+                }
+            }
+        }
     } ;
 
     ///// DEPENDENCIES LIBRARIES LOADING ////////
@@ -126,7 +136,7 @@
     var DECIMALJS_VERSION = "2.2.0" ;
     var FLATPICKR_VERSION = "3.0.5-1" ;
     var MOMENTJS_VERSION = "2.18.1" ;
-    var SELECTIZE_VERSION = "0.12.4" ;
+    var CHOICESJS_VERSION = "3.0.2" ;
     var W2UI_VERSION = "1.5.rc1" ;
     var PDFOBJECT_VERSION = "latest" ;
     var PDFJS_VERSION = "1.9.426" ;
@@ -194,21 +204,21 @@
     ];
 
     
-    var SELECTIZE_LIB = [
+    var CHOICEJS_LIB = [
         JQUERY_LIB,
         {
-            name: "selectize-css",
+            name: "choices-css",
             type: "css",
-            version: SELECTIZE_VERSION,
-            cdn: "https://cdnjs.cloudflare.com/ajax/libs/selectize.js/$VERSION/css/selectize.css",
-            bowerPath: "selectize/dist/css/selectize.css"
+            version: CHOICESJS_VERSION,
+            cdn: "https://rawgit.com/jshjohnson/Choices/v$VERSION/assets/styles/css/choices.min.css",
+            bowerPath: "choices.js/assets/styles/css/choices.min.css"
         },
         {
-            name: "selectize-js",
+            name: "choices-js",
             type: "js",
-            version: SELECTIZE_VERSION,
-            cdn: "https://cdnjs.cloudflare.com/ajax/libs/selectize.js/$VERSION/js/standalone/selectize.min.js",
-            bowerPath: "selectize/dist/js/standalone/selectize.min.js"
+            version: CHOICESJS_VERSION,
+            cdn: "https://rawgit.com/jshjohnson/Choices/v$VERSION/assets/scripts/dist/choices.min.js",
+            bowerPath: "choices.js/assets/scripts/dist/choices.min.js"
         }
     ];
 
@@ -489,7 +499,8 @@
                 }) ;
             }) ;
         } else if(fieldType === "selection" || fieldType === "select"){
-            loadLib("selectize", SELECTIZE_VERSION, SELECTIZE_LIB, callback) ;
+            loadLib("choice.js", CHOICESJS_VERSION, CHOICEJS_LIB, callback) ;
+            loadSelectCSS() ;
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
             //no lib
             callback() ;
@@ -1061,8 +1072,9 @@
     function loadSelectCSS(){
         if(selectCSSLoaded){ return ;}
 
-        var css = ".selectize-input.locked, .selectize-control.single .selectize-input.input-active.locked { background: #eeeeee; }";
-        css += ".selectize-control.single .selectize-input.locked:after{ display: none }";
+        var css = ".choices[data-type*=select-one] .choices__inner { padding-bottom: 3.5px ;}";
+        css += ".choices__inner { background-color: white; padding: 3.5px 5.5px 2.75px; min-height: 34px;}";
+        css += ".choices.is-disabled[data-type*=select-one]:after { display: none; }";
         
         var head = document.getElementsByTagName('head')[0];
         var s = document.createElement('style');
@@ -1086,37 +1098,6 @@
      */
     function createSelectField(element, fieldType, fieldSize, fieldOptions){
 
-        //get from https://github.com/selectize/selectize.js/pull/936
-        window.Selectize.prototype.positionDropdown = function () {
-            var $control = this.$control;
-            var offset = this.settings.dropdownParent === 'body' ? $control.offset() : $control.position();
-            var controlHeight = $control.outerHeight(true);
-            var dropdownHeight = this.$dropdown.outerHeight(true);
-    
-            var optDirection = "auto"; //this.settings.dropdownDirection;
-            if (optDirection === 'auto') {
-                var dropdownBottom = $control.offset().top + controlHeight + dropdownHeight;
-                var windowBottom = window.jQuery(window).height();
-                optDirection = dropdownBottom < windowBottom ? 'down' : 'up';
-            }
-    
-            if (optDirection === 'down') {
-                offset.top += controlHeight;
-                self.isDropUp = false;
-            } else if (optDirection === 'up') {
-                offset.top -= dropdownHeight;
-                self.isDropUp = true;
-            }
-    
-            this.$dropdown.css({
-                width : $control.outerWidth(),
-                top   : offset.top,
-                left  : offset.left
-            });
-        };
-
-        loadSelectCSS() ;
-
         var select = null ;
         if(element.tagName ===  "SELECT"){
             select = element ;
@@ -1129,39 +1110,39 @@
         }
         //element.style.visibility = "hidden";
 
-        var $select = window.jQuery(select) ;
-        $select.selectize();
-        var selectize = $select[0].selectize;
-        selectize.setValue("") ;
+        var choices = new window.Choices(select, {
+            searchEnabled: true
+        });
+
+        choices.setValue("") ;
         //element.style.visibility = "visible";
 
         element.getValue = function(){
-            var value = selectize.getValue()  ;
+            var value = choices.getValue(true)  ;
             return value||null ;
         } ;
         element.setValue = function(value){
-            return selectize.setValue(value) ;
+            return choices.setValueByChoice(value) ;
         } ;
         element.setReadOnly = function(readOnly){
             if(readOnly) {
-                selectize.lock();
+                choices.disable();
             }else{
-                selectize.unlock();
+                choices.enable();
             }
         } ;
-        element.addEventListener = function(event, listener){
-            $select.on(event, function(ev){
-                ev.target = element;
-                listener(ev) ;
-            }); 
-        } ;
+        // element.addEventListener = function(event, listener){
+        //     $select.on(event, function(ev){
+        //         ev.target = element;
+        //         listener(ev) ;
+        //     }); 
+        // } ;
 
         element.setOptions = function(options){
-            selectize.clearOptions() ;
-            selectize.addOption(options) ;
+            choices.setChoices(options) ;
         } ;
         element.getOptions = function(){
-            return selectize.options;
+            return choices.choices;
         } ;
     }
 

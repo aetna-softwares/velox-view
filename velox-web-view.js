@@ -1770,8 +1770,12 @@
                     if(name.indexOf("attr-") === 0){
                         name = name.substring(name.indexOf("-")+1) ;
                     }
-                    if(boundEl.el.getAttribute(name) != value){
-                        boundEl.el.setAttribute(name, value) ;
+                    if(value === "$removeAttr"){
+                        boundEl.el.removeAttribute(name) ;
+                    }else{
+                        if(boundEl.el.getAttribute(name) != value){
+                            boundEl.el.setAttribute(name, value) ;
+                        }
                     }
                 } ;
             }
@@ -2118,6 +2122,7 @@
             var viewId = viewsKeys[i] ;
             this._updateDataFromView(viewId, baseData, dataToUpdate) ;
         }
+        this.emit("updateData", baseData, this, true);
         return baseData ;
     };
 

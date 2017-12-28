@@ -585,3 +585,31 @@ describe("Sub view render", function () {
 
 	});
 });
+
+
+describe("Remove attr", function () {
+	var view = new VeloxWebView("views", "nested_simple", { container: "container", html: '<input type="checkbox" checked="${animals[0].saved?\'checked\':\'$removeAttr\'}"> <span data-bind="animals[0].name"></span> <input type="checkbox" checked="${animals[1].saved?\'checked\':\'$removeAttr\'}">  <span data-bind="animals[1].name"></span>' });
+
+	it("should open without error", function (done) {
+		view.open({
+			animals: [
+				{ name : animals[0].name, saved: true},
+				{ name : animals[1].name, saved: false},
+			]
+		}, function (err) {
+			expect(err).to.not.exist;
+			done();
+		});
+	});
+
+	it("should have first checkbox checked", function () {
+		expect(view.container.querySelectorAll("input")[0].checked).to.be.true;
+	});
+	it("should have second checkbox unchecked", function () {
+		expect(view.container.querySelectorAll("input")[1].checked).to.be.false;
+	});
+
+
+
+
+});
