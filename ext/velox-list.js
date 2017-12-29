@@ -69,7 +69,8 @@
                     }
                     if(mustAddLine){
                         //add an instance to start input
-                        this.addViewInstance(viewId) ;
+                        var v = this.addViewInstance(viewId) ;
+                        v.listAutoActive = active ;
                     }
                 }
             }
@@ -156,7 +157,8 @@
                             var listIndex = viewDef.instances.indexOf(this) ; //recompute because it may have change with remove actions
                             if(listIndex === viewDef.instances.length - 1){
                                 //where are on the last line, add a line
-                                this.parentView.addViewInstance(this.viewId, function(){}) ;
+                                var v = this.parentView.addViewInstance(this.viewId, function(){}) ;
+                                v.listAutoActive = true ;
                             }
                         }
                     }.bind(this)) ;

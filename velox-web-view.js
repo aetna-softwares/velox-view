@@ -2050,6 +2050,7 @@
         v.bindObject = this.bindObject ;
         v.render() ;
         this.emit("viewInstanceAdded", {view:v, viewId: viewId, index : view.instances.length-1}, this, false) ;
+        return v;
     } ;
 
     
