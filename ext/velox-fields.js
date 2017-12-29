@@ -825,7 +825,19 @@
     function createNumberField(element, fieldType, fieldSize, fieldOptions){
         var input = appendInputHtml(element) ;
         var maskField = null;
-        var maskOptions = null;
+        var maskOptions = { 
+            radixPoint: currentLocale.delimiters.decimal , 
+            groupSeparator : currentLocale.delimiters.thousands , 
+            prefix : "", suffix : "", positionCaretOnTab: false
+        } ;;
+
+        if(fieldOptions.decimaldigits){
+            var digits = parseInt(fieldOptions.decimaldigits, 10) ;
+            if(isNaN(digits)){
+                throw "Invalid value for option decimaldigits, number expected" ;
+            }
+            maskOptions.digits = digits ;
+        }
 
         element.getValue = function(){
             if(maskField){
@@ -846,12 +858,15 @@
         } ;
         element.setValue = function(value){
             if(!value){ value = 0; }
-            value = new libs.Decimal(value) ;
+            var decimalValue = new libs.Decimal(value) ;
             if(fieldType === "percent"){
-                value = value.mul(100) ;
+                decimalValue = decimalValue.mul(100) ;
             }
-            value = value.toNumber() ;
-            input.value = value?""+value:"";
+            value = decimalValue.toNumber() ;
+            if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
+                value = decimalValue.toFixed(maskOptions.digits || 2) .replace(".", currentLocale.delimiters.decimal); 
+            }
+            input.value = (value?""+value:"") ;
             if(maskField){
                 maskField._valueSet(value) ;
             }
@@ -860,37 +875,23 @@
             setReadOnly(element, readOnly) ;
         } ;
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
-            input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
+            window.jQuery(input).on(eventName, function(ev){
+                var cloneEv = null;
+                if(ev.originalEvent){
+                    cloneEv = new ev.originalEvent.constructor(ev.originalEvent.type, ev.originalEvent);
+                }else{
+                    cloneEv = new Event(eventName, ev) ;
+
+                }
                 element.dispatchEvent(cloneEv);
             }) ;
         }) ;
 
 
         if(fieldType === "int" || fieldType === "integer" || fieldType==="number") {
-            maskOptions = { 
-                radixPoint: currentLocale.delimiters.decimal , 
-                groupSeparator : currentLocale.delimiters.thousands , 
-                prefix : "", suffix : "", positionCaretOnTab: false
-            } ;
-
             var im = new libs.Inputmask("integer", maskOptions);
             maskField = im.mask(input) ;
         }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
-            maskOptions = { 
-                radixPoint: currentLocale.delimiters.decimal , 
-                groupSeparator : currentLocale.delimiters.thousands , 
-                prefix : "", suffix : "", positionCaretOnTab: false
-            } ;
-
-            if(fieldOptions.decimaldigits){
-                var digits = parseInt(fieldOptions.decimaldigits, 10) ;
-                if(isNaN(digits)){
-                    throw "Invalid value for option decimaldigits, number expected" ;
-                }
-                maskOptions.digits = digits ;
-            }
-            
             if(fieldType === "percent"){
                 maskOptions.suffix = " %";
             }
