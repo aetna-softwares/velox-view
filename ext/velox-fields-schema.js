@@ -19,7 +19,7 @@
 
     var schema; 
     // var schemaExtend; 
-    // var apiClient; 
+    var apiClient; 
 
     //must run before fields extension
     extension.mustRunBefore = ["fields"] ;
@@ -142,7 +142,7 @@
         if(!options.schema && !options.apiClient){
             throw "you should provide either a schema or an apiClient option" ;
         }
-        // apiClient = options.apiClient ;
+        apiClient = options.apiClient ;
         schema = options.schema;
         // schemaExtend = options.schemaExtend;
         if(schema && options.schemaExtend){
@@ -237,85 +237,72 @@
                     }) ;
                 }else if(colDef.values === "2one"){
                     //case where values are content of another table
-                    // getPossibleValues(table, colDef, function(err, values){
-                    //     if(err){ return callback(err);}
-                    //     Object.keys(values).forEach(function(k){
-                    //         var option = document.createElement("OPTION") ;
-                    //         option.value = k;
-                    //         option.innerHTML = values[k] ;
-                    //         select.appendChild(option) ;
-                    //     });
-                    //     callback() ;
-                    // }) ;
+                    var options = getReadTableOptions(table, colDef) ;
+                    element.setAttribute("data-field-readfromtable", options.readFromTable);
+                    element.setAttribute("data-field-orderbyfromtable", options.orderByFromTable);
+                    element.setAttribute("data-field-readfieldid", options.readFieldId);
+                    element.setAttribute("data-field-readfieldlabel", options.readFieldLabel);
                 }
             }
         }
     }
 
-    // function getPossibleValues(table, colDef, callback){
-    //     if(!apiClient){
-    //         return callback("You must give the VeloxServiceClient VeloxWebView.fieldsSchema.configure options to use the selection 2one fields") ;
-    //     }
-    //     var otherTable = colDef.otherTable ;
-    //     var valColumn = colDef.valFields ;
-    //     if(!otherTable || !valColumn){
-    //         //try to get in fk
-    //         schema[table].fk.some(function(fk){
-    //             if(fk.thisColumn === colDef.name){
-    //                 if(!otherTable){
-    //                     otherTable = fk.targetTable;
-    //                 }
-    //                 if(!valColumn){ //if val column in other table not explicitelly given, use the FK target column
-    //                     valColumn = fk.targetColumn;
-    //                 }
-    //                 return true ;
-    //             }
-    //         }) ;
-    //     }
-    //     if(!otherTable){
-    //         return  callback("Can't find target table for "+table+"."+colDef.name+" you should define a FK or give option otherTable in col def") ;
-    //     }
-    //     if(!valColumn){
-    //         //val column not given and not found in FK
-    //         return  callback("Can't find target column value for "+table+"."+colDef.name+" you should define a FK or give option valField in col def") ;
-    //     }
-        
-    //     var orderBy = colDef.orderBy ;
 
-    //     if(!orderBy && colDef.labelField){
-    //         //no order by specified, get columns from label
-    //         var orderFields = [] ;
-    //         schema[otherTable].columns.forEach(function(c){
-    //             if(colDef.labelField.indexOf(c.name) !== -1){
-    //                 orderFields.push(c.name) ;
-    //             }
-    //         }) ;
-    //         if(orderFields.length>0){
-    //             orderBy = orderFields.sort(function(f1, f2){
-    //                 //sort in the order it appear in label
-    //                 return colDef.labelField.indexOf(f1) - colDef.labelField.indexOf(f2) ;
-    //             }).join(",") ;
-    //         }
-    //     } 
-
-    //     if(!orderBy){
-    //         //still not order by, use pk
-    //         orderBy = schema[otherTable].pk.join(',') ;
-    //     }
+    function getReadTableOptions(table, colDef){
+        var otherTable = colDef.otherTable ;
+        var valColumn = colDef.valFields ;
+        if(!otherTable || !valColumn){
+            //try to get in fk
+            schema[table].fk.some(function(fk){
+                if(fk.thisColumn === colDef.name){
+                    if(!otherTable){
+                        otherTable = fk.targetTable;
+                    }
+                    if(!valColumn){ //if val column in other table not explicitelly given, use the FK target column
+                        valColumn = fk.targetColumn;
+                    }
+                    return true ;
+                }
+            }) ;
+        }
+        if(!otherTable){
+            throw ("Can't find target table for "+table+"."+colDef.name+" you should define a FK or give option otherTable in col def") ;
+        }
+        if(!valColumn){
+            //val column not given and not found in FK
+            throw ("Can't find target column value for "+table+"."+colDef.name+" you should define a FK or give option valField in col def") ;
+        }
         
-    //     apiClient.__velox_database[otherTable].search(colDef.search||{}, orderBy, function(err, results){
-    //         if(err){ return callback(err); }
-    //         var values = {} ;
-    //         results.forEach(function(r){
-    //             var label = colDef.labelField || valColumn;
-    //             schema[otherTable].columns.forEach(function(c){
-    //                 label = label.replace(c.name, r[c.name]) ;
-    //             }) ;
-    //             values[r[valColumn]] = label ;
-    //         }.bind(this)) ;
-    //         callback(null, values) ;
-    //     }.bind(this));
-    // }
+        var orderBy = colDef.orderBy ;
+
+        if(!orderBy && colDef.labelField){
+            //no order by specified, get columns from label
+            var orderFields = [] ;
+            schema[otherTable].columns.forEach(function(c){
+                if(colDef.labelField.indexOf(c.name) !== -1){
+                    orderFields.push(c.name) ;
+                }
+            }) ;
+            if(orderFields.length>0){
+                orderBy = orderFields.sort(function(f1, f2){
+                    //sort in the order it appear in label
+                    return colDef.labelField.indexOf(f1) - colDef.labelField.indexOf(f2) ;
+                }).join(",") ;
+            }
+        } 
+
+        if(!orderBy){
+            //still not order by, use pk
+            orderBy = schema[otherTable].pk.join(',') ;
+        }
+
+        return {
+            readFromTable: otherTable,
+            orderByFromTable: orderBy,
+            readFieldId: valColumn,
+            readFieldLabel: colDef.labelField || valColumn,
+        };
+    }
 
     function prepareGrid(element, tableName,tableDef){
         var listTables = element.getElementsByTagName("TABLE") ;
@@ -415,16 +402,18 @@
         }
         
         if(colDef.values === "2one"){
-            return innerHTML ;
-            // getPossibleValues(table, colDef, function(err, values){
-            //     if(err){ return callback(err);}
+            // var values = getPossibleValues(table, colDef.name);
+            // if(values){
             //     var script = "<script>";
             //     script += "var values = "+JSON.stringify(values)+";";
             //     script += "return values[record['"+colDef.name+"']] || '';" ;
             //     script += "</script>" ;
             //     innerHTML = script + innerHTML ;
-            //     callback(null, innerHTML) ;
-            // }) ;
+            //     return innerHTML ;
+            // }else{
+            //     throw "no known values for "+table+"/"+colDef.name ;
+            // }
+            
         }else if(Array.isArray(colDef.values)){
             var script = "<script>";
             if(VeloxWebView.i18n){

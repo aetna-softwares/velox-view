@@ -48,6 +48,11 @@
     var uploadCSSLoaded = false;
 
     /**
+     * API to call server
+     */
+    var apiClient;
+
+    /**
      * called on view prepare
      */
     extension.init = function(){
@@ -77,6 +82,7 @@
          * @param {object} options the configuration options
          */
         configure : function(options){
+            apiClient = options.apiClient ;
             if(options.libs) {
                 Object.keys(options.libs).forEach(function(k){
                     libs[k] = options.libs[k] ;
@@ -1111,9 +1117,20 @@
         }
         //element.style.visibility = "hidden";
 
-        var choices = new window.Choices(select, {
+        var choicesOptions = {
             searchEnabled: true
-        });
+        } ;
+        var choices = new window.Choices(select, choicesOptions);
+        if(fieldOptions.readfromtable){
+            choices.ajax(function(callback) {
+                getPossibleValues(fieldOptions, function(err, values){
+                    if(err){
+                        throw err ;
+                    }
+                    callback(values, 'id', 'label') ;
+                }) ;
+            });
+        }
 
         choices.setValue("") ;
         //element.style.visibility = "visible";
@@ -1785,6 +1802,28 @@
         } ;
         doOne() ;
     } ;
+
+    function getPossibleValues(fieldOptions, callback){
+        if(!apiClient){
+            return callback("You must give the VeloxServiceClient VeloxWebView.fieldsSchema.configure options to use the selection 2one fields") ;
+        }
+        var otherTable = fieldOptions.readfromtable ;
+        var orderBy = fieldOptions.orderbyfromtable ;
+        var idField = fieldOptions.readfieldid ;
+        var labelField = fieldOptions.readfieldlabel||idField ;
+
+        
+        apiClient.__velox_database[otherTable].search({}, orderBy, function(err, results){
+            if(err){ return callback(err); }
+            var values = results.map(function(r){
+                return {
+                    id: r[idField],
+                    label: r[labelField] 
+                } ;
+            }) ;
+            callback(null, values) ;
+        }.bind(this));
+    }
 
 
     return extension ;
