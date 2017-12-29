@@ -156,12 +156,15 @@
                 if(fieldType === "grid"){ return ;}//ignore grids
                 var fieldDef = element.getAttribute("data-field-def") ;
                 if(!fieldDef){ return ; }
+                var strLabel = VeloxWebView.tr("fields."+fieldDef);
+                element.setAttribute("data-field-label", strLabel) ;
+
                 if(element.hasAttribute("data-field-nolabel")){
                     return ;
                 }
                 
                 var label = document.createElement("LABEL") ;
-                var text = document.createTextNode(VeloxWebView.tr("fields."+fieldDef));
+                var text = document.createTextNode(strLabel);
                 if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
                     //for checkbox, add input in the label
                     var input = element.querySelector("input") ;

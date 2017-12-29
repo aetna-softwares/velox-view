@@ -2137,7 +2137,13 @@
         var view = this.views[viewId];
         var viewBindPath =  view.bindPath;
         
-        var viewData = pathExtract(baseData, viewBindPath);
+        var viewData = baseData ;
+        if(viewBindPath.length>0){
+            viewBindPath[viewBindPath.length-1] = viewBindPath[viewBindPath.length-1].replace(/\[\]$/, "") ;
+
+            baseData = pathExtract(baseData, viewBindPath);
+        }
+        
         if (!viewData) {
             viewData = [];
             pathSetValue(baseData, viewBindPath, viewData);

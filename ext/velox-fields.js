@@ -1130,6 +1130,7 @@
             }else{
                 choices.enable();
             }
+            setReadOnly(element, readOnly) ;
         } ;
         // element.addEventListener = function(event, listener){
         //     $select.on(event, function(ev){
