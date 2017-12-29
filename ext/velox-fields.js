@@ -473,14 +473,14 @@
                 callback() ;
             }
         } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
-            fieldType==="double" || fieldType==="float" || fieldType==="currency" || fieldType==="percent"){
+            fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="currency" || fieldType==="percent"){
             loadLib("Decimal", DECIMALJS_VERSION, DECIMALJS_LIB, function(err){
                 if(err){ return callback(err) ;}
                 loadInputMask(function(err){
                     if(err){ return callback(err) ;}
                     if(fieldType === "int" || fieldType === "integer" || fieldType==="number") {
                         getLocale(callback);
-                    }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="percent" || fieldType==="currency"){
+                    }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
                         getLocale(callback) ;
                     }
                 }) ;
@@ -557,7 +557,7 @@
         if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
             createTextField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
-            fieldType==="double" || fieldType==="float" || fieldType==="currency" || fieldType==="percent"){
+            fieldType==="double" || fieldType==="float"  || fieldType==="float8" || fieldType==="currency" || fieldType==="percent"){
             createNumberField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "email"){
             createEmailField(element, fieldType, fieldSize, fieldOptions) ;
@@ -876,7 +876,7 @@
 
             var im = new libs.Inputmask("integer", maskOptions);
             maskField = im.mask(input) ;
-        }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="percent" || fieldType==="currency"){
+        }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
             maskOptions = { 
                 radixPoint: currentLocale.delimiters.decimal , 
                 groupSeparator : currentLocale.delimiters.thousands , 
@@ -1457,7 +1457,7 @@
             return null;
         }else if(["int", "integer"].indexOf(type) !== -1){
             return "int";
-        }else if(["double", "float", "number", "decimal"].indexOf(type) !== -1){
+        }else if(["double", "float", "float8", "number", "decimal"].indexOf(type) !== -1){
             return "number:2" ;
         }else if(type === "date" || type === "timestamp"){
             return function(record){
