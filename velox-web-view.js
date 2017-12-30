@@ -2142,7 +2142,7 @@
         if(viewBindPath.length>0){
             viewBindPath[viewBindPath.length-1] = viewBindPath[viewBindPath.length-1].replace(/\[\]$/, "") ;
 
-            baseData = pathExtract(baseData, viewBindPath);
+            viewData = pathExtract(baseData, viewBindPath);
         }
         
         if (!viewData) {
@@ -2152,9 +2152,8 @@
         
         for(var i=0; i<view.instances.length; i++){
             var instance = view.instances[i] ;
-            if(instance.bindPath[instance.bindPath.length-1] === "]"){
-                //refresh the path index because it may have changed from user manual remove
-                instance.bindPath = instance.bindPath.substring(0, instance.bindPath.lastIndexOf("[")+1)+i+"]" ;
+            if(instance.isMultiple){
+                instance.bindPath[instance.bindPath.length-1] = i ; //refresh the path index because it may have changed from user manual remove
                 if(!viewData[i]){
                     //list object, add object for each instance
                     viewData[i] = {} ;
