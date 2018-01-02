@@ -1117,6 +1117,7 @@
         }
         //element.style.visibility = "hidden";
 
+        var currentValue = null;
         var choicesOptions = {
             searchEnabled: true
         } ;
@@ -1128,6 +1129,11 @@
                         throw err ;
                     }
                     callback(values, 'id', 'label') ;
+                    if(currentValue){
+                        setTimeout(function(){
+                            choices.setValueByChoice(currentValue) ;
+                        }, 1) ;
+                    }
                 }) ;
             });
         }
@@ -1140,6 +1146,7 @@
             return value||null ;
         } ;
         element.setValue = function(value){
+            currentValue = value ;
             return choices.setValueByChoice(value) ;
         } ;
         element.setReadOnly = function(readOnly){
