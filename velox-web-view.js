@@ -209,7 +209,7 @@
         }
         var pathArray = path ;
         if (!Array.isArray(path)) {
-            pathArray = path.split(".");
+            pathArray = path.split(".").map(function(p){ return p.trim(); });
         // }else{
         //     pathArray = path.slice();
         }
@@ -228,7 +228,7 @@
         while (ind < len) {
             //property name
             // var p = pathArray.shift().trim();
-            var p = pathArray[ind].trim();
+            var p = pathArray[ind];
             // var index = null;
             // if (p[p.length-1] === "]") {
             //     //has index
@@ -601,7 +601,7 @@
         if(!this.bindPath){
             this.bindPath = [] ;
         }else if(typeof(this.bindPath) === "string"){
-            this.bindPath = this.bindPath.split(".") ;
+            this.bindPath = this.bindPath.split(".").map(function(p){ return p.trim(); }) ;
         }
         this.containerParent = this.options.containerParent;
             
@@ -1098,7 +1098,7 @@
             if(
                 !isContainerOfNestedView &&
                 bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
-                bindEl.bindPath = bindPath.split(".");
+                bindEl.bindPath = bindPath.split(".").map(function(p){ return p.trim(); });
             }
             var attributes = el.attributes ;
             var boundAttributes = {} ;
@@ -1360,7 +1360,7 @@
                     el: el,
                     isBefore : nextElementIds.length>0?nextElementIds:null,
                     isAfter : previousElementIds.length>0?previousElementIds:null,
-                    bindPath: bindAttr?bindAttr.split("."):[],
+                    bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
                     dir: dir,
                     file: file,
                     showIf: showIfAttr,
@@ -1375,7 +1375,7 @@
                     el: el,
                     isBefore :  nextElementIds.length>0?nextElementIds:null,
                     isAfter : previousElementIds.length>0?previousElementIds:null,
-                    bindPath: bindAttr?bindAttr.split("."):[],
+                    bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
                     dir: dir,
                     html: elClone.outerHTML,
                     showIf: showIfAttr,
@@ -1391,7 +1391,7 @@
                     el: el,
                     isBefore :  nextElementIds.length>0?nextElementIds:null,
                     isAfter : previousElementIds.length>0?previousElementIds:null,
-                    bindPath: bindAttr?bindAttr.split("."):[],
+                    bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
                     dir: dir,
                     html: elClone.outerHTML,
                     showIf: showIfAttr,
@@ -1527,7 +1527,7 @@
                         el: el,
                         isBefore : nextElementIds.length>0?nextElementIds:null,
                         isAfter : previousElementIds.length>0?previousElementIds:null,
-                        bindPath: bindAttr?bindAttr.split("."):[],
+                        bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
                         dir: dir,
                         file: file,
                         showIf: showIfAttr,
@@ -1554,7 +1554,7 @@
                         el: el,
                         isBefore :  nextElementIds.length>0?nextElementIds:null,
                         isAfter : previousElementIds.length>0?previousElementIds:null,
-                        bindPath: bindAttr?bindAttr.split("."):[],
+                        bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
                         dir: dir,
                         html: elClone.outerHTML,
                         multiple: isMultiple,
