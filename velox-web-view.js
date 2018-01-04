@@ -2073,6 +2073,7 @@
         if (!viewData) {
             viewData = [];
         }
+        
         var view = this.views[viewId];
         for(var i=0; i<view.instances.length; i++){
             var instance = view.instances[i] ;
@@ -2082,8 +2083,10 @@
                     //list object, add object for each instance
                     viewData[i] = {} ;
                 }
-            };
-            instance.updateData(viewData[i]);
+                instance.updateData(viewData[i]);
+            } else {
+                instance.updateData(viewData);
+            }
         }
 
         if(Array.isArray(viewData) && viewData.length>0){

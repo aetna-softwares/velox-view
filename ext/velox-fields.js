@@ -1136,6 +1136,8 @@
         if(htmlEditorCSSLoaded){ return ;}
 
         var css = "div[data-field=html] { height: 200px;} ";
+        css += "div[data-field=html] .ql-container { height: calc(100% - 60px); } ";
+        css += "div[data-field=html].readonly .ql-container { height: calc(100% - 20px); } ";
         css += "div[data-field=html].readonly .ql-toolbar { display: none } ";
         css += "div[data-field=html].readonly .ql-container.ql-snow { border-top: 1px solid #ccc; background: #eeeeee; } ";
         
