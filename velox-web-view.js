@@ -242,9 +242,9 @@
             
 
             if (dataObject) {
-                if (p && p === "$parent"){
+                if (p !== null && p !== undefined && p === "$parent"){
                     dataObject = objectPath.pop() ;
-                }else if (p && p !== "$this") {
+                }else if (p !== null && p !== undefined && p !== "$this") {
                     objectPath.push(dataObject);
                     dataObject = dataObject[p];
                 }
@@ -887,10 +887,12 @@
         var view = this;
         var elAddEventListener = el.addEventListener ;
         el.addEventListener = function(event, listener){
-            elAddEventListener.call(el,event, function(ev){
-                ev.viewOfElement = view;
-                listener.bind(el)(ev) ;
-            }) ;
+            if(typeof(listener) === "function"){ //encounter the case when a non function was given as listener, just discard this
+                elAddEventListener.call(el,event, function(ev){
+                    ev.viewOfElement = view;
+                    listener.bind(el)(ev) ;
+                }) ;
+            }
         } ;
         el.on = el.addEventListener ;
 
@@ -1307,100 +1309,6 @@
         }
     };
 
-
-    VeloxWebView.prototype._addSubView = function(el){
-        if(Object.keys(this.views).some(function(k){ return this.views[k].el === el;}.bind(this))){
-            return; //already added
-        }
-
-        var elClone = el.cloneNode() ;
-
-        var viewId = el.getAttribute("data-view-id");
-        if (!viewId) {
-            viewId = el.id; //el.getAttribute("data-original-id");
-            if (!viewId) {
-                viewId = "v_"+uuidv4();
-            }
-            el.setAttribute("data-view-id", viewId);
-        }
-        var nextElementInParent = el.nextElementSibling ;
-        var nextElementIds = [];
-        while(nextElementInParent){
-            if(!nextElementInParent.hasAttribute("data-vieworder-id")){
-                nextElementInParent.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
-            }
-            nextElementIds.push(nextElementInParent.getAttribute("data-vieworder-id")) ;
-            nextElementInParent = nextElementInParent.nextElementSibling ;
-        }
-        var previousElementInParent = el.previousElementSibling ;
-        var previousElementIds = [];
-        while(previousElementInParent){
-            if(!previousElementInParent.hasAttribute("data-vieworder-id")){
-                previousElementInParent.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
-            }
-            previousElementIds.push(previousElementInParent.getAttribute("data-vieworder-id")) ;
-            previousElementInParent = previousElementInParent.previousElementSibling ;
-        }
-        if (!this.views[viewId]) {
-            var viewAttr = el.getAttribute("data-view");
-            var bindAttr = el.getAttribute("data-bind");
-            var showIfAttr = el.getAttribute("data-show-if");
-            var hideIfAttr = el.getAttribute("data-hide-if");
-            
-            var dir = this.directory ;
-            if(viewAttr){
-                var lastSlash = viewAttr.lastIndexOf("/") ;
-                var file = viewAttr ;
-                if(lastSlash !== -1){
-                    dir = viewAttr.substring(0, lastSlash) ;
-                    file= viewAttr.substring(lastSlash+1) ;
-                }
-                this.views[viewId] = {
-                    elParent: el.parentElement,
-                    el: el,
-                    isBefore : nextElementIds.length>0?nextElementIds:null,
-                    isAfter : previousElementIds.length>0?previousElementIds:null,
-                    bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
-                    dir: dir,
-                    file: file,
-                    showIf: showIfAttr,
-                    hideIf: hideIfAttr,
-                    instances: []
-                };
-            }else if(showIfAttr || hideIfAttr){
-                elClone.removeAttribute("data-show-if");
-                elClone.removeAttribute("data-hide-if");
-                this.views[viewId] = {
-                    elParent: el.parentElement,
-                    el: el,
-                    isBefore :  nextElementIds.length>0?nextElementIds:null,
-                    isAfter : previousElementIds.length>0?previousElementIds:null,
-                    bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
-                    dir: dir,
-                    html: elClone.outerHTML,
-                    showIf: showIfAttr,
-                    hideIf: hideIfAttr,
-                    instances: []
-                };
-            }else{
-                if(bindAttr && /\[\]$/.test(bindAttr)){
-                    elClone.removeAttribute("data-bind");
-                }
-                this.views[viewId] = {
-                    elParent: el.parentElement,
-                    el: el,
-                    isBefore :  nextElementIds.length>0?nextElementIds:null,
-                    isAfter : previousElementIds.length>0?previousElementIds:null,
-                    bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
-                    dir: dir,
-                    html: elClone.outerHTML,
-                    showIf: showIfAttr,
-                    hideIf: hideIfAttr,
-                    instances: []
-                };
-            }
-        }
-    } ;
 
     VeloxWebView.prototype.prepareSubViews = function (bodyEl) {
         
@@ -2149,7 +2057,23 @@
             viewData = [];
             pathSetValue(baseData, viewBindPath, viewData);
         }
+
+        this._getSubviewData(viewId, viewData) ;
         
+        return viewData ;
+    };
+
+    /**
+     * Give the sub view data
+     * 
+     * @param {string} viewId the view id
+     * @param {object} [viewData] data to complete
+     */
+    VeloxWebView.prototype._getSubviewData = function (viewId, viewData) {
+        if (!viewData) {
+            viewData = [];
+        }
+        var view = this.views[viewId];
         for(var i=0; i<view.instances.length; i++){
             var instance = view.instances[i] ;
             if(instance.isMultiple){
@@ -2166,7 +2090,8 @@
             viewData.splice(view.instances.length);
         }
         return viewData ;
-    };
+    } ;
+
 
     /**
      * Init the auto emit on HTML elements

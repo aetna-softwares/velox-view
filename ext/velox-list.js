@@ -11,6 +11,24 @@
 }(this, (function (VeloxScriptLoader, VeloxWebView) { 'use strict';
 
     /**
+     * contains loaded libs
+     */
+    var libs = {} ;
+
+    var sortableCSSLoaded = false;
+
+    ///// DEPENDENCIES LIBRARIES LOADING ////////
+    var SORTABLE_VERSION = "1.6.0";
+
+    var SORTABLE_LIB = {
+        name: "sortablejs",
+        type: "js",
+        version: SORTABLE_VERSION,
+        cdn: "https://cdn.jsdelivr.net/npm/sortablejs@$VERSION/Sortable.min.js",
+        bowerPath: "Sortable/Sortable.min.js"
+    } ;
+
+    /**
      * field extension definition
      */
     var extension = {} ;
@@ -25,6 +43,13 @@
     extension.init = function(){
         var view = this ;
         doInitView.bind(view)() ;
+    } ;
+    /**
+     * called on view compile
+     */
+    extension.prepare = function(params, cb){
+        var view = this ;
+        doPrepareView.bind(view)(params, cb) ;
     } ;
     extension.extendsGlobal = {} ;
 
@@ -72,6 +97,21 @@
                         var v = this.addViewInstance(viewId) ;
                         v.listAutoActive = active ;
                     }
+                    if(viewDef.el.hasAttribute("data-list-sortable")){
+                        libs.Sortable.create(viewDef.elParent, {
+                            draggable: ".list-sortable",
+                            handle: ".list-sort-handle",
+                            onEnd: function (/**Event*/evt) {
+                                if (evt.newIndex >= viewDef.instances.length) {
+                                    var k = evt.newIndex - viewDef.instances.length;
+                                    while ((k--) + 1) {
+                                        viewDef.instances.push(undefined);
+                                    }
+                                }
+                                viewDef.instances.splice(evt.newIndex, 0, viewDef.instances.splice(evt.oldIndex, 1)[0]);
+                            },
+                        });
+                    }
                 }
             }
         }.bind(this));
@@ -83,12 +123,13 @@
 
     extension.extendsObj = {} ;
 
-    extension.extendsObj._updateDataFromView = function (viewId, baseData, dataObject) {
-        var viewData = VeloxWebView.prototype._updateDataFromView.call(this, viewId, baseData, dataObject);
+    extension.extendsObj._getSubviewData = function (viewId, viewData) {
+        var viewData = VeloxWebView.prototype._getSubviewData.call(this, viewId, viewData);
         if(this.views[viewId].listAutoActive && Array.isArray(viewData)){
             //remove the last entry of the array because it is always an empty line if list auto is active
             viewData.splice(viewData.length - 1, 1) ;
         }
+        return viewData ;
     } ;
 
     /**
@@ -96,6 +137,7 @@
      */
     function toggleRemoveEls(){
         var elsRemove = this.elementsHavingAttribute("data-list-remove");
+        var elsHandles = this.elementsHavingAttribute("data-list-sort-handle");
         if(this.listAutoActive){
             var viewDef = this.parentView.views[this.viewId] ;
             var listIndex = viewDef.instances.indexOf(this) ;
@@ -104,18 +146,50 @@
                 elsRemove.forEach(function(elRemove){
                     elRemove.style.display = "none" ;
                 });
+                elsHandles.forEach(function(el){
+                    el.style.display = "none" ;
+                });
+                this.container.className = this.container.className.replace("list-sortable", "") ;
             }else{
                 //this instance is not the last, allow to remove it
                 elsRemove.forEach(function(elRemove){
                     elRemove.style.display = "" ;
                 });
+                elsHandles.forEach(function(el){
+                    el.style.display = "" ;
+                });
+                if(this.container.className.indexOf("list-sortable") === -1){
+                    this.container.className += " list-sortable" ;
+                }
             }
         }else{
             //not active, hide all
             elsRemove.forEach(function(elRemove){
                 elRemove.style.display = "none" ;
             });
+            elsHandles.forEach(function(el){
+                el.style.display = "none" ;
+            });
+            this.container.className = this.container.className.replace("list-sortable", "") ;
         }
+    }
+    
+    /**
+     * Prepare sort handles
+     */
+    function prepareSortHandlers(){
+        var elsSortables = this.elementsHavingAttribute("data-list-sort-handle");
+        elsSortables.forEach(function(elHandle){
+            if(elHandle.className.indexOf("list-sort-handle") === -1){
+                elHandle.className += " list-sort-handle" ;
+            }
+        });
+        // var elsSortables = this.elementsHavingAttribute("data-list-sortable");
+        // elsSortables.forEach(function(el){
+        //     if(el.className.indexOf("list-sortable") === -1){
+        //         el.className += " list-sortable" ;
+        //     }
+        // });
     }
 
 
@@ -145,6 +219,9 @@
 
             if(viewDef.el.hasAttribute("data-list-auto")){
                 this.isListAuto = true ;
+                viewDef.getValue = function(){
+                    return this.parentView._getSubviewData(this.viewId) ;
+                }.bind(this) ;
             }
                 
             this.once("load", function(){
@@ -184,7 +261,78 @@
                 this.parentView.on('load', toggleRemoveEls.bind(this)) ;
                 this.parentView.on('viewInstanceRemoved', toggleRemoveEls.bind(this)) ;
                 this.parentView.on('viewInstanceAdded', toggleRemoveEls.bind(this)) ;    
+                this.parentView.on('viewInstanceAdded', prepareSortHandlers.bind(this)) ;    
             }.bind(this)) ;
+        }
+    }
+
+     /**
+     * init view fields
+     * 
+     * get all HTML elements having data-field attribute
+     * 
+     * @private
+     */
+    function doPrepareView(params, callback){
+        var elements = params.doc.querySelectorAll("[data-list-sortable]");
+        if(elements.length>0){
+            loadSortableCSS() ;
+            loadLib("Sortable", SORTABLE_VERSION, SORTABLE_LIB, callback) ;
+        }else{
+            callback() ;
+        }
+    }
+
+    /**
+     * load the Switch CSS
+     */
+    function loadSortableCSS(){
+        if(sortableCSSLoaded){ return ;}
+
+        var css = ".list-sort-handle { cursor: move; }";
+        
+        var head = document.getElementsByTagName('head')[0];
+        var s = document.createElement('style');
+        s.setAttribute('type', 'text/css');
+        if (s.styleSheet) {   // IE
+            s.styleSheet.cssText = css;
+        } else {                // the world
+            s.appendChild(document.createTextNode(css));
+        }
+        head.appendChild(s);
+        sortableCSSLoaded = true ;
+    }
+
+    /**
+     * Load a lib from CDN/Bower if not already loaded or given in configure.libs
+     * 
+     * @param {string} name lib name
+     * @param {string} version the lib version
+     * @param {object} libDef the lib def for VeloxScriptLoader
+     * @param {function(Err)} callback called on loaded
+     */
+    function loadLib(name, version, libDef, callback){
+        if(!libs[name]){
+            if(window[name]){
+                libs[name] = window[name] ;
+                return callback() ;
+            }
+
+            console.debug("No "+name+" object given, we will load from CDN/bower"+
+            ". If you don't want this, add the lib "+name+ " (version "+version+")"+
+                " in your global import scripts or give "+name+" object to VeloxWebView.field.configure({libs : { "+name+": __here__ }})");
+
+            if (!VeloxScriptLoader) {
+                return callback("To have automatic script loading, you need to import VeloxScriptLoader");
+            }
+
+            VeloxScriptLoader.load(libDef, function(err, result){
+                if(err){ return callback(err); }
+                libs[name] = window[name] ;
+                callback(null, result) ;
+            }) ;
+        }else{
+            callback() ;
         }
     }
 
