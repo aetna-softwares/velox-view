@@ -43,6 +43,10 @@
      */
     var selectCSSLoaded = false;
     /**
+     * flag for CSS of HTML editor widget
+     */
+    var htmlEditorCSSLoaded = false;
+    /**
      * flag for CSS of upload widget
      */
     var uploadCSSLoaded = false;
@@ -146,6 +150,7 @@
     var W2UI_VERSION = "1.5.rc1" ;
     var PDFOBJECT_VERSION = "latest" ;
     var PDFJS_VERSION = "1.9.426" ;
+    var QUILL_VERSION = "1.3.4" ;
 
     var JQUERY_LIB = {
         name: "jquery",
@@ -254,6 +259,30 @@
             version: PDFOBJECT_VERSION,
             cdn: "https://bowercdn.net/c/pdfobject2-$VERSION/pdfobject.min.js",
             bowerPath: "pdfobject/pdfobject.min.js"
+        }
+    ];
+    
+    var QUILL_LIB = [
+        {
+            name: "quill",
+            type: "js",
+            version: QUILL_VERSION,
+            cdn: "https://cdn.quilljs.com/$VERSION/quill.js",
+            bowerPath: "quill/quill.min.js"
+        },
+        {
+            name: "quill-css-snow",
+            type: "css",
+            version: QUILL_VERSION,
+            cdn: "https://cdn.quilljs.com/$VERSION/quill.snow.css",
+            bowerPath: "quill/quill.snow.css"
+        },
+        {
+            name: "quill-css-bubble",
+            type: "css",
+            version: QUILL_VERSION,
+            cdn: "https://cdn.quilljs.com/$VERSION/quill.bubble.css",
+            bowerPath: "quill/quill.bubble.css"
         }
     ];
 
@@ -523,6 +552,9 @@
             callback() ;
         } else if(fieldType === "pdf"){
             loadLib("PDFObject", PDFOBJECT_VERSION, PDFOBJECT_LIB, callback) ;
+        } else if(fieldType === "html"){
+            loadLib("Quill", QUILL_VERSION, QUILL_LIB, callback) ;
+            loadHTMLEditorCSS() ;
         } else {
             callback("Unknow field type "+fieldType) ; 
         }
@@ -579,6 +611,8 @@
             createUploadField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "pdf"){
             createPdfField(element, fieldType, fieldSize, fieldOptions) ;
+        } else if(fieldType === "html"){
+            createHTMLField(element, fieldType, fieldSize, fieldOptions) ;
         } else {
             throw "Unknow field type "+fieldType ; 
         }
@@ -1093,6 +1127,28 @@
         }
         head.appendChild(s);
         selectCSSLoaded = true ;
+    }
+    
+    /**
+     * load the html editor CSS
+     */
+    function loadHTMLEditorCSS(){
+        if(htmlEditorCSSLoaded){ return ;}
+
+        var css = "div[data-field=html] { height: 200px;} ";
+        css += "div[data-field=html].readonly .ql-toolbar { display: none } ";
+        css += "div[data-field=html].readonly .ql-container.ql-snow { border-top: 1px solid #ccc; background: #eeeeee; } ";
+        
+        var head = document.getElementsByTagName('head')[0];
+        var s = document.createElement('style');
+        s.setAttribute('type', 'text/css');
+        if (s.styleSheet) {   // IE
+            s.styleSheet.cssText = css;
+        } else {                // the world
+            s.appendChild(document.createTextNode(css));
+        }
+        head.appendChild(s);
+        htmlEditorCSSLoaded = true ;
     }
 
     /**
@@ -1694,6 +1750,57 @@
                 element.dispatchEvent(cloneEv);
             }) ;
         }) ;
+    }
+
+    /**
+     * Create a HTML editor 
+     * 
+     * @param {HTMLElement} element the HTML element to transform
+     * @param {"boolean"|"checkbox"|"switch"|"toggle"} fieldType the field type
+     * @param {string} fieldSize the field size
+     * @param {options} fieldOptions the field options (from attributes)
+     */
+    function createHTMLField(element, fieldType, fieldSize, fieldOptions){
+
+        var BackgroundClass = libs.Quill.import('attributors/class/background');
+        var ColorClass = libs.Quill.import('attributors/class/color');
+        libs.Quill.register(BackgroundClass, true);
+        libs.Quill.register(ColorClass, true);
+
+        var editorDiv = document.createElement("DIV") ;
+        element.appendChild(editorDiv) ;
+
+        var quill = new libs.Quill(editorDiv, {
+            modules: {
+                toolbar: [
+                    fieldOptions.toolbar||['bold', 'italic', 'underline']
+                ]
+            },
+            placeholder: fieldOptions.placeholder||"",
+            theme: fieldOptions.theme||'snow'
+        });
+    
+        element.setValue = function(val){
+            if(val){
+                editorDiv.querySelector('.ql-editor').innerHTML = val ;
+            }else{
+                quill.setContents("") ;
+            }
+        };
+    
+        element.getValue = function(){
+            return editorDiv.querySelector('.ql-editor').innerHTML;
+        } ;
+    
+
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
+            if(readOnly){
+                quill.disable();
+            }else{
+                quill.enable();
+            }
+        } ;
     }
 
     /**
