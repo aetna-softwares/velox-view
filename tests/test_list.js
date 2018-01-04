@@ -72,7 +72,7 @@ describe("List extension", function() {
     
   });
   });
-/*
+
   describe("List auto with no data", function() {
     var view = new VeloxWebView("views", "list1", {container: "container"}) ;
     it("should open without error", function(done) {
@@ -83,11 +83,8 @@ describe("List extension", function() {
       }) ;
     });
 
-    it("should toggle list auto without error", function(done) {
-      view.setListAuto(true, function(err){
-        expect(err).to.not.exist ;
-        done();
-      }) ;
+    it("should toggle list auto without error", function() {
+      view.setListAuto(true) ;
     });
 
     it("should have an extra line", function() {
@@ -117,11 +114,8 @@ describe("List extension", function() {
       }) ;
     });
 
-    it("should toggle list auto without error", function(done) {
-      view.setListAuto(true, function(err){
-        expect(err).to.not.exist ;
-        done();
-      }) ;
+    it("should toggle list auto without error", function() {
+      view.setListAuto(true);
     });
 
     it("should have an extra line", function() {
@@ -141,5 +135,4 @@ describe("List extension", function() {
     
   });
 
-});
-*/
+// });

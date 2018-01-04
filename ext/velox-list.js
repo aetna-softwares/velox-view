@@ -76,7 +76,9 @@
             }
         }.bind(this));
 
-        toggleRemoveEls.bind(this)() ;
+        if(this.isListAuto){
+            toggleRemoveEls.bind(this)() ;
+        }
     } ;
 
     extension.extendsObj = {} ;

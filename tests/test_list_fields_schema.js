@@ -44,11 +44,8 @@ describe("List extension", function () {
             expect(document.querySelector("input").value).to.equal(animals[0].name);
         });
 
-        it("should toggle list auto without error", function (done) {
-            view.setListAuto(true, function (err) {
-                expect(err).to.not.exist;
-                done();
-            });
+        it("should toggle list auto without error", function () {
+            view.setListAuto(true);
         });
 
         it("should have an extra line", function () {
@@ -101,11 +98,8 @@ describe("List extension", function () {
             });
         });
 
-        it("should toggle list auto without error", function (done) {
-            view.setListAuto(true, function (err) {
-                expect(err).to.not.exist;
-                done();
-            });
+        it("should toggle list auto without error", function () {
+            view.setListAuto(true);
         });
 
         it("should have an extra line", function () {
