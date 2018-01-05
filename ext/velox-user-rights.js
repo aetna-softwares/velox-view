@@ -42,34 +42,36 @@
 
     extension.init = function(){
         var view = this ;
-        var user = null;
-        var strUser = localStorage.getItem(localStorageUserKey) ;
-        if(strUser){
-            user = JSON.parse(strUser) ;
-            var userHighestLevel = Number.MIN_VALUE ;
-            var userLowestLevel = Number.MAX_VALUE ;
-            if(user.realms){
-                for(var i=0; i<user.realms.length; i++){
-                    var r = user.realms[i] ;
-                    if(r.profile.level < userLowestLevel){
-                        userLowestLevel = r.profile.level ;
+        view.on("beforeRender", function(){
+            var user = null;
+            var strUser = localStorage.getItem(localStorageUserKey) ;
+            if(strUser){
+                user = JSON.parse(strUser) ;
+                var userHighestLevel = Number.MIN_VALUE ;
+                var userLowestLevel = Number.MAX_VALUE ;
+                if(user.realms){
+                    for(var i=0; i<user.realms.length; i++){
+                        var r = user.realms[i] ;
+                        if(r.profile.level < userLowestLevel){
+                            userLowestLevel = r.profile.level ;
+                        }
+                        if(r.profile.level > userHighestLevel){
+                            userHighestLevel = r.profile.level ;
+                        }
                     }
-                    if(r.profile.level > userHighestLevel){
-                        userHighestLevel = r.profile.level ;
-                    }
+                }else if(user.profile){
+                    userLowestLevel = user.profile.level ;
+                    userHighestLevel = user.profile.level ;
                 }
-            }else if(user.profile){
-                userLowestLevel = user.profile.level ;
-                userHighestLevel = user.profile.level ;
+                view.user = user ;
+                view.userHighestLevel = userHighestLevel ;
+                view.userLowestLevel = userLowestLevel ;
+            }else{
+                view.user = null ;
+                view.userHighestLevel = Number.MAX_VALUE ;
+                view.userLowestLevel = Number.MAX_VALUE ;
             }
-            view.user = user ;
-            view.userHighestLevel = userHighestLevel ;
-            view.userLowestLevel = userLowestLevel ;
-        }else{
-            view.user = null ;
-            view.userHighestLevel = Number.MAX_VALUE ;
-            view.userLowestLevel = Number.MAX_VALUE ;
-        }
+        }) ;
     } ;
     
 
