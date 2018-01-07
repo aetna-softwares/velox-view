@@ -120,28 +120,8 @@
         }
     };
 
-    /**
-     * This function evaluate an expression against a data object
-     * 
-     * @example
-     * evalExpr({a: 1, b: 2}, {index: 1}, "a > 0 && b < 5") //return true
-     * 
-     * @param {object} currentData object data
-     * @param {object} contextData object data
-     * @param {string} expr expression to evaluate
-     */
-    function evalExpr(currentData, contextData, expr){
+    function prepareEvalExpr(currentData, contextData){
         if(currentData){
-            /*
-            the expression will be run in a function receiving the object properties as argument
-            for example : 
-            evalExpr({a: 1, b: 2}, "a > 0 && b < 5") 
-            will execute a function like this : 
-            function(a, b){ return a > 0 && b < 5; }
-            with arguments (1,2)
-            */
-
-
             // prepare function arguments definition and value
             var argNames = [] ;
             var argValues = [] ;
@@ -158,6 +138,21 @@
                 argValues.push(contextData[k]);
             }
 
+            return {
+                names: argNames,
+                values: argValues,
+            } ;
+        }
+        return null;
+    }
+
+    var cacheExprs = {} ;
+
+    function runEvalExpr(nameValues, expr){
+        if(nameValues){
+            var argNames = nameValues.names;
+            var argValues = nameValues.values;
+
             /*
             we run in a loop to handle the undefined properties. consider the following example
             evalExpr({foo: true}, "foo && !bar") 
@@ -165,11 +160,17 @@
             but in the wrapping function this will throw a ReferenceError, so we loop to add them to the argument and retry
             */
 
+            var func = cacheExprs[expr] ;
             var i = 0;
             while(i<20){ //limit to 20 retry, somebody who use more than 20 not referenced variable is probably insane...
                 i++;
                 try{
-                    return new Function(argNames.join(","), "return "+expr).apply(null, argValues) ;
+                    if(!func){
+                        func = new Function(argNames.join(","), "return "+expr) ;
+                    }
+                    var result = func.apply(null, argValues) ;
+                    cacheExprs[expr] = func ;
+                    return result ;
                 }catch(e){
                     if(e.name === "ReferenceError" ){
                         //the expression use a variable name that is not in arguments name
@@ -178,6 +179,7 @@
                         var varName = e.message.split(" ")[0].replace(/'/g, "") ;
                         argNames.push(varName);
                         argValues.push(undefined) ;
+                        func = null;
                         continue; //retry
                     }
                     //other case, log a console error as it likely to be a programmation error
@@ -187,9 +189,38 @@
             }
             console.error("More than 20 retry of "+expr+" there is something wrong in it !") ;
             return false;
-        } 
+        }
         return false;
     }
+
+
+
+    // /**
+    //  * This function evaluate an expression against a data object
+    //  * 
+    //  * @example
+    //  * evalExpr({a: 1, b: 2}, {index: 1}, "a > 0 && b < 5") //return true
+    //  * 
+    //  * @param {object} currentData object data
+    //  * @param {object} contextData object data
+    //  * @param {string} expr expression to evaluate
+    //  */
+    // function evalExpr(currentData, contextData, expr){
+    //     if(currentData){
+    //         /*
+    //         the expression will be run in a function receiving the object properties as argument
+    //         for example : 
+    //         evalExpr({a: 1, b: 2}, "a > 0 && b < 5") 
+    //         will execute a function like this : 
+    //         function(a, b){ return a > 0 && b < 5; }
+    //         with arguments (1,2)
+    //         */
+
+    //         var nameValues = prepareEvalExpr(currentData, contextData) ;
+    //         return runEvalExpr(nameValues, expr) ;
+    //     } 
+    //     return false;
+    // }
 
     
     /**
@@ -923,7 +954,7 @@
                 elFor[y].setAttribute("data-target", modifiedId) ;
             }
         }
-    }
+    } ;
 
     /**
      * Replace relative path
@@ -1590,6 +1621,8 @@
 
         this.emit("beforeRender",baseData, this, true);
 
+        var exprNameValues = prepareEvalExpr(baseData, {index: this.indexMultiple, view: this}) ;
+
         //set simple elements
         for(var i=0; i<this.boundElements.length; i++){
             var boundEl = this.boundElements[i] ;
@@ -1672,7 +1705,7 @@
                             break;
                         }
                         var expr = value.substring(indexStart+2, indexEnd) ;
-                        var exprValue = evalExpr(baseData, {index: this.indexMultiple, view: this}, expr) ;
+                        var exprValue = runEvalExpr(exprNameValues, expr) ;
                         value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
                     }
                     if(name.indexOf("attr-") === 0){
@@ -1706,7 +1739,8 @@
                             break;
                         }
                         var expr = value.substring(indexStart+2, indexEnd) ;
-                        var exprValue = evalExpr(baseData, {index: this.indexMultiple, view: this}, expr) ;
+                        
+                        var exprValue = runEvalExpr(exprNameValues, expr) ;
                         value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
                     }
                     if(textNodes[y].textContent != value){
@@ -1719,10 +1753,10 @@
             var event = document.createEvent('CustomEvent');
             event.initCustomEvent('bound', false, true, {
                 value: bindData,
-                baseData: pathExtract(this.bindObject, this.bindPath),
+                baseData: baseData,
                 bindPath: bindPath,
                 view: this,
-                data: pathExtract(this.bindObject, (this.bindPath||"$this")+"."+bindPath, true)
+                data: bindData
             });
             var detailKeys = Object.keys(event.detail) ;
             for(var y=0; y<detailKeys.length; y++){
@@ -1739,7 +1773,7 @@
             baseData: this.bindObject,
             bindPath: this.bindPath,
             view: this,
-            data: pathExtract(this.bindObject, this.bindPath, true)
+            data: baseData
         });
         var detailKeys = Object.keys(event.detail) ;
         for(var y=0; y<detailKeys.length; y++){
@@ -1756,13 +1790,13 @@
             var bindPath = view.bindPath || [];
             var shouldDisplay = true;
             if(view.showIf){
-                var showIfData = evalExpr(baseData, {index: this.indexMultiple, view: this}, view.showIf) ;
+                var showIfData = runEvalExpr(exprNameValues, view.showIf) ;
                 if(!showIfData || (Array.isArray(showIfData) && showIfData.length === 0)){
                     shouldDisplay = false ; 
                 }
             }
             if(view.hideIf){
-                var hideIfData = evalExpr(baseData, {index: this.indexMultiple, view: this}, view.hideIf) ;
+                var hideIfData = runEvalExpr(exprNameValues, view.hideIf) ;
                 shouldDisplay = false;
                 if(!hideIfData){
                     shouldDisplay = true; //no data should display
