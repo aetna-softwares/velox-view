@@ -49,7 +49,7 @@
                 user = JSON.parse(strUser) ;
                 var userHighestLevel = Number.MIN_VALUE ;
                 var userLowestLevel = Number.MAX_VALUE ;
-                if(user.realms){
+                if(user.realms && user.realms.length > 0){
                     for(var i=0; i<user.realms.length; i++){
                         var r = user.realms[i] ;
                         if(r.profile.level < userLowestLevel){
