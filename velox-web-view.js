@@ -790,6 +790,7 @@
                 bindPath : boundEl.bindPath,
                 boundAttributes: boundEl.boundAttributes,
                 boundTextNodes: boundEl.boundTextNodes,
+                isHTML : boundEl.isHTML,
                 el: elInThisInstance
             } ;
 
@@ -1131,6 +1132,10 @@
             if(
                 !isContainerOfNestedView &&
                 bindPath && !bindPath.replace(/\s/g, "").match(/\[\]$/)) {
+                if(bindPath.indexOf("html:") === 0){
+                    bindPath = bindPath.substring("html:".length) ;
+                    bindEl.isHTML = true ;
+                }
                 bindEl.bindPath = bindPath.split(".").map(function(p){ return p.trim(); });
             }
             var attributes = el.attributes ;
@@ -1685,8 +1690,14 @@
                             }
                         }
                     }
-                    if(el.textContent != bindData){
-                        el.textContent = bindData;
+                    if(boundEl.isHTML){
+                        if(el.innerHTML != bindData){
+                            el.innerHTML = bindData;
+                        }
+                    }else{
+                        if(el.textContent != bindData){
+                            el.textContent = bindData;
+                        }
                     }
                 }
             }
