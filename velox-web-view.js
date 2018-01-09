@@ -919,10 +919,15 @@
         var view = this;
         var elAddEventListener = el.addEventListener ;
         el.addEventListener = function(event, listener){
-            if(typeof(listener) === "function"){ //encounter the case when a non function was given as listener, just discard this
+            if(typeof(listener) === "function"){ 
                 elAddEventListener.call(el,event, function(ev){
                     ev.viewOfElement = view;
                     listener.bind(el)(ev) ;
+                }) ;
+            }else if(listener && listener.handleEvent){
+                elAddEventListener.call(el,event, function(ev){
+                    ev.viewOfElement = view;
+                    listener.handleEvent.bind(listener)(ev) ;
                 }) ;
             }
         } ;
