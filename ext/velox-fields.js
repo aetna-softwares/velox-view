@@ -116,7 +116,8 @@
         },
 
         loadFieldLib: function(fieldType, fieldOptions, callback){
-            loadNeededLib(fieldType, fieldOptions, callback) ;
+            setNeededLib(fieldType, fieldOptions) ;
+            loadLibs(callback) ;
         }
     } ;
 
@@ -448,22 +449,19 @@
      */
     function doPrepareView(params, callback){
         var elements = params.doc.querySelectorAll("[data-field]");
-        var calls = [] ;
         elements.forEach(function(element){
-            calls.push(function(cb){
-                var fieldType = element.getAttribute("data-field") ;
-                var fieldOptions = {} ;
-                Array.prototype.slice.call(element.attributes).forEach(function(att){
-                    var startIndex = "data-field-".length ;
-                    var attKey = att.name ;
-                    if(attKey.indexOf("data-field") === 0 && attKey.length > startIndex){
-                        fieldOptions[attKey.substring(startIndex)] = element.getAttribute(attKey) ;
-                    }
-                }) ;
-                loadNeededLib(fieldType, fieldOptions, cb) ;
+            var fieldType = element.getAttribute("data-field") ;
+            var fieldOptions = {} ;
+            Array.prototype.slice.call(element.attributes).forEach(function(att){
+                var startIndex = "data-field-".length ;
+                var attKey = att.name ;
+                if(attKey.indexOf("data-field") === 0 && attKey.length > startIndex){
+                    fieldOptions[attKey.substring(startIndex)] = element.getAttribute(attKey) ;
+                }
             }) ;
+            setNeededLib(fieldType, fieldOptions) ;
         });
-        series(calls, callback) ;
+        loadLibs(callback) ;
     }
 
     /**
@@ -500,63 +498,79 @@
         }.bind(this)) ;
     }
 
-    function loadNeededLib(fieldType, fieldOptions, callback){
+    var libsToLoad = {} ;
+
+    function setLibToLoad(name, loader){
+        if(!libsToLoad[name]){
+            libsToLoad[name] = {loader:loader, status: "to_load"} ;
+        }
+    }
+
+    function loadLibs(callback){
+        var calls = [] ;
+        Object.keys(libsToLoad).forEach(function(k){
+            if(libsToLoad[k].status === "to_load"){
+                calls.push(function(cb){
+                    libsToLoad[k].loader(function(err){
+                        if(err){
+                            return cb(err) ;
+                        }
+                        libsToLoad[k].status = "done" ;
+                        cb() ;
+                    }) ;
+                });
+            }
+        });
+        series(calls, callback) ;
+    }
+
+    function setNeededLib(fieldType, fieldOptions){
         if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
             if(fieldOptions && fieldOptions.mask){
-                loadInputMask(callback) ;
-            }else{
-                callback() ;
+                setLibToLoad("inputMask", loadInputMask) ;
             }
         } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
             fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="currency" || fieldType==="percent"){
-            loadLib("Decimal", DECIMALJS_VERSION, DECIMALJS_LIB, function(err){
-                if(err){ return callback(err) ;}
-                loadInputMask(function(err){
-                    if(err){ return callback(err) ;}
-                    if(fieldType === "int" || fieldType === "integer" || fieldType==="number") {
-                        getLocale(callback);
-                    }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
-                        getLocale(callback) ;
-                    }
-                }) ;
+            setLibToLoad("Decimal", function(done){
+                loadLib("Decimal", DECIMALJS_VERSION, DECIMALJS_LIB, done) ;
             }) ;
+            setLibToLoad("inputMask", loadInputMask) ;
+            setLibToLoad("locale", getLocale) ;
         } else if(fieldType === "email"){
-            loadInputMask(callback) ;
+            setLibToLoad("inputMask", loadInputMask) ;
         } else if(["date", "datetime", "time", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
-            loadLib("flatpickr", FLATPICKR_VERSION, FLATPICKR_LIB, function(err){
-                if(err){ return callback(err) ;}
-                loadInputMask(function(err){
-                    if(err){ return callback(err) ;}
-                    getLocale(function(err){
-                        if(err){ return callback(err); }
-                        loadDateLibLocale(callback) ;
-                    }) ;
-                }) ;
+            setLibToLoad("Decimal", function(done){
+                loadLib("flatpickr", FLATPICKR_VERSION, FLATPICKR_LIB, done) ;
             }) ;
+            setLibToLoad("inputMask", loadInputMask) ;
+            setLibToLoad("locale", getLocale) ;
+            setLibToLoad("localeDate", loadDateLibLocale) ;
         } else if(fieldType === "selection" || fieldType === "select"){
-            loadLib("choice.js", CHOICESJS_VERSION, CHOICEJS_LIB, callback) ;
+            setLibToLoad("choice.js", function(done){
+                loadLib("choice.js", CHOICESJS_VERSION, CHOICEJS_LIB, done) ;
+            }) ;
             loadSelectCSS() ;
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
             //no lib
-            callback() ;
         } else if(fieldType === "grid"){
-            loadLib("w2ui", W2UI_VERSION, W2UI_LIB, function(err){
-                if(err){ return callback(err); }
-                getLocale(function(err){
-                    if(err){ return callback(err); }
-                    loadW2uiLibLocale(callback) ;
-                }) ;
+            setLibToLoad("w2ui", function(done){
+                loadLib("w2ui", W2UI_VERSION, W2UI_LIB, done) ;
             }) ;
+            setLibToLoad("locale", getLocale) ;
+            setLibToLoad("localeW2ui", loadW2uiLibLocale) ;
         } else if(fieldType === "upload"){
             //no lib
-            callback() ;
         } else if(fieldType === "pdf"){
-            loadLib("PDFObject", PDFOBJECT_VERSION, PDFOBJECT_LIB, callback) ;
+            setLibToLoad("PDFObject", function(done){
+                loadLib("PDFObject", PDFOBJECT_VERSION, PDFOBJECT_LIB, done) ;
+            }) ;
         } else if(fieldType === "html"){
-            loadLib("Quill", QUILL_VERSION, QUILL_LIB, callback) ;
+            setLibToLoad("Quill", function(done){
+                loadLib("Quill", QUILL_VERSION, QUILL_LIB, done) ;
+            }) ;
             loadHTMLEditorCSS() ;
         } else {
-            callback("Unknow field type "+fieldType) ; 
+            throw "Unknow field type "+fieldType ; 
         }
     }
 
@@ -1832,7 +1846,7 @@
             var options = {} ;
             if(!libs.PDFObject.supportsPDFs){
                 if(VeloxScriptLoader.options.policy === "cdn"){
-                    console.warn("This browser does not support PDF and PDF.js viewer cannot be load from CDN because it cannot run remotely")
+                    console.warn("This browser does not support PDF and PDF.js viewer cannot be load from CDN because it cannot run remotely") ;
                 }else{
                     options.PDFJS_URL = VeloxScriptLoader.options.bowerPath+"velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/viewer.html" ;
                 }

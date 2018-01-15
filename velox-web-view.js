@@ -32,7 +32,7 @@
         if(!uuidBase){
             if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
                 uuidBase = ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c) {
-                    return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+                    return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16) ;
                 }) ;
             }else{
                 uuidBase = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
@@ -685,9 +685,11 @@
                                             cb(err) ;
                                         }
                                     } else {
-                                        extension.prepare.bind(this)({doc: parsed.xmlDoc}, function(err){
-                                            cb(err) ;
-                                        }.bind(this));
+                                        setTimeout(function(){
+                                            extension.prepare.bind(this)({doc: parsed.xmlDoc}, function(err){
+                                                cb(err) ;
+                                            }.bind(this));
+                                        }.bind(this), 0) ;
                                     }
                                 }).bind(this));
                             }
