@@ -160,7 +160,8 @@
             but in the wrapping function this will throw a ReferenceError, so we loop to add them to the argument and retry
             */
 
-            var func = cacheExprs[expr] ;
+            var funcKey = argNames.join("_")+expr ;
+            var func = cacheExprs[funcKey] ;
             var i = 0;
             while(i<20){ //limit to 20 retry, somebody who use more than 20 not referenced variable is probably insane...
                 i++;
@@ -169,7 +170,7 @@
                         func = new Function(argNames.join(","), "return "+expr) ;
                     }
                     var result = func.apply(null, argValues) ;
-                    cacheExprs[expr] = func ;
+                    cacheExprs[funcKey] = func ;
                     return result ;
                 }catch(e){
                     if(e.name === "ReferenceError" ){
@@ -180,6 +181,7 @@
                         argNames.push(varName);
                         argValues.push(undefined) ;
                         func = null;
+                        funcKey = argNames.join("_")+expr ;
                         continue; //retry
                     }
                     //other case, log a console error as it likely to be a programmation error
