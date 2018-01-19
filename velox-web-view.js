@@ -614,11 +614,14 @@
     VeloxWebView.prototype.openCompiled = function (data, parsed) {
         
         if(!parsed){
+            var htmlEl = this.options.htmlEl;
             this.staticHTML = this.options.html;
             this.staticCSS = this.options.css;
-    
+
             var key = this.directory + "/" + this.name;
-            if(this.staticHTML !== null && this.staticHTML !== undefined){
+            if(htmlEl){
+                key = htmlEl.getAttribute("data-view-compile-id") ;
+            }else if(this.staticHTML !== null && this.staticHTML !== undefined){
                 key = this.staticHTML ;
             }
             
@@ -654,11 +657,18 @@
     };
 
     VeloxWebView.prototype.compileView = function(callback){
+        var htmlEl = this.options.htmlEl;
         this.staticHTML = this.options.html;
         this.staticCSS = this.options.css;
 
         var key = this.directory + "/" + this.name;
-        if(this.staticHTML !== null && this.staticHTML !== undefined){
+        if(htmlEl){
+            key = htmlEl.getAttribute("data-view-compile-id") ;
+            if(!key){
+                key = uuidv4() ;
+                htmlEl.setAttribute("data-view-compile-id", key) ;
+            }
+        }else if(this.staticHTML !== null && this.staticHTML !== undefined){
             key = this.staticHTML ;
         }
         
@@ -715,6 +725,7 @@
                                         insertBefore : null,
                                         insertAfter : null,
                                         file: view.file,
+                                        htmlEl: view.file?null:view.el,
                                         html: view.html,
                                         css: view.html?"":undefined,
                                         bindObject: null,
@@ -835,8 +846,6 @@
             this.viewRootEl = div;
             this.viewRootElIsPacked = true; //flag to know that we created an artificial DIV arround the content of the view
         }
-        // this.viewRootEl = clonedBody;
-        // this.viewRootElIsPacked = true; //flag to know that we created an artificial DIV arround the content of the view
     };
 
     VeloxWebView.prototype.addToContainer = function(){
@@ -1085,7 +1094,9 @@
      * @param {function(html)} callback - Called with HTML contents when fetched
      */
     VeloxWebView.prototype.getHTML = function (callback) {
-        if (this.staticHTML !== null && this.staticHTML !== undefined) {
+        if(this.options.htmlEl){
+            callback(this.options.htmlEl);
+        }else if (this.staticHTML !== null && this.staticHTML !== undefined) {
             callback(this.staticHTML);
         } else {
             var htmlUrl = this.directory + "/" + this.name + ".html";
@@ -1124,7 +1135,7 @@
     VeloxWebView.prototype.computeBoundElements = function (xmlDoc) {
         var boundElements = [];
         var allElements = [];
-        var foundEls = xmlDoc.body.getElementsByTagName("*");
+        var foundEls = xmlDoc.body.querySelectorAll("*");
         for ( var i=0;i<foundEls.length; i++ ) {allElements[i] = foundEls[i];}
         for(var z=0; z<allElements.length; z++){
             var el = allElements[z] ;
@@ -1207,8 +1218,22 @@
         var functionInView = null;
         var calls = [] ;
 
-        var parser = new DOMParser();
-        var xmlDoc = parser.parseFromString(html,"text/html");
+        var xmlDoc;
+        if(htmlOfView instanceof HTMLElement){
+            //it is aleady an HTMLElement
+            xmlDoc = document.createDocumentFragment();
+            xmlDoc.appendChild(htmlOfView) ;
+            xmlDoc.head = { children: []} ;
+            xmlDoc.body = xmlDoc ;
+            // {
+            //     head: 
+            //     body: htmlOfView,
+            //     document: htmlOfView
+            // } ;
+        }else{
+            var parser = new DOMParser();
+            xmlDoc = parser.parseFromString(html,"text/html");
+        }
         if(xmlDoc.head.children.length>0){
             var child = xmlDoc.head.children[0] ;
             var scriptIndex = 0;
@@ -1370,7 +1395,13 @@
             }
         }
         els = bodyEl.querySelectorAll("[data-view]") ;
-        for(i=0; i<els.length; i++){ elementsSubs.push(els[i]) ; }
+        for(i=0; i<els.length; i++){ 
+            if(bodyEl instanceof DocumentFragment && bodyEl.children[0] === els[i]){
+                //ignore this one because it is the first element of a sub view, it is the data-view of itself
+            }else{
+                elementsSubs.push(els[i]) ; 
+            }
+        }
 
         if(elementsSubs.length>0){
             //remove the elements contained in data-dont-process block
@@ -1455,7 +1486,7 @@
                 var bindAttr = el.getAttribute("data-bind");
                 var showIfAttr = el.getAttribute("data-show-if");
                 var hideIfAttr = el.getAttribute("data-hide-if");
-                if(!el.parentElement.hasAttribute("data-vieworder-id")){
+                if(el.parentElement && !el.parentElement.hasAttribute("data-vieworder-id")){
                     el.parentElement.setAttribute("data-vieworder-id", "v_"+uuidv4()) ;
                 }
                 var ids = [];
@@ -1475,9 +1506,21 @@
                     if(bindAttr && /\[\]$/.test(bindAttr)){
                         isMultiple = true ;
                     }
+                    if(showIfAttr){
+                        elClone.removeAttribute("data-show-if");
+                    }
+                    if(hideIfAttr){
+                        elClone.removeAttribute("data-hide-if");
+                    }
+                    
+                    var isMultiple = false ;
+                    if(bindAttr && /\[\]$/.test(bindAttr)){
+                        isMultiple = true ;
+                        elClone.removeAttribute("data-bind");
+                    }
                     subViews[viewId] = {
                         elParent: el.parentElement,
-                        el: el,
+                        el: elClone,
                         isBefore : nextElementIds.length>0?nextElementIds:null,
                         isAfter : previousElementIds.length>0?previousElementIds:null,
                         bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
@@ -1504,7 +1547,7 @@
                     if(el.id){ids.push(el.id) ;}
                     subViews[viewId] = {
                         elParent: el.parentElement,
-                        el: el,
+                        el: elClone,
                         isBefore :  nextElementIds.length>0?nextElementIds:null,
                         isAfter : previousElementIds.length>0?previousElementIds:null,
                         bindPath: bindAttr?bindAttr.split(".").map(function(p){ return p.trim(); }):[],
@@ -1523,7 +1566,9 @@
         //remove from parent (should be done in a separate loop to avoid loosing order relations between elements)
         for(var i=0; i<elementsSubs.length; i++){
             var el = elementsSubs[i] ;
-            el.parentElement.removeChild(el) ;
+            if(el.parentElement){
+                el.parentElement.removeChild(el) ;
+            }
         }
 
 
@@ -1932,11 +1977,15 @@
         // insertChild(view.elParent, container, view.isBefore, isAfter) ;
 
         var container = null;
+        var htmlEl = view.el;
         if(view.file){
             //in case of nested view, the view file contains the view innerHTML but not
             //the outer element like for inline sub view. We must add the outer element as container
             container = view.el.cloneNode() ;
             insertChild(view.elParent, container, view.isBefore, isAfter) ;
+
+            //in case of external view, the html content is defined by the view
+            htmlEl = null;
         }
 
         var thisBindPath = [];
@@ -1958,6 +2007,7 @@
             containerIsInside : !!view.file,
             insertBefore : view.isBefore,
             insertAfter : isAfter,
+            htmlEl : htmlEl,
             html: view.html,
             css: view.html?"":undefined,
             bindObject: null,

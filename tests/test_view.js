@@ -14,7 +14,7 @@ var animals = [
 
 
 describe("render", function () {
-	
+	/*
 	describe("select text content", function () {
 		var view = new VeloxWebView("views", "text_content", { container: "container" });
 		it("should do the initial render", function (done) {
@@ -51,7 +51,7 @@ describe("render", function () {
 			expect(view.EL.name.innerHTML).to.equal(animals[3].name);
 		});
 	});
-
+*/
 	describe("complex render", function () {
 		var view = new VeloxWebView("views", "nested", { container: "container" });
 
@@ -76,16 +76,16 @@ describe("render", function () {
 			expect(view.container.querySelector('h3').innerHTML).to.equal("Save the animals !");
 		});
 		it("should have text 'You must save' on all animals to save", function () {
-			expect(view.container.querySelector('[data-bind="tosave[]"]').innerHTML).to.startWith("You must save");
+			expect(view.container.querySelector("ul").querySelector('li').innerHTML).to.startWith("You must save");
 		});
 		it("should have " + animals.length / 2 + " animals to save", function () {
-			expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length / 2);
+			expect(view.container.querySelector("ul").querySelectorAll('li').length).to.equal(animals.length / 2);
 		});
 		it("should have " + animals.length / 2 + " animals saved", function () {
 			expect(view.container.querySelectorAll('[data-test="saved[]"]').length).to.equal(animals.length / 2);
 		});
 		it("First animal to save is " + animals[0].name, function () {
-			expect(view.container.querySelector('[data-bind="tosave[]"]').querySelector('[data-bind="name"]').innerHTML).to.equal(animals[0].name);
+			expect(view.container.querySelector("ul").querySelector('li').querySelector('[data-bind="name"]').innerHTML).to.equal(animals[0].name);
 		});
 		it("First saved animal is " + animals[1].name, function () {
 			expect(view.container.querySelector('[data-test="saved[]"]').querySelector('[data-bind="name"]').innerHTML).to.equal(animals[1].name);
@@ -233,7 +233,7 @@ describe("render", function () {
 		});
 
 		it("should have " + animals.length + " animals", function () {
-			expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length);
+			expect(view.container.querySelectorAll('li').length).to.equal(animals.length);
 			expect(view.container.querySelector('[data-test="tosave-hide"]')).to.not.exist;;
 			expect(view.container.querySelector('[data-test="saved-show"]')).to.not.exist;;
 		});
@@ -242,7 +242,7 @@ describe("render", function () {
 			data.saved.push(data.tosave[0]);
 			data.tosave.splice(0, 1);
 			view.render();
-			expect(view.container.querySelectorAll('[data-bind="tosave[]"]').length).to.equal(animals.length - 1);
+			expect(view.container.querySelector("ul").querySelectorAll('li').length).to.equal(animals.length - 1);
 			expect(view.container.querySelectorAll('[data-test="saved"]').length).to.equal(1);
 		});
 
@@ -612,4 +612,22 @@ describe("Remove attr", function () {
 
 
 
+});
+
+
+describe("Table fragment", function () {
+	var view = new VeloxWebView("views", "table", { container: "container"});
+
+	it("should open without error", function (done) {
+		view.open({
+			animals: animals
+		}, function (err) {
+			expect(err).to.not.exist;
+			done();
+		});
+	});
+
+	it("should have table with "+animals.length+" lines", function () {
+		expect(view.container.querySelectorAll("table tr").length).to.equal(animals.length);
+	});
 });
