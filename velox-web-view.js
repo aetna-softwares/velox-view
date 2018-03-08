@@ -1743,6 +1743,8 @@
                                 bindData = bindData.toDateString()+" "+bindData.toTimeString() ; //IE10...
                             }
                         }
+                    }else{
+                        bindData = ""+bindData ;
                     }
                     if(boundEl.isHTML){
                         if(el.innerHTML != bindData){
