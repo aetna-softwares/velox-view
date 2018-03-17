@@ -78,12 +78,10 @@
         if (!listeners) {
             return this;
         }
-        for (var i = 0; i < listeners.length; i++) {
-            if (listeners[i] === listener) {
-                listeners.splice(i, 1);
-                break;
-            }
-        }
+        //recreate the array to make sure we don't affect anything if someone is looping in the array at the same time
+        this.listeners[type] = listeners.filter(function(l){
+            return l !== listener ;
+        }) ;
         return this;
     };
 
@@ -651,6 +649,7 @@
             this.mustHide = false ;
         }
         this.opening = false ;
+        this.openDone = true ;
         this.emit("openDone", {view: this}, this, true);
         
         return;
@@ -1378,6 +1377,19 @@
             this.once("initDone", callback);
         }
     };
+    
+    /**
+     * Make sure the view is open
+     * 
+     * @param {function} callback - Called when the open is done (or immediatly if already done)
+     */
+    VeloxWebView.prototype.ensureOpen = function (callback) {
+        if (this.openDone) {
+            callback();
+        } else {
+            this.once("openDone", callback);
+        }
+    };
 
 
     VeloxWebView.prototype.prepareSubViews = function (bodyEl) {
@@ -1696,7 +1708,11 @@
                 var bindData = pathExtract(this.bindObject, fullBindPath);
                 
                 if (el.setValue){
-                    if(el.getValue() != bindData){
+                    var currentValue = el.getValue();
+                    currentValue = currentValue !== null && currentValue !== undefined?currentValue.valueOf():null;
+                    var newValue = bindData;
+                    newValue = newValue !== null && newValue !== undefined?newValue.valueOf():null;
+                    if(currentValue != newValue){
                         el.setValue(bindData) ;
                     }
                 }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
