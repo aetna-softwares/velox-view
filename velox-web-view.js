@@ -2065,7 +2065,7 @@
                     innerViewId.realEl = v.EL[innerViewId.id] ;
                     var listenerKeys = Object.keys(innerViewId.listeners) ;
                     for(var z=0; z<listenerKeys.length; z++){
-                        event = listenerKeys[z] ;
+                        var event = listenerKeys[z] ;
                         var listeners = innerViewId.listeners[event] ;
                         for(var a=0; a<listeners.length; a++){
                             var l = listeners[a] ;
