@@ -1384,7 +1384,7 @@
      * @param {function} callback - Called when the open is done (or immediatly if already done)
      */
     VeloxWebView.prototype.ensureOpen = function (callback) {
-        if (this.openDone) {
+        if (this.openDone && this.container) {
             callback();
         } else {
             this.once("openDone", callback);
