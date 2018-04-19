@@ -241,47 +241,27 @@
         var pathArray = path ;
         if (!Array.isArray(path)) {
             pathArray = path.split(".").map(function(p){ return p.trim(); });
-        // }else{
-        //     pathArray = path.slice();
         }
-        // if(getParent){
-        //     pathArray.pop() ;
-        // }
+        if(getParent){
+            pathArray = pathArray.concat("$parent");
+        }
         var objectPath = [];
-        var i ;
         var dataObject = obj;
         var len = pathArray.length ;
-        if(getParent){
-            len--;
-        }
         var ind=0;
-        // while (pathArray.length > 0) {
         while (ind < len) {
-            //property name
-            // var p = pathArray.shift().trim();
             var p = pathArray[ind];
-            // var index = null;
-            // if (p[p.length-1] === "]") {
-            //     //has index
-            //     i = p.length-3;
-            //     while(i>0 && p[i] !== "["){
-            //         i--;
-            //     }
-            //     index = p.substring(i + 1, p.length-1).trim();
-            //     p = p.substring(0, i).trim();
-            // }
-            
 
             if (dataObject) {
                 if (p !== null && p !== undefined && p === "$parent"){
                     dataObject = objectPath.pop() ;
+                    if(Array.isArray(dataObject)){
+                        dataObject = objectPath.pop() ;
+                    }
                 }else if (p !== null && p !== undefined && p !== "$this") {
                     objectPath.push(dataObject);
                     dataObject = dataObject[p];
                 }
-                // if (dataObject && index !== null) {
-                //     dataObject = dataObject[index];
-                // }
             }
             ind++ ;
         }
@@ -1686,13 +1666,15 @@
 
 
         var baseData = this.bindObject;
-        if (this.bindPath) {
+        var parentData = null;
+        if (this.bindPath && this.bindPath.length > 0) {
             baseData = pathExtract(this.bindObject, this.bindPath);
+            parentData = pathExtract(this.bindObject, this.bindPath, true);
         }
 
         this.emit("beforeRender",baseData, this, true);
 
-        var exprNameValues = prepareEvalExpr(baseData, {index: this.indexMultiple, view: this}) ;
+        var exprNameValues = prepareEvalExpr(baseData, {index: this.indexMultiple, view: this, $parent: parentData}) ;
 
         //set simple elements
         for(var i=0; i<this.boundElements.length; i++){
