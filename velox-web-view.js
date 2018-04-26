@@ -692,6 +692,13 @@
                             parsed.boundElements = this.computeBoundElements(parsed.xmlDoc) ;
                             parsed.ids = this.prepareIds(parsed.xmlDoc) ;
                             parsed.childrenCount = parsed.xmlDoc.body.childNodes.length ;
+                            parsed.childrenCount = 0 ;
+                            for(var cn = 0; cn <parsed.xmlDoc.body.childNodes.length; cn++){
+                                if(parsed.xmlDoc.body.childNodes[cn].nodeType !== Node.TEXT_NODE || parsed.xmlDoc.body.childNodes[cn].textContent.trim() !== ""){
+                                        parsed.childrenCount++;
+                                }
+                            }
+                           
                             
                             calls = [] ;
                             Object.keys(parsed.subviews).forEach((function (viewId) {
