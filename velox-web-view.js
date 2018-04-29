@@ -2229,6 +2229,7 @@
                         data: this.getBoundObject(),
                         currentData: this.getBoundObject(),
                         parentData: pathExtract(this.bindObject, this.bindPath, true),
+                        index: this.indexMultiple,
                         view: this
                     });
                 }).bind(this));
