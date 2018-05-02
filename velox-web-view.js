@@ -1681,7 +1681,7 @@
 
         this.emit("beforeRender",baseData, this, true);
 
-        var exprNameValues = prepareEvalExpr(baseData, {index: this.indexMultiple, view: this, $parent: parentData}) ;
+        var exprNameValues = prepareEvalExpr(baseData, {index: this.indexMultiple, view: this, $parent: parentData, $root: this.bindObject}) ;
 
         //set simple elements
         for(var i=0; i<this.boundElements.length; i++){
