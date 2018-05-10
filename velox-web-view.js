@@ -629,6 +629,9 @@
             this.mustHide = false ;
         }
         this.opening = false ;
+
+        this.container.setAttribute("data-viewname", this.directory+"/"+this.name) ;
+
         this.openDone = true ;
         this.emit("openDone", {view: this}, this, true);
         

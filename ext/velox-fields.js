@@ -158,7 +158,8 @@
         type: "js",
         version: JQUERY_VERSION,
         cdn: "http://code.jquery.com/jquery-$VERSION.min.js",
-        bowerPath: "jquery/dist/jquery.min.js"
+        bowerPath: "jquery/dist/jquery.min.js",
+        npmPath: "jquery/dist/jquery.min.js",
     } ;
     var INPUT_MASK_LIB = [
         JQUERY_LIB,
@@ -167,7 +168,8 @@
             type: "js",
             version: INPUTMASK_VERSION,
             cdn: "https://cdn.jsdelivr.net/gh/RobinHerbots/Inputmask@$VERSION/dist/jquery.inputmask.bundle.js",
-            bowerPath: "inputmask/dist/jquery.inputmask.bundle.js"
+            bowerPath: "inputmask/dist/jquery.inputmask.bundle.js",
+            npmPath: "inputmask/dist/jquery.inputmask.bundle.js",
         }
     ];
 
@@ -177,14 +179,16 @@
             type: "js",
             version: NUMBRO_VERSION,
             cdn: "https://cdnjs.cloudflare.com/ajax/libs/numbro/$VERSION/numbro.min.js",
-            bowerPath: "numbro/dist/numbro.min.js"
+            bowerPath: "numbro/dist/numbro.min.js",
+            npmPath: "numbro/dist/numbro.min.js"
         },
         {
             name: "numbro-language",
             type: "js",
             version: NUMBRO_VERSION,
             cdn: "https://cdnjs.cloudflare.com/ajax/libs/numbro/$VERSION/languages.min.js",
-            bowerPath: "numbro/dist/languages.min.js"
+            bowerPath: "numbro/dist/languages.min.js",
+            npmPath: "numbro/dist/languages.min.js"
         }
     ];
 
@@ -194,7 +198,8 @@
             type: "js",
             version: DECIMALJS_VERSION,
             cdn: "https://cdn.jsdelivr.net/gh/MikeMcl/decimal.js-light@$VERSION/decimal.min.js",
-            bowerPath: "decimal.js-light/decimal.min.js"
+            bowerPath: "decimal.js-light/decimal.min.js",
+            npmPath: "decimal.js-light/decimal.min.js",
         }
     ];
 
@@ -204,14 +209,16 @@
             type: "css",
             version: FLATPICKR_VERSION,
             cdn: "https://unpkg.com/flatpickr@$VERSION/dist/flatpickr.min.css",
-            bowerPath: "flatpickr/dist/flatpickr.min.css"
+            bowerPath: "flatpickr/dist/flatpickr.min.css",
+            npmPath: "flatpickr/dist/flatpickr.min.css",
         },
         {
             name: "flatpickr-calendar-js",
             type: "js",
             version: FLATPICKR_VERSION,
             cdn: "https://unpkg.com/flatpickr@$VERSION",
-            bowerPath: "flatpickr/dist/flatpickr.min.js"
+            bowerPath: "flatpickr/dist/flatpickr.min.js",
+            npmPath: "flatpickr/dist/flatpickr.min.js",
         }
     ];
 
@@ -223,14 +230,16 @@
             type: "css",
             version: CHOICESJS_VERSION,
             cdn: "https://rawgit.com/jshjohnson/Choices/v$VERSION/assets/styles/css/choices.min.css",
-            bowerPath: "choices.js/assets/styles/css/choices.min.css"
+            bowerPath: "choices.js/assets/styles/css/choices.min.css",
+            npmPath: "choices.js/assets/styles/css/choices.min.css",
         },
         {
             name: "choices-js",
             type: "js",
             version: CHOICESJS_VERSION,
             cdn: "https://rawgit.com/jshjohnson/Choices/v$VERSION/assets/scripts/dist/choices.min.js",
-            bowerPath: "choices.js/assets/scripts/dist/choices.min.js"
+            bowerPath: "choices.js/assets/scripts/dist/choices.min.js",
+            npmPath: "choices.js/assets/scripts/dist/choices.min.js"
         }
     ];
 
@@ -242,14 +251,16 @@
             version: W2UI_VERSION,
             
             cdn: "http://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.css",
-            bowerPath: "w2ui/dist/w2ui.min.css"
+            bowerPath: "w2ui/dist/w2ui.min.css",
+            npmPath: "w2ui/dist/w2ui.min.css",
         },
         {
             name: "w2ui-js",
             type: "js",
             version: W2UI_VERSION,
             cdn: "http://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.js",
-            bowerPath: "w2ui/dist/w2ui.js"
+            bowerPath: "w2ui/dist/w2ui.js",
+            npmPath: "w2ui/dist/w2ui.js",
         }
     ];
 
@@ -259,7 +270,8 @@
             type: "js",
             version: PDFOBJECT_VERSION,
             cdn: "https://bowercdn.net/c/pdfobject2-$VERSION/pdfobject.min.js",
-            bowerPath: "pdfobject/pdfobject.min.js"
+            bowerPath: "pdfobject/pdfobject.min.js",
+            npmPath: "pdfobject/pdfobject.min.js",
         }
     ];
     
@@ -269,21 +281,24 @@
             type: "js",
             version: QUILL_VERSION,
             cdn: "https://cdn.quilljs.com/$VERSION/quill.js",
-            bowerPath: "quill/quill.min.js"
+            bowerPath: "quill/quill.min.js",
+            npmPath: "quill/quill.min.js",
         },
         {
             name: "quill-css-snow",
             type: "css",
             version: QUILL_VERSION,
             cdn: "https://cdn.quilljs.com/$VERSION/quill.snow.css",
-            bowerPath: "quill/quill.snow.css"
+            bowerPath: "quill/quill.snow.css",
+            npmPath: "quill/quill.snow.css",
         },
         {
             name: "quill-css-bubble",
             type: "css",
             version: QUILL_VERSION,
             cdn: "https://cdn.quilljs.com/$VERSION/quill.bubble.css",
-            bowerPath: "quill/quill.bubble.css"
+            bowerPath: "quill/quill.bubble.css",
+            npmPath: "quill/quill.bubble.css",
         }
     ];
 
@@ -356,7 +371,8 @@
             type: "json",
             version: W2UI_VERSION,
             cdn: "https://cdn.rawgit.com/vitmalina/w2ui/master/src/locale/"+w2uiLocaleCode(currentLocale.lang)+".json",
-            bowerPath: "w2ui/src/locale/"+w2uiLocaleCode(currentLocale.lang)+".json"
+            bowerPath: "w2ui/src/locale/"+w2uiLocaleCode(currentLocale.lang)+".json",
+            npmPath: "w2ui/src/locale/"+w2uiLocaleCode(currentLocale.lang)+".json"
         };
 
         loadLib("w2ui-locale-"+currentLocale.lang, W2UI_VERSION, lib, function(err, results){
@@ -381,14 +397,16 @@
                 type: "js",
                 version: FLATPICKR_VERSION,
                 cdn: "https://npmcdn.com/flatpickr@$VERSION/dist/l10n/"+flatpickerLocaleCode(currentLocale.lang)+".js",
-                bowerPath: "flatpickr/dist/l10n/"+flatpickerLocaleCode(currentLocale.lang)+".js"
+                bowerPath: "flatpickr/dist/l10n/"+flatpickerLocaleCode(currentLocale.lang)+".js",
+                npmPath: "flatpickr/dist/l10n/"+flatpickerLocaleCode(currentLocale.lang)+".js",
         };
         var libMoment =  {
                 name: "moment-locale-"+momentLocaleCode(currentLocale.lang),
                 type: "js",
                 version: MOMENTJS_VERSION,
                 cdn: "https://cdnjs.cloudflare.com/ajax/libs/moment.js/$VERSION/locale/"+momentLocaleCode(currentLocale.lang)+".js",
-                bowerPath: "moment/locale/"+momentLocaleCode(currentLocale.lang)+".js"
+                bowerPath: "moment/locale/"+momentLocaleCode(currentLocale.lang)+".js",
+                npmPath: "moment/locale/"+momentLocaleCode(currentLocale.lang)+".js"
         };
 
         var calls = [] ;

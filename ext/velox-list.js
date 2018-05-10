@@ -25,7 +25,8 @@
         type: "js",
         version: SORTABLE_VERSION,
         cdn: "https://cdn.jsdelivr.net/npm/sortablejs@$VERSION/Sortable.min.js",
-        bowerPath: "Sortable/Sortable.min.js"
+        bowerPath: "Sortable/Sortable.min.js",
+        npmPath: "Sortable/Sortable.min.js",
     } ;
 
     /**

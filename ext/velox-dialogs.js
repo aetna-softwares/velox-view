@@ -23,7 +23,8 @@
         type: "js",
         version: JQUERY_VERSION,
         cdn: "//code.jquery.com/jquery-$VERSION.min.js",
-        bowerPath: "jquery/dist/jquery.min.js"
+        bowerPath: "jquery/dist/jquery.min.js",
+        npmPath: "jquery/dist/jquery.min.js"
     } ;
 
     var W2UI_LIB = [
@@ -34,14 +35,16 @@
             version: W2UI_VERSION,
             
             cdn: "//rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.css",
-            bowerPath: "w2ui/dist/w2ui.min.css"
+            bowerPath: "w2ui/dist/w2ui.min.css",
+            npmPath: "w2ui/dist/w2ui.min.css",
         },
         {
             name: "w2ui-js",
             type: "js",
             version: W2UI_VERSION,
             cdn: "//rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.js",
-            bowerPath: "w2ui/dist/w2ui.js"
+            bowerPath: "w2ui/dist/w2ui.js",
+            npmPath: "w2ui/dist/w2ui.js",
         }
     ];
 

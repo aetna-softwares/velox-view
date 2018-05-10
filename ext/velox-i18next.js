@@ -19,21 +19,24 @@
             type: "js",
             version: I18NEXT_VERSION,
             cdn: "https://unpkg.com/i18next@$VERSION/i18next.js",
-            bowerPath: "i18next/i18next.min.js"
+            bowerPath: "i18next/i18next.min.js",
+            npmPath: "i18next/i18next.min.js"
         },
         {
             name: "i18next-xhr-backend",
             type: "js",
             version: I18NEXT_XHR_VERSION,
             cdn: "https://unpkg.com/i18next-xhr-backend@$VERSION/i18nextXHRBackend.js",
-            bowerPath: "i18next-xhr-backend/i18nextXHRBackend.min.js"
+            bowerPath: "i18next-xhr-backend/i18nextXHRBackend.min.js",
+            npmPath: "i18next-xhr-backend/i18nextXHRBackend.min.js"
         },
         {
             name: "i18next-browser-languagedetector",
             type: "js",
             version: I18NEXT_BROWSER_DETECT_VERSION,
             cdn: "https://unpkg.com/i18next-browser-languagedetector@$VERSION/i18nextBrowserLanguageDetector.js",
-            bowerPath: "i18next-browser-languagedetector/i18nextBrowserLanguageDetector.min.js"
+            bowerPath: "i18next-browser-languagedetector/i18nextBrowserLanguageDetector.min.js",
+            npmPath: "i18next-browser-languagedetector/i18nextBrowserLanguageDetector.min.js",
         }
     ];
 
