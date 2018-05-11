@@ -1684,7 +1684,21 @@
 
         this.emit("beforeRender",baseData, this, true);
 
-        var exprNameValues = prepareEvalExpr(baseData, {index: this.indexMultiple, view: this, $parent: parentData, $root: this.bindObject}) ;
+        var exprNameValues = prepareEvalExpr(baseData, {
+            index: this.indexMultiple, 
+            $index: this.indexMultiple, 
+            view: this, 
+            $view: this, 
+            $parent: parentData, 
+            $root: this.bindObject,
+            $previous: function(){
+                if(this.indexMultiple && this.indexMultiple > 0){
+                    var previousData = pathExtract(this.bindObject, this.bindPath.slice(0,this.bindPath.length-1).concat([this.indexMultiple-1]));
+                    return previousData ;
+                }
+                return  null;
+            }.bind(this)
+        }) ;
 
         //set simple elements
         for(var i=0; i<this.boundElements.length; i++){
