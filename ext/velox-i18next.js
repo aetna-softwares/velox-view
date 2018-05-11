@@ -9,9 +9,9 @@
     }
 }(this, (function (VeloxScriptLoader) { 'use strict';
 
-    var I18NEXT_VERSION = "8.4.3" ;
-    var I18NEXT_XHR_VERSION = "1.4.2";
-    var I18NEXT_BROWSER_DETECT_VERSION = "2.0.0";
+    var I18NEXT_VERSION = "11.3.1" ;
+    var I18NEXT_XHR_VERSION = "1.5.1";
+    var I18NEXT_BROWSER_DETECT_VERSION = "2.2.0";
 
     var I18NEXT_LIB = [
         {
@@ -65,7 +65,7 @@
     extension.prepare = function(params, cb){
         if(!i18nextInitDone) {
             //i18next is not inistialized
-            console.debug("i18next is not initialized, initialization with default parameters")
+            console.debug("i18next is not initialized, initialization with default parameters") ;
             configureI18Next({}, cb) ;
         } else {
             cb() ;
