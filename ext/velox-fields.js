@@ -147,7 +147,7 @@
     var DECIMALJS_VERSION = "2.2.0" ;
     var FLATPICKR_VERSION = "3.0.5-1" ;
     var MOMENTJS_VERSION = "2.18.1" ;
-    var CHOICESJS_VERSION = "3.0.2" ;
+    var SELECTR_VERSION = "2.4.1" ;
     var W2UI_VERSION = "1.5.rc1" ;
     var PDFOBJECT_VERSION = "latest" ;
     var PDFJS_VERSION = "1.9.426" ;
@@ -223,23 +223,22 @@
     ];
 
     
-    var CHOICEJS_LIB = [
-        JQUERY_LIB,
+    var SELECTR_LIB = [
         {
-            name: "choices-css",
+            name: "selectr-css",
             type: "css",
-            version: CHOICESJS_VERSION,
-            cdn: "https://rawgit.com/jshjohnson/Choices/v$VERSION/assets/styles/css/choices.min.css",
-            bowerPath: "choices.js/assets/styles/css/choices.min.css",
-            npmPath: "choices.js/assets/styles/css/choices.min.css",
+            version: SELECTR_VERSION,
+            cdn: "https://cdn.jsdelivr.net/gh/mobius1/selectr@latest/dist/selectr.min.css",
+            bowerPath: "mobius1-selectr/dist/selectr.min.css",
+            npmPath: "mobius1-selectr/dist/selectr.min.css",
         },
         {
-            name: "choices-js",
+            name: "selectr-js",
             type: "js",
-            version: CHOICESJS_VERSION,
-            cdn: "https://rawgit.com/jshjohnson/Choices/v$VERSION/assets/scripts/dist/choices.min.js",
-            bowerPath: "choices.js/assets/scripts/dist/choices.min.js",
-            npmPath: "choices.js/assets/scripts/dist/choices.min.js"
+            version: SELECTR_VERSION,
+            cdn: "https://cdn.jsdelivr.net/gh/mobius1/selectr@latest/dist/selectr.min.js",
+            bowerPath: "mobius1-selectr/dist/selectr.min.js",
+            npmPath: "mobius1-selectr/dist/selectr.min.js"
         }
     ];
 
@@ -564,8 +563,8 @@
             setLibToLoad("locale", getLocale) ;
             setLibToLoad("localeDate", loadDateLibLocale) ;
         } else if(fieldType === "selection" || fieldType === "select"){
-            setLibToLoad("choice.js", function(done){
-                loadLib("choice.js", CHOICESJS_VERSION, CHOICEJS_LIB, done) ;
+            setLibToLoad("selectr", function(done){
+                loadLib("selectr", SELECTR_VERSION, SELECTR_LIB, done) ;
             }) ;
             loadSelectCSS() ;
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
@@ -1205,45 +1204,44 @@
             }
             select = subSelects[0];
         }
-        //element.style.visibility = "hidden";
+
 
         var currentValue = null;
-        var choicesOptions = {
-            searchEnabled: true
-        } ;
-        var choices = new window.Choices(select, choicesOptions);
+        
+        var selectr = new window.Selectr(select, {
+            searchable: false,
+        });
+
         if(fieldOptions.readfromtable){
-            choices.ajax(function(callback) {
-                getPossibleValues(fieldOptions, function(err, values){
-                    if(err){
-                        throw err ;
-                    }
-                    callback(values, 'id', 'label') ;
-                    if(currentValue){
-                        setTimeout(function(){
-                            choices.setValueByChoice(currentValue) ;
-                        }, 1) ;
-                    }
-                }) ;
+            getPossibleValues(fieldOptions, function(err, values){
+                if(err){
+                    throw err ;
+                }
+                element.setOptions(values) ;
+                if(currentValue){
+                    setTimeout(function(){
+                        selectr.setValue(currentValue) ;
+                    }, 1) ;
+                }
             });
         }
 
-        choices.setValue("") ;
+        selectr.setValue("") ;
         //element.style.visibility = "visible";
 
         element.getValue = function(){
-            var value = choices.getValue(true)  ;
+            var value = selectr.getValue(true)  ;
             return value||null ;
         } ;
         element.setValue = function(value){
             currentValue = value ;
-            return choices.setValueByChoice(value) ;
+            return selectr.setValue(value) ;
         } ;
         element.setReadOnly = function(readOnly){
             if(readOnly) {
-                choices.disable();
+                selectr.disable();
             }else{
-                choices.enable();
+                selectr.enable();
             }
             setReadOnly(element, readOnly) ;
         } ;
@@ -1255,10 +1253,17 @@
         // } ;
 
         element.setOptions = function(options){
-            choices.setChoices(options) ;
+            selectr.removeAll() ;
+            element._options= options.map(function(rec){ 
+                return {
+                    value: rec.id,
+                    text: rec.label
+                } ;
+            });
+            selectr.add(element._options) ;
         } ;
         element.getOptions = function(){
-            return choices.choices;
+            return element._options ;
         } ;
     }
 
