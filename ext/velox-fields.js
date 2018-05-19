@@ -1,7 +1,7 @@
 ; (function (global, factory) {
     if (typeof exports === 'object' && typeof module !== 'undefined') {
-        var VeloxScriptLoader = require("velox-scriptloader") ;
-        var VeloxWebView = require("velox-webview") ;
+        var VeloxScriptLoader = require("velox-loader") ;
+        var VeloxWebView = require("../velox-web-view") ;
         module.exports = factory(VeloxScriptLoader, VeloxWebView) ;
     } else if (typeof define === 'function' && define.amd) {
         define(['VeloxScriptLoader', 'VeloxWebView'], factory);
@@ -38,6 +38,10 @@
      * flag for CSS of switch widget
      */
     var switchCSSLoaded = false;
+    /**
+     * flag for CSS of datatables widget
+     */
+    var datatableCSSLoaded = false;
     /**
      * flag for CSS of select widget
      */
@@ -141,17 +145,21 @@
     } ;
 
     ///// DEPENDENCIES LIBRARIES LOADING ////////
-    var INPUTMASK_VERSION = "3.3.7"; //v4 will drop jquery dependency 
-    var JQUERY_VERSION = "3.2.1" ;
-    var NUMBRO_VERSION = "1.11.0" ;
+    var INPUTMASK_VERSION = "3.3.11"; //v4 will drop jquery dependency 
+    var JQUERY_VERSION = "3.3.1" ;
+    var NUMBRO_VERSION = "2.0.6" ;
     var DECIMALJS_VERSION = "2.2.0" ;
-    var FLATPICKR_VERSION = "3.0.5-1" ;
-    var MOMENTJS_VERSION = "2.18.1" ;
+    var FLATPICKR_VERSION = "4.5.0" ;
+    var MOMENTJS_VERSION = "2.22.1" ;
     var SELECTR_VERSION = "2.4.1" ;
-    var W2UI_VERSION = "1.5.rc1" ;
-    var PDFOBJECT_VERSION = "latest" ;
+    
+    var PDFOBJECT_VERSION = "2.0.201604172" ;
     var PDFJS_VERSION = "1.9.426" ;
-    var QUILL_VERSION = "1.3.4" ;
+    var QUILL_VERSION = "1.3.6" ;
+
+    var JSZIP_VERSION = "3.1.5" ;
+    var PDFMAKE_VERSION = "0.1.36" ;
+    var DATATABLES_VERSION = "1.10.16" ;
 
     var JQUERY_LIB = {
         name: "jquery",
@@ -242,25 +250,148 @@
         }
     ];
 
-    var W2UI_LIB = [
+    var DATATABLES_LIB = [
         JQUERY_LIB,
+        [
+            {
+                name: "jszip",
+                type: "js",
+                version: JSZIP_VERSION,
+                cdn: "https://cdnjs.cloudflare.com/ajax/libs/jszip/$VERSION/jszip.min.js",
+                bowerPath: "jszip/dist/jszip.min.js",
+                npmPath: "jszip/dist/jszip.min.js",
+            },
+            {
+                name: "pdfmake",
+                type: "js",
+                version: PDFMAKE_VERSION,
+                cdn: "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/$VERSION/pdfmake.min.js",
+                bowerPath: "pdfmake/build/pdfmake.min.js",
+                npmPath: "pdfmake/build/pdfmake.min.js",
+            },
+        ],
         {
-            name: "w2ui-css",
-            type: "css",
-            version: W2UI_VERSION,
-            
-            cdn: "http://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.css",
-            bowerPath: "w2ui/dist/w2ui.min.css",
-            npmPath: "w2ui/dist/w2ui.min.css",
+            name: "pdfmake-fonts",
+            type: "js",
+            version: PDFMAKE_VERSION,
+            cdn: "https://cdnjs.cloudflare.com/ajax/libs/pdfmake/$VERSION/vfs_fonts.js",
+            bowerPath: "pdfmake/build/vfs_fonts.js",
+            npmPath: "pdfmake/build/vfs_fonts.js",
         },
         {
-            name: "w2ui-js",
+            name: "datatables-js",
             type: "js",
-            version: W2UI_VERSION,
-            cdn: "http://rawgit.com/vitmalina/w2ui/master/dist/w2ui.min.js",
-            bowerPath: "w2ui/dist/w2ui.js",
-            npmPath: "w2ui/dist/w2ui.js",
-        }
+            version: DATATABLES_VERSION,
+            cdn: "https://cdn.datatables.net/$VERSION/js/jquery.dataTables.min.js",
+            bowerPath: "datatables.net/js/jquery.dataTables.js",
+            npmPath: "datatables.net/js/jquery.dataTables.js",
+        },
+        [
+            {
+                name: "datatables-autofill-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/autofill/2.2.2/js/dataTables.autoFill.min.js",
+                bowerPath: "datatables.net-autofill/js/dataTables.autoFill.min.js",
+                npmPath: "datatables.net-autofill/js/dataTables.autoFill.min.js",
+            },
+            {
+                name: "datatables-buttons-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/buttons/1.5.1/js/dataTables.buttons.min.js",
+                bowerPath: "datatables.net-buttons/js/dataTables.buttons.min.js",
+                npmPath: "datatables.net-buttons/js/dataTables.buttons.min.js",
+            },
+            {
+                name: "datatables-buttons-colVis-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/buttons/1.5.1/js/buttons.colVis.min.js",
+                bowerPath: "datatables.net-buttons/js/buttons.colVis.min.js",
+                npmPath: "datatables.net-buttons/js/buttons.colVis.min.js",
+            },
+            {
+                name: "datatables-buttons-html5-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/buttons/1.5.1/js/buttons.html5.min.js",
+                bowerPath: "datatables.net-buttons/js/buttons.html5.min.js",
+                npmPath: "datatables.net-buttons/js/buttons.html5.min.js",
+            },
+            {
+                name: "datatables-buttons-print-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/buttons/1.5.1/js/buttons.print.min.js",
+                bowerPath: "datatables.net-buttons/js/buttons.print.min.js",
+                npmPath: "datatables.net-buttons/js/buttons.print.min.js",
+            },
+            {
+                name: "datatables-colreorder-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/colreorder/1.4.1/js/dataTables.colReorder.min.js",
+                bowerPath: "datatables.net-colreorder/js/dataTables.colReorder.min.js",
+                npmPath: "datatables.net-colreorder/js/dataTables.colReorder.min.js",
+            },
+            {
+                name: "datatables-fixedcolumns-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/fixedcolumns/3.2.4/js/dataTables.fixedColumns.min.js",
+                bowerPath: "datatables.net-fixedcolumns/js/dataTables.fixedColumns.min.js",
+                npmPath: "datatables.net-fixedcolumns/js/dataTables.fixedColumns.min.js",
+            },
+            {
+                name: "datatables-fixedheader-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/fixedheader/3.1.3/js/dataTables.fixedHeader.min.js",
+                bowerPath: "datatables.net-fixedheader/js/dataTables.fixedHeader.min.js",
+                npmPath: "datatables.net-fixedheader/js/dataTables.fixedHeader.min.js",
+            },
+            {
+                name: "datatables-responsive-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/responsive/2.2.1/js/dataTables.responsive.min.js",
+                bowerPath: "datatables.net-responsive/js/dataTables.responsive.min.js",
+                npmPath: "datatables.net-responsive/js/dataTables.responsive.min.js",
+            },
+            {
+                name: "datatables-rowgroup-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/rowgroup/1.0.2/js/dataTables.rowGroup.min.js",
+                bowerPath: "datatables.net-rowgroup/js/dataTables.rowGroup.min.js",
+                npmPath: "datatables.net-rowgroup/js/dataTables.rowGroup.min.js",
+            },
+            {
+                name: "datatables-rowreorder-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/rowreorder/1.2.3/js/dataTables.rowReorder.min.js",
+                bowerPath: "datatables.net-rowreorder/js/dataTables.rowReorder.min.js",
+                npmPath: "datatables.net-rowreorder/js/dataTables.rowReorder.min.js",
+            },
+            {
+                name: "datatables-scroller-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/scroller/1.4.4/js/dataTables.scroller.min.js",
+                bowerPath: "datatables.net-scroller/js/dataTables.scroller.min.js",
+                npmPath: "datatables.net-scroller/js/dataTables.scroller.min.js",
+            }
+        ],
+        {
+            name: "datatables-select-js",
+            type: "js",
+            version: DATATABLES_VERSION,
+            cdn: "https://cdn.datatables.net/select/1.2.5/js/dataTables.select.min.js",
+            bowerPath: "datatables.net-select/js/dataTables.select.min.js",
+            npmPath: "datatables.net-select/js/dataTables.select.min.js",
+        },
     ];
 
     var PDFOBJECT_LIB = [
@@ -280,26 +411,63 @@
             type: "js",
             version: QUILL_VERSION,
             cdn: "https://cdn.quilljs.com/$VERSION/quill.js",
-            bowerPath: "quill/quill.min.js",
-            npmPath: "quill/quill.min.js",
+            bowerPath: "quill/dist/quill.min.js",
+            npmPath: "quill/dist/quill.min.js",
         },
         {
             name: "quill-css-snow",
             type: "css",
             version: QUILL_VERSION,
             cdn: "https://cdn.quilljs.com/$VERSION/quill.snow.css",
-            bowerPath: "quill/quill.snow.css",
-            npmPath: "quill/quill.snow.css",
+            bowerPath: "quill/dist/quill.snow.css",
+            npmPath: "quill/dist/quill.snow.css",
         },
         {
             name: "quill-css-bubble",
             type: "css",
             version: QUILL_VERSION,
             cdn: "https://cdn.quilljs.com/$VERSION/quill.bubble.css",
-            bowerPath: "quill/quill.bubble.css",
-            npmPath: "quill/quill.bubble.css",
+            bowerPath: "quill/dist/quill.bubble.css",
+            npmPath: "quill/dist/quill.bubble.css",
         }
     ];
+
+
+    extension.libs = [
+        JQUERY_LIB,
+        INPUT_MASK_LIB,
+        NUMBRO_LIB,
+        DECIMALJS_LIB,
+        FLATPICKR_LIB,
+        SELECTR_LIB,
+        DATATABLES_LIB,
+        PDFOBJECT_LIB,
+        QUILL_LIB,
+        {
+            name: "datatables-locales",
+            type: "json",
+            version: DATATABLES_VERSION,
+            cdn: "https://cdn.datatables.net/plug-ins/$VERSION/i18n/*.json",
+            bowerPath: "datatables.net-plugins/i18n/*.lang",
+            npmPath: "datatables.net-plugins/i18n/*.lang",
+        },
+        {
+            name: "flatpickr-calendar-locales",
+            type: "js",
+            version: FLATPICKR_VERSION,
+            cdn: "https://npmcdn.com/flatpickr@$VERSION/dist/l10n/*.js",
+            bowerPath: "flatpickr/dist/l10n/*.js",
+            npmPath: "flatpickr/dist/l10n/*.js",
+        },
+        {
+            name: "moment-locales",
+            type: "js",
+            version: MOMENTJS_VERSION,
+            cdn: "https://cdnjs.cloudflare.com/ajax/libs/moment.js/$VERSION/locale/*.js",
+            bowerPath: "moment/locale/*.js",
+            npmPath: "moment/locale/*.js"
+        }
+    ] ;
 
     /**
      * Translate the locale code in flatpicker naming conviention
@@ -337,47 +505,229 @@
     }
 
     /**
-     * Translate the locale code in w2ui naming conviention
+     * Translate the locale code in datatables naming conviention
      * 
      * Fallback to default US locale if lang not found
      * 
      * @param {string} lang the lang code from current locale
      */
-    function w2uiLocaleCode(lang){
-        var availableLocales = ["az-az", "ba-ba", "bg-bg", "ca-es", "de-de", "en-gb", "en-us", "es-es", "es-mx", "fr-fr", "gl-es", "hr-hr", "hu-hu", "id-id", "it-it", "ja-jp", "ko-kr", "lt-lt", "nl-nl", "no-no", "pl-pl", "pt-br", "ru-ru", "sk-sk", "sl-si", "tr-tr", "zh-cn"];
-        lang = lang.replace("_", "-").toLowerCase() ;
+    function datatablesLocaleCode(lang){
+        var mapLocales = {
+            "af": "Afrikaans",
+            "af-ZA": "Afrikaans",
+            "ar": "Arabic",
+            "ar-AE": "Arabic",
+            "ar-BH": "Arabic",
+            "ar-DZ": "Arabic",
+            "ar-EG": "Arabic",
+            "ar-IQ": "Arabic",
+            "ar-JO": "Arabic",
+            "ar-KW": "Arabic",
+            "ar-LB": "Arabic",
+            "ar-LY": "Arabic",
+            "ar-MA": "Arabic",
+            "ar-OM": "Arabic",
+            "ar-QA": "Arabic",
+            "ar-SA": "Arabic",
+            "ar-SY": "Arabic",
+            "ar-TN": "Arabic",
+            "ar-YE": "Arabic",
+            "az": "Azerbaijan",
+            "az-AZ": "Azerbaijan",
+            "az-AZ": "Azerbaijan",
+            "be": "Belarusian",
+            "be-BY": "Belarusian",
+            "bg": "Bulgarian",
+            "bg-BG": "Bulgarian",
+            "ca": "Catalan",
+            "ca-ES": "Catalan",
+            "cs": "Czech",
+            "cs-CZ": "Czech",
+            "cy": "Welsh",
+            "cy-GB": "Welsh",
+            "da": "Danish",
+            "da-DK": "Danish",
+            "de": "German",
+            "de-AT": "German",
+            "de-CH": "German",
+            "de-DE": "German",
+            "de-LI": "German",
+            "de-LU": "German",
+            "el": "Greek",
+            "el-GR": "Greek",
+            "en": "English",
+            "en-AU": "English",
+            "en-BZ": "English",
+            "en-CA": "English",
+            "en-CB": "English",
+            "en-GB": "English",
+            "en-IE": "English",
+            "en-JM": "English",
+            "en-NZ": "English",
+            "en-PH": "English",
+            "en-TT": "English",
+            "en-US": "English",
+            "en-ZA": "English",
+            "en-ZW": "English",
+            "es": "Spanish",
+            "es-AR": "Spanish",
+            "es-BO": "Spanish",
+            "es-CL": "Spanish",
+            "es-CO": "Spanish",
+            "es-CR": "Spanish",
+            "es-DO": "Spanish",
+            "es-EC": "Spanish",
+            "es-ES": "Spanish",
+            "es-ES": "Spanish",
+            "es-GT": "Spanish",
+            "es-HN": "Spanish",
+            "es-MX": "Spanish",
+            "es-NI": "Spanish",
+            "es-PA": "Spanish",
+            "es-PE": "Spanish",
+            "es-PR": "Spanish",
+            "es-PY": "Spanish",
+            "es-SV": "Spanish",
+            "es-UY": "Spanish",
+            "es-VE": "Spanish",
+            "et": "Estonian",
+            "et-EE": "Estonian",
+            "eu": "Basque",
+            "eu-ES": "Basque",
+            "fi": "Finnish",
+            "fi-FI": "Finnish",
+            "fr": "French",
+            "fr-BE": "French",
+            "fr-CA": "French",
+            "fr-CH": "French",
+            "fr-FR": "French",
+            "fr-LU": "French",
+            "fr-MC": "French",
+            "gl": "Galician",
+            "gl-ES": "Galician",
+            "gu": "Gujarati",
+            "gu-IN": "Gujarati",
+            "he": "Hebrew",
+            "he-IL": "Hebrew",
+            "hi": "Hindi",
+            "hi-IN": "Hindi",
+            "hr": "Croatian",
+            "hr-BA": "Croatian",
+            "hr-HR": "Croatian",
+            "hu": "Hungarian",
+            "hu-HU": "Hungarian",
+            "hy": "Armenian",
+            "hy-AM": "Armenian",
+            "id": "Indonesian",
+            "id-ID": "Indonesian",
+            "is": "Icelandic",
+            "is-IS": "Icelandic",
+            "it": "Italian",
+            "it-CH": "Italian",
+            "it-IT": "Italian",
+            "ja": "Japanese",
+            "ja-JP": "Japanese",
+            "ka": "Georgian",
+            "ka-GE": "Georgian",
+            "kk": "Kazakh",
+            "kk-KZ": "Kazakh",
+            "ko": "Korean",
+            "ko-KR": "Korean",
+            "ky": "Kyrgyz",
+            "ky-KG": "Kyrgyz",
+            "lt": "Lithuanian",
+            "lt-LT": "Lithuanian",
+            "mk": "Macedonian",
+            "mk-MK": "Macedonian",
+            "mn": "Mongolian",
+            "mn-MN": "Mongolian",
+            "ms": "Malay",
+            "ms-BN": "Malay",
+            "ms-MY": "Malay",
+            "nb": "Norwegian-Bokmal",
+            "nb-NO": "Norwegian-Bokmal",
+            "nl": "Dutch",
+            "nl-BE": "Dutch",
+            "nl-NL": "Dutch",
+            "nn-NO": "Norwegian-Nynorsk",
+            "pl": "Polish",
+            "pl-PL": "Polish",
+            "ps": "Pashto",
+            "ps-AR": "Pashto",
+            "pt": "Portuguese",
+            "pt-BR": "Portuguese-Brasil",
+            "pt-PT": "Portuguese",
+            "ro": "Romanian",
+            "ro-RO": "Romanian",
+            "ru": "Russian",
+            "ru-RU": "Russian",
+            "sk": "Slovak",
+            "sk-SK": "Slovak",
+            "sl": "Slovenian",
+            "sl-SI": "Slovenian",
+            "sq": "Albanian",
+            "sq-AL": "Albanian",
+            "sr-BA": "Serbian",
+            "sr-BA": "Serbian",
+            "sr-SP": "Serbian",
+            "sr-SP": "Serbian",
+            "sv": "Swedish",
+            "sv-FI": "Swedish",
+            "sv-SE": "Swedish",
+            "sw": "Swahili",
+            "sw-KE": "Swahili",
+            "ta": "Tamil",
+            "ta-IN": "Tamil",
+            "te": "telugu",
+            "te-IN": "telugu",
+            "th": "Thai",
+            "th-TH": "Thai",
+            "tr": "Turkish",
+            "tr-TR": "Turkish",
+            "uk": "Ukrainian",
+            "uk-UA": "Ukrainian",
+            "ur": "Urdu",
+            "ur-PK": "Urdu",
+            "uz": "Uzbek",
+            "uz-UZ": "Uzbek",
+            "uz-UZ": "Uzbek",
+            "vi": "Vietnamese",
+            "vi-VN": "Vietnamese",
 
-        if(availableLocales.indexOf(lang) !== -1){
-            return lang ;
-        }
-
-        lang = lang+"-"+lang ;
-        if(availableLocales.indexOf(lang) !== -1){
-            return lang ;
-        }
-
-        return "en-us" ;
+        } ;
+        
+        if(mapLocales[lang]){
+            return mapLocales[lang] ;
+        } 
+        
+        return "English" ;
     }
 
     /**
-     * Load the local for W2UI and configure W2UI with it
+     * Load the local for datatable and configure datatable with it
      * 
      * @param {function(Error)} callback called on finished
      */
-    function loadW2uiLibLocale(callback){
+    function loadDatatablesLibLocale(callback){
+        var dtLangName = datatablesLocaleCode(currentLocale.lang);
         var lib =  {
-            name: "w2ui-locale-"+w2uiLocaleCode(currentLocale.lang),
+            name: "datatables-locale-"+dtLangName,
             type: "json",
-            version: W2UI_VERSION,
-            cdn: "https://cdn.rawgit.com/vitmalina/w2ui/master/src/locale/"+w2uiLocaleCode(currentLocale.lang)+".json",
-            bowerPath: "w2ui/src/locale/"+w2uiLocaleCode(currentLocale.lang)+".json",
-            npmPath: "w2ui/src/locale/"+w2uiLocaleCode(currentLocale.lang)+".json"
+            version: DATATABLES_VERSION,
+            cdn: "https://cdn.datatables.net/plug-ins/$VERSION/i18n/"+dtLangName+".json",
+            bowerPath: "datatables.net-plugins/i18n/"+dtLangName+".lang",
+            npmPath: "datatables.net-plugins/i18n/"+dtLangName+".lang",
         };
 
-        loadLib("w2ui-locale-"+currentLocale.lang, W2UI_VERSION, lib, function(err, results){
+        loadLib("datatables-locale-"+dtLangName, DATATABLES_VERSION, lib, function(err, results){
             if(err){ return callback(err) ;}
-            var langJson = results[0][0] ;
-            window.w2utils.locale(langJson);
+            var existingLanguage = window.jQuery.fn.dataTable.defaults.language ;
+            if(existingLanguage){
+                window.jQuery.extend( true, results, existingLanguage) ;
+            }
+            window.jQuery.extend( true, window.jQuery.fn.dataTable.defaults, {
+                language: results
+            } );
             callback() ;
         }) ;
     }
@@ -570,11 +920,11 @@
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
             //no lib
         } else if(fieldType === "grid"){
-            setLibToLoad("w2ui", function(done){
-                loadLib("w2ui", W2UI_VERSION, W2UI_LIB, done) ;
+            setLibToLoad("datatables", function(done){
+                loadLib("datatables", DATATABLES_VERSION, DATATABLES_LIB, done) ;
             }) ;
             setLibToLoad("locale", getLocale) ;
-            setLibToLoad("localeW2ui", loadW2uiLibLocale) ;
+            setLibToLoad("localeW2ui", loadDatatablesLibLocale) ;
         } else if(fieldType === "upload"){
             //no lib
         } else if(fieldType === "pdf"){
@@ -603,7 +953,7 @@
     function createField(view, element, fieldType, fieldSize, fieldOptions){
         //dispatch bound event on container element
         view.emit('beforeInitField', {id: element.getAttribute("data-original-id"), element: element, fieldType: fieldType, fieldOptions: fieldOptions});
-        _createField(element, fieldType, fieldSize, fieldOptions) ;
+        _createField(element, fieldType, fieldSize, fieldOptions, view) ;
         decorators.forEach(function(deco){
             deco(element, fieldType, fieldSize, fieldOptions) ;
         }) ;
@@ -622,7 +972,7 @@
      * @param {object} fieldOptions field options map (from element attributes)
      * @param {function(Error)} callback called when the field is created
      */
-    function _createField(element, fieldType, fieldSize, fieldOptions){
+    function _createField(element, fieldType, fieldSize, fieldOptions, view){
         if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
             createTextField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
@@ -637,7 +987,7 @@
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
             createCheckboxField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "grid"){
-            createGridField(element, fieldType, fieldSize, fieldOptions) ;
+            createGridField(element, fieldType, fieldSize, fieldOptions, view) ;
         } else if(fieldType === "upload"){
             createUploadField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "pdf"){
@@ -1137,6 +1487,7 @@
         head.appendChild(s);
         switchCSSLoaded = true ;
     }
+    
 
     /**
      * load the Select CSS
@@ -1284,6 +1635,33 @@
     }
 
     /**
+     * load the Datatables CSS
+     * 
+     * This CSS make the table take the whole height on container
+     */
+    function loadDatatablesCSS(){
+        if(datatableCSSLoaded){ return ;}
+
+        //
+        var css = ".velox-grid { display: flex; }";
+        css += ".dataTables_wrapper { display: flex; flex-direction: column; }";
+        css += ".dt-table {flex-grow: 1; display: flex; flex-direction: column;} ";
+        css += ".dataTables_scroll {display: flex; flex-direction: column;flex-grow: 1;}";
+        css += ".dataTables_scrollBody { flex-grow: 1; flex-basis: 1px;}";
+
+        var head = document.getElementsByTagName('head')[0];
+        var s = document.createElement('style');
+        s.setAttribute('type', 'text/css');
+        if (s.styleSheet) {   // IE
+            s.styleSheet.cssText = css;
+        } else {                // the world
+            s.appendChild(document.createTextNode(css));
+        }
+        head.appendChild(s);
+        datatableCSSLoaded = true ;
+    }
+
+    /**
      * Create the grid field
      * 
      * @param {HTMLElement} element the HTML element to transform
@@ -1291,12 +1669,188 @@
      * @param {string} fieldSize the field size
      * @param {object} fieldOptions the field options (from attributes)
      */
-    function createGridField(element, fieldType, fieldSize, fieldOptions){
+    function createGridField(element, fieldType, fieldSize, fieldOptions, view){
+        loadDatatablesCSS() ;
+
         var subTables = element.getElementsByTagName("TABLE") ;
         if(subTables.length === 0){
             throw ("Your data field grid should contain a TABLE tag") ;
         }
         var table = subTables[0];
+
+        var listThead = table.getElementsByTagName("THEAD") ;
+        var thead = listThead.length>0?listThead[0]:null ;
+
+        var toolbars = table.querySelectorAll("[data-toolbar]") ;
+        for(var i=0; i<toolbars.length; i++){
+            //remove it to avoid mix toolbar TH element with header column TH elements
+            toolbars[i].parentElement.removeChild(toolbars[i]) ;
+        }
+       
+
+
+        var listTh = Array.prototype.slice.call(table.getElementsByTagName("TH")) ;
+        if(listTh.length === 0){
+            throw ("Your data field grid should have at least a TH tag") ;
+        }
+
+        var filename = "export" ;
+
+        if(table.getAttribute("title")){
+            filename = table.getAttribute("title") ;
+        }
+        var title = filename;
+
+        var gridOptions = {
+            //scroller: true,
+            responsive: true,
+            scrollY: "auto",
+            paging: false,
+            buttons: [
+                'colvis', 
+                'copy',
+                {
+                    extend: 'excel',
+                    title: title,
+                    filename: filename,
+                },
+                {
+                    extend: 'pdf',
+                    title: title,
+                    filename: filename,
+                },
+                {
+                    extend: 'print',
+                    title: title,
+                },
+            ],
+            columns: []
+        } ;
+
+
+        listTh.forEach(function(th, i){
+            var colDef = {
+                data     : th.getAttribute("data-field-name")||"f"+i,
+                //width    : th.getAttribute("data-field-size")
+            };
+
+            var scriptRender = th.querySelector("script") ;
+            if(scriptRender){
+                var scriptBody = scriptRender.text ;
+                scriptBody +=  "//# sourceURL=/column/render/"+element.getAttribute("data-original-id")+"/"+colDef.field+".js" ;
+                var functionRender = new Function("data", "type", "row", scriptBody) ;
+                colDef.render = functionRender ;
+                th.removeChild(scriptRender) ;
+            }
+
+            var labelEl = th.querySelector("label") ;
+            if(labelEl){
+                colDef.title = labelEl.innerHTML ;
+            }else{
+                colDef.title = th.innerHTML ;
+            }
+
+            // if(colDef.width){
+            //     if(colDef.size.indexOf("px") === -1 && colDef.size.indexOf("%") === -1){
+            //         //no unit given, assuming px
+            //         colDef.size = colDef.size+"px" ;
+            //     }
+
+            //     if(colDef.size.indexOf("px") !== -1){
+            //         totalColsWithSizePx += parseInt(colDef.size.replace("px", ""), 10) ;
+            //     }else if(colDef.size.indexOf("%") !== -1){
+            //         totalColsWithSizePercent += parseInt(colDef.size.replace("%", ""), 10) ;
+            //     }
+            // }
+            
+            ["orderable", "sortable", "searchable", "visible"].forEach(function(colAtt){
+                if(colAtt === "sortable"){
+                    colAtt = "orderable" ;
+                }
+                var colValue = th.getAttribute(colAtt);
+                if(colValue !== null){
+                    colDef[colAtt] = colValue.trim().toLowerCase() !== "false" ;
+                }
+            });
+            
+            // var type = th.getAttribute("data-field-type") ;
+            // colDef.fieldType = type;
+            // if(!colDef.render && type){
+            //     colDef.render = createGridRenderer(type, colDef.field) ;
+            // }
+            gridOptions.columns.push(colDef) ;
+        }) ;
+
+        
+        
+        var datatable = window.jQuery(table).DataTable( gridOptions );
+
+        for(var i=0; i<toolbars.length; i++){
+            var toolbar = toolbars[i];
+
+            var customButtons = [] ;
+            Array.prototype.slice.apply(toolbar.children).forEach(function(item){
+                var id = item.getAttribute("data-original-id") ;
+                customButtons.push({
+                    text: item.innerHTML,
+                    className: (item.className||"")+(" table-custom-button-"+id),
+                    action: function(){
+                        view.emit(id) ;
+                    }
+                }) ;
+            }.bind(this)) ;
+
+            var buttons = new window.jQuery.fn.dataTable.Buttons( datatable, {
+                buttons: customButtons
+            } );
+         
+            if(toolbar.getAttribute("data-toolbar-prepend")){
+                buttons.container().prependTo(
+                    datatable.buttons().container().parent()
+                );
+            }else{
+                buttons.container().appendTo(
+                    datatable.buttons().container().parent()
+                );
+            }
+        }
+
+        view.on("displayed", function(){
+            //force redraw on display as width compute are not correct when hidden
+            datatable.columns.adjust().draw();
+        }) ;
+
+        element.render = function(){
+            datatable.columns.adjust().draw();
+        } ;
+        var tableData = [] ;
+        element.getValue = function(){
+            return tableData;
+        } ;
+        element.setValue = function(value){
+            tableData = value;
+            datatable.clear();
+            datatable.rows.add(value);
+            datatable.draw();
+        } ;
+        element.setReadOnly = function(readOnly){
+            //FIXME
+            console.log("implement read only on grid ?") ;
+        } ;
+        element.addEventListener = function(event, listener){
+            if(event === "rowClick"){
+                window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
+                    var data = datatable.row( this ).data();
+                    ev.rowData = data;
+                    listener.bind(this)(ev) ;
+                } );
+            }
+        } ;
+
+        
+        
+
+        return;
         var listThead = table.getElementsByTagName("THEAD") ;
         var thead = listThead.length>0?listThead[0]:null ;
 

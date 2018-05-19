@@ -166,13 +166,13 @@
                 var label = document.createElement("LABEL") ;
                 var text = document.createTextNode(strLabel);
                 if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
-                    //for checkbox, add input in the label
-                    var input = element.querySelector("input") ;
-                    element.removeChild(input) ;
-                    label.appendChild(input) ;
+                    //for checkbox, add input after the label
+                    element.appendChild(label, element.children[0]) ;
+                }else{
+                    element.insertBefore(label, element.children[0]) ;
+
                 }
                 label.appendChild(text) ;
-                element.insertBefore(label, element.children[0]) ;
             }) ;
         }
     } ;

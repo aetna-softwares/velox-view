@@ -1,7 +1,3 @@
-
-
-
-
 ; (function (global, factory) {
     typeof exports === 'object' && typeof module !== 'undefined' ? module.exports = factory() :
         typeof define === 'function' && define.amd ? define(factory) :
@@ -14,7 +10,7 @@
     var ID_SEP = "_-_";
 
    
-    var HTMLELEMENT_PROTO_KEYS = Object.keys(Element.prototype).concat(Object.keys(HTMLElement.prototype));
+    var HTMLELEMENT_PROTO_KEYS = typeof(Element)!=="undefined"?Object.keys(Element.prototype).concat(Object.keys(HTMLElement.prototype)):[];
 
     /**
      * Dictionnary of all loaded CSS
