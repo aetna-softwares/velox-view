@@ -116,6 +116,7 @@
      * @property {object} [schema] The database schema. if not given, use the apiClient to retrieve it
      * @property {object} [schemaExtend] schema object that extends the base schema  
      * @property {boolean} [addLabelToFields] automatically add <label> to the field (default false)
+     * @property {boolean} [addErrorsToFields] automatically add error <div> invalid-feedback to the field (default false)
      */
 
 
@@ -173,6 +174,20 @@
 
                 }
                 label.appendChild(text) ;
+            }) ;
+        }
+        if(options.addErrorsToFields){
+            VeloxWebView.fields.addDecorator(function(element, fieldType){
+                if(fieldType === "grid"){ return ;}//ignore grids
+                var fieldDef = element.getAttribute("data-field-def") ;
+                if(!fieldDef){ return ; }
+                if(element.hasAttribute("data-field-noerror")){
+                    return ;
+                }
+                
+                var error = document.createElement("DIV") ;
+                error.className = "invalid-feedback" ;
+                element.appendChild(error) ;
             }) ;
         }
     } ;

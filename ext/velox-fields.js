@@ -2484,6 +2484,13 @@
         input.type = "text" ;
         element.innerHTML = "" ;
         element.appendChild(input) ;
+        var attrs = ["required", "pattern", "minlength", "maxlength", "min", "max"];
+        for(var i=0; i<attrs.length; i++){
+            var attr = attrs[i] ;
+            if(element.hasAttribute(attr)){
+                input.setAttribute(attr, element.getAttribute(attr)) ;
+            }
+        }
         return input ;
     }
 
