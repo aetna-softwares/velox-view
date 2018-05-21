@@ -67,7 +67,7 @@
         '        </button>'+
         '      </div>'+
         '      <div class="modal-body">'+
-        message+
+        message.replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+
         '        <button type="button" class="btn btn-primary" data-dismiss="modal">'+okLabel()+'</button>'+
@@ -99,7 +99,7 @@
         '        </button>'+
         '      </div>'+
         '      <div class="modal-body">'+
-        message+
+        message.replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+
         '        <button type="button" class="btn btn-primary" data-dismiss="modal">'+okLabel()+'</button>'+
@@ -110,9 +110,11 @@
         var $modal = window.jQuery(modalHtml);
         $modal.modal() ;
         makeDraggable($modal) ;
-        $modal.on('hidden.bs.modal', function () {
-            callback() ;
-        });
+        if(callback){
+            $modal.on('hidden.bs.modal', function () {
+                callback() ;
+            });
+        }
     } ;
 
     /**
@@ -279,7 +281,7 @@
         '        </button>'+
         '      </div>'+
         '      <div class="modal-body">'+
-        message+
+        message.replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+
         '        <button type="button" class="btn btn-secondary btn-no">'+labelNo+'</button>'+
