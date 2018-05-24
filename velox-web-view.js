@@ -747,6 +747,7 @@
 
         //clone the sub views definitions
         this.views = {} ;
+        this.innerViewIds = [] ;
         var subViewsKeys = Object.keys(parsed.subviews) ;
         for(var i=0; i<subViewsKeys.length; i++){
             var k = subViewsKeys[i] ;
