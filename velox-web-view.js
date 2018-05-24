@@ -742,6 +742,7 @@
         this.prepareContainer(clonedBody, parsed) ;
 
         //clone the sub views definitions
+        this.innerViewIds = [] ;
         this.views = {} ;
         var subViewsKeys = Object.keys(parsed.subviews) ;
         for(var i=0; i<subViewsKeys.length; i++){
