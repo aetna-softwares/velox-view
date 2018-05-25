@@ -2060,7 +2060,7 @@
             loopV = loopV.parentView ;
         }
         for(var i=0; i<parents.length; i++){
-            parent = parents[i] ;
+            var parent = parents[i] ;
             
             for(var y=0; y<parent.innerViewIds.length; y++){
                 var innerViewId = parent.innerViewIds[y] ;
