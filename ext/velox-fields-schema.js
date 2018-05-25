@@ -33,58 +33,60 @@
             }
         }
         var calls = [] ;
-        elements.forEach(function(element){
-            var schemaId = element.getAttribute("data-field-def").split(".") ;
-            if(schemaId.length !== 2){
-                throw ("Invalid data-field-def value : "+element.getAttribute("data-field-def")+", expected format is table.column") ;
-            }
-
-            var tableDef = schema[schemaId[0]];
-            if(!tableDef){
-                throw ("Unknow table : "+schemaId[0].trim()) ;
-            }
-
-            if(schemaId[1] === "grid"){
-                element.setAttribute("data-field", "grid") ;
-                prepareGrid(element, schemaId[0], tableDef) ;
-                calls.push(function(cb){
-                    VeloxWebView.fields.loadFieldLib("grid", null, cb) ;
-                }) ;
-            } else {
-                var colDef = null;
-                tableDef.columns.some(function(c){
-                    if(c.name === schemaId[1].trim()){
-                        colDef = c;
-                        return true ;
+        for(var i=0; i<elements.length; i++){
+            (function (element){
+                var schemaId = element.getAttribute("data-field-def").split(".") ;
+                if(schemaId.length !== 2){
+                    throw ("Invalid data-field-def value : "+element.getAttribute("data-field-def")+", expected format is table.column") ;
+                }
+    
+                var tableDef = schema[schemaId[0]];
+                if(!tableDef){
+                    throw ("Unknow table : "+schemaId[0].trim()) ;
+                }
+    
+                if(schemaId[1] === "grid"){
+                    element.setAttribute("data-field", "grid") ;
+                    prepareGrid(element, schemaId[0], tableDef) ;
+                    calls.push(function(cb){
+                        VeloxWebView.fields.loadFieldLib("grid", null, cb) ;
+                    }) ;
+                } else {
+                    var colDef = null;
+                    tableDef.columns.some(function(c){
+                        if(c.name === schemaId[1].trim()){
+                            colDef = c;
+                            return true ;
+                        }
+                    }) ;
+                    if(!colDef){
+                        throw ("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
                     }
-                }) ;
-                if(!colDef){
-                    throw ("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
-                }
-
-
-                if(!element.hasAttribute("data-bind")){
-                    element.setAttribute("data-bind", colDef.name) ;
-                }
-
-                element.setAttribute("data-field", colDef.type) ;
-                if(colDef.size){
-                    element.setAttribute("data-field-size", colDef.size) ;
-                }
-                if(colDef.options){
-                    Object.keys(colDef.options).forEach(function(k){
-                        element.setAttribute("data-field-"+k, colDef.options[k]) ;
+    
+    
+                    if(!element.hasAttribute("data-bind")){
+                        element.setAttribute("data-bind", colDef.name) ;
+                    }
+    
+                    element.setAttribute("data-field", colDef.type) ;
+                    if(colDef.size){
+                        element.setAttribute("data-field-size", colDef.size) ;
+                    }
+                    if(colDef.options){
+                        Object.keys(colDef.options).forEach(function(k){
+                            element.setAttribute("data-field-"+k, colDef.options[k]) ;
+                        }) ;
+                    }
+    
+                    prepareElement(element,schemaId[0], colDef) ;
+    
+                   
+                    calls.push(function(cb){
+                        VeloxWebView.fields.loadFieldLib(colDef.type, colDef.options, cb) ;
                     }) ;
                 }
-
-                prepareElement(element,schemaId[0], colDef) ;
-
-               
-                calls.push(function(cb){
-                    VeloxWebView.fields.loadFieldLib(colDef.type, colDef.options, cb) ;
-                }) ;
-            }
-        });
+            })(elements[i]) ;
+        }
         VeloxWebView._asyncSeries(calls, cb) ;
     } ;
     
