@@ -534,7 +534,6 @@
             "ar-YE": "Arabic",
             "az": "Azerbaijan",
             "az-AZ": "Azerbaijan",
-            "az-AZ": "Azerbaijan",
             "be": "Belarusian",
             "be-BY": "Belarusian",
             "bg": "Bulgarian",
@@ -577,7 +576,6 @@
             "es-CR": "Spanish",
             "es-DO": "Spanish",
             "es-EC": "Spanish",
-            "es-ES": "Spanish",
             "es-ES": "Spanish",
             "es-GT": "Spanish",
             "es-HN": "Spanish",
@@ -668,8 +666,6 @@
             "sq": "Albanian",
             "sq-AL": "Albanian",
             "sr-BA": "Serbian",
-            "sr-BA": "Serbian",
-            "sr-SP": "Serbian",
             "sr-SP": "Serbian",
             "sv": "Swedish",
             "sv-FI": "Swedish",
@@ -689,7 +685,6 @@
             "ur": "Urdu",
             "ur-PK": "Urdu",
             "uz": "Uzbek",
-            "uz-UZ": "Uzbek",
             "uz-UZ": "Uzbek",
             "vi": "Vietnamese",
             "vi-VN": "Vietnamese",
@@ -816,18 +811,20 @@
      */
     function doPrepareView(params, callback){
         var elements = params.doc.querySelectorAll("[data-field]");
-        elements.forEach(function(element){
-            var fieldType = element.getAttribute("data-field") ;
-            var fieldOptions = {} ;
-            Array.prototype.slice.call(element.attributes).forEach(function(att){
-                var startIndex = "data-field-".length ;
-                var attKey = att.name ;
-                if(attKey.indexOf("data-field") === 0 && attKey.length > startIndex){
-                    fieldOptions[attKey.substring(startIndex)] = element.getAttribute(attKey) ;
-                }
-            }) ;
-            setNeededLib(fieldType, fieldOptions) ;
-        });
+        for(var i=0; i<elements.length; i++){
+            (function (element){
+                var fieldType = element.getAttribute("data-field") ;
+                var fieldOptions = {} ;
+                Array.prototype.slice.call(element.attributes).forEach(function(att){
+                    var startIndex = "data-field-".length ;
+                    var attKey = att.name ;
+                    if(attKey.indexOf("data-field") === 0 && attKey.length > startIndex){
+                        fieldOptions[attKey.substring(startIndex)] = element.getAttribute(attKey) ;
+                    }
+                }) ;
+                setNeededLib(fieldType, fieldOptions) ;
+            })(elements[i]) ;
+        }
         loadLibs(callback) ;
     }
 
