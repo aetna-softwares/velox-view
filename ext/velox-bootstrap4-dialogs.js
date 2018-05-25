@@ -145,10 +145,13 @@
         options.keyboard = options.closeWithEsc||true ;
         
 
-        var popup = null;
+        var $modal = null;
         this.closePopup = function(){
-            if(popup){
-                popup.modal('hide') ;
+            if($modal){
+                $modal.on('hidden.bs.modal', function () {
+                    window.jQuery(this).data('bs.modal', null);
+                });
+                $modal.modal('hide') ;
             }
         } ;
         this.close = function(){
@@ -156,7 +159,7 @@
             this.closePopup() ;
         } ;
 
-        var modalHtml = '<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
+        var modalHtml = '<div class="modal fade" data-focus="false" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
         '  <div class="modal-dialog modal-dialog-centered" role="document">'+
         '    <div class="modal-content">'+
         '      <div class="modal-header">'+
@@ -170,7 +173,7 @@
         '    </div>'+
         '  </div>'+
         '</div>' ;
-        var $modal = window.jQuery(modalHtml);
+        $modal = window.jQuery(modalHtml);
 
         this.options.container = $modal.find(".modal-body")[0];
         this.open(function(err){
@@ -180,8 +183,9 @@
                 makeDraggable($modal) ;
             }
             $modal.on('shown.bs.modal', function () {
+                this.emit("popupOpen") ;
                 callback() ;
-            }) ;
+            }.bind(this)) ;
         }.bind(this)) ;
     } ;
 
