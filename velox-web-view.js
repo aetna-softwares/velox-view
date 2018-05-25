@@ -1637,15 +1637,6 @@
      * @param {function} [callback] - Called when render is done
      */
     VeloxWebView.prototype.render = function (dataToRender) {
-        if (!this.initDone) {
-            this.once("initDone", function(){
-                this.render(dataToRender) ;
-            }.bind(this));
-            return;
-        }
-
-        this.elements = null; //clear EL collection to force recompute as some sub element may change on render
-        
         if (dataToRender !== undefined) {
             if(this.bindPath && this.bindPath.length > 0){
                 //FIXME : handle extractor cache
@@ -1655,6 +1646,15 @@
             }
         }
 
+        if (!this.initDone) {
+            this.once("initDone", function(){
+                this.render() ;
+            }.bind(this));
+            return;
+        }
+
+        this.elements = null; //clear EL collection to force recompute as some sub element may change on render
+        
         if(this.rendering){
             //render is not re-entrant. try to render when you are already rendering
             //is likely to be loop due to some change event listener
