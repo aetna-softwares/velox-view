@@ -90,6 +90,23 @@
      * @param {function} [callback] called when user close message
      */
     extension.extendsProto.error = function (message, callback) {
+        if(typeof(message) === "object"){
+            console.error("unexpected error", message) ;
+			if(message && message instanceof Error){
+                if(this.tr){
+                    message = this.tr("global.unexpectedError", {err : message.message+"\n"+message.stack}) ;
+                }else{
+                    message =  message.message+"\n"+message.stack ;
+                }
+			}else{
+                if(this.tr){
+                    message = this.tr("global.unexpectedError", {err : JSON.stringify(message)}) ;
+                }else{
+                    message =  JSON.stringify(message) ;
+                }
+			}
+        }
+        
         var modalHtml = '<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
         '  <div class="modal-dialog modal-dialog-centered" role="document">'+
         '    <div class="modal-content">'+
@@ -142,7 +159,16 @@
 
         if(!callback){ callback = function(){} ;}
 
-        options.keyboard = options.closeWithEsc||true ;
+        options.keyboard = options.closeWithEsc ;
+        if(options.keyboard === undefined){
+            options.keyboard = true ;
+        }
+        if(options.closeWithEsc === false && options.closeByClickOutside === undefined){
+            options.closeByClickOutside = false ;
+        }
+        if(options.closeByClickOutside === false){
+            options.backdrop = "static" ;
+        }
         
 
         var $modal = null;
@@ -163,17 +189,22 @@
         '  <div class="modal-dialog modal-dialog-centered" role="document">'+
         '    <div class="modal-content">'+
         '      <div class="modal-header">'+
-        '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>'+
-        '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
-        '          <span aria-hidden="true">&times;</span>'+
-        '        </button>'+
-        '      </div>'+
+        '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>' ;
+        if(options.closeable === true || options.closeable === undefined){
+            modalHtml += '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
+            '          <span aria-hidden="true">&times;</span>'+
+            '        </button>' ;
+        } 
+        modalHtml += '      </div>'+
         '      <div class="modal-body">'+
         '      </div>'+
         '    </div>'+
         '  </div>'+
         '</div>' ;
         $modal = window.jQuery(modalHtml);
+        if(options.zIndex){
+            $modal[0].style.zIndex = options.zIndex ; 
+        }
 
         this.options.container = $modal.find(".modal-body")[0];
         this.open(function(err){
