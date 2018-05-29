@@ -903,7 +903,7 @@
         } else if(fieldType === "email"){
             setLibToLoad("inputMask", loadInputMask) ;
         } else if(["date", "datetime", "time", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
-            setLibToLoad("Decimal", function(done){
+            setLibToLoad("flatpickr", function(done){
                 loadLib("flatpickr", FLATPICKR_VERSION, FLATPICKR_LIB, done) ;
             }) ;
             setLibToLoad("inputMask", loadInputMask) ;
@@ -1560,29 +1560,19 @@
             searchable: false,
         });
 
-        if(fieldOptions.readfromtable){
-            getPossibleValues(fieldOptions, function(err, values){
-                if(err){
-                    throw err ;
-                }
-                element.setOptions(values) ;
-                if(currentValue){
-                    setTimeout(function(){
-                        selectr.setValue(currentValue) ;
-                    }, 1) ;
-                }
-            });
-        }
-
+        
         selectr.setValue("") ;
         //element.style.visibility = "visible";
 
         element.getValue = function(){
-            var value = selectr.getValue(true)  ;
+            var value = selectr.getValue()  ;
             return value||null ;
         } ;
         element.setValue = function(value){
             currentValue = value ;
+            if(value === undefined || value === null){
+                return selectr.clear() ;
+            }
             return selectr.setValue(value) ;
         } ;
         element.setReadOnly = function(readOnly){
@@ -1613,6 +1603,21 @@
         element.getOptions = function(){
             return element._options ;
         } ;
+
+        if(fieldOptions.readfromtable){
+            getPossibleValues(fieldOptions, function(err, values){
+                if(err){
+                    throw err ;
+                }
+                element.setOptions(values) ;
+                if(currentValue){
+                    setTimeout(function(){
+                        selectr.setValue(currentValue) ;
+                    }, 1) ;
+                }
+            });
+        }
+
     }
 
     /**
