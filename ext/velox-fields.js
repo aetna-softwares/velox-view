@@ -47,6 +47,10 @@
      */
     var selectCSSLoaded = false;
     /**
+     * flag for CSS of number widget
+     */
+    var numberCSSLoaded = false;
+    /**
      * flag for CSS of HTML editor widget
      */
     var htmlEditorCSSLoaded = false;
@@ -893,7 +897,7 @@
             if(fieldOptions && fieldOptions.mask){
                 setLibToLoad("inputMask", loadInputMask) ;
             }
-        } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
+        } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || fieldType==="numeric" ||
             fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="currency" || fieldType==="percent"){
             setLibToLoad("Decimal", function(done){
                 loadLib("Decimal", DECIMALJS_VERSION, DECIMALJS_LIB, done) ;
@@ -972,7 +976,7 @@
     function _createField(element, fieldType, fieldSize, fieldOptions, view){
         if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
             createTextField(element, fieldType, fieldSize, fieldOptions) ;
-        } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="decimal" || 
+        } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="numeric" || fieldType==="decimal" || 
             fieldType==="double" || fieldType==="float"  || fieldType==="float8" || fieldType==="currency" || fieldType==="percent"){
             createNumberField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "email"){
@@ -1241,82 +1245,34 @@
      * @param {function(Error)} callback called when field is created
      */
     function createNumberField(element, fieldType, fieldSize, fieldOptions){
+        loadNumberCSS() ;
         var input = appendInputHtml(element) ;
-        var maskField = null;
-        var maskOptions = { 
-            radixPoint: currentLocale.delimiters.decimal , 
-            groupSeparator : currentLocale.delimiters.thousands , 
-            prefix : "", suffix : "", positionCaretOnTab: false
-        } ;;
-
-        if(fieldOptions.decimaldigits){
-            var digits = parseInt(fieldOptions.decimaldigits, 10) ;
-            if(isNaN(digits)){
-                throw "Invalid value for option decimaldigits, number expected" ;
-            }
-            maskOptions.digits = digits ;
+        input.type = "number" ;
+        if(fieldType==="decimal" || fieldType==="numeric" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
+            input.step="0.01" ;
         }
 
         element.getValue = function(){
-            if(maskField){
-                var value = maskField._valueGet() ;
-                if(maskOptions){
-                    value = replaceAll(value, maskOptions.radixPoint, ".");
-                    value = replaceAll(value, maskOptions.groupSeparator, "");
-                    value = replaceAll(value, maskOptions.prefix, "");
-                    value = replaceAll(value, maskOptions.suffix, "");
-                }
-                value = value === "" ? new libs.Decimal(0) : new libs.Decimal(value);
-                if(fieldType === "percent"){
-                    value = value.div(100) ;
-                }
-                return value ;
-            }
             return input.value ;
         } ;
         element.setValue = function(value){
-            if(!value){ value = 0; }
-            var decimalValue = new libs.Decimal(value) ;
-            if(fieldType === "percent"){
-                decimalValue = decimalValue.mul(100) ;
-            }
-            value = decimalValue.toNumber() ;
-            if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
-                value = decimalValue.toFixed(maskOptions.digits || 2) .replace(".", currentLocale.delimiters.decimal); 
-            }
-            input.value = (value?""+value:"") ;
-            if(maskField){
-                maskField._valueSet(value) ;
-            }
+            input.value = value ;
         } ;
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
-        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
-            window.jQuery(input).on(eventName, function(ev){
-                var cloneEv = null;
-                if(ev.originalEvent){
-                    cloneEv = new ev.originalEvent.constructor(ev.originalEvent.type, ev.originalEvent);
-                }else{
-                    cloneEv = new Event(eventName, ev) ;
 
-                }
+        element.focus = function(){
+            input.focus() ;
+        };
+        
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
                 element.dispatchEvent(cloneEv);
             }) ;
         }) ;
 
-
-        if(fieldType === "int" || fieldType === "integer" || fieldType==="number") {
-            var im = new libs.Inputmask("integer", maskOptions);
-            maskField = im.mask(input) ;
-        }else if(fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
-            if(fieldType === "percent"){
-                maskOptions.suffix = " %";
-            }
-
-            var im = new libs.Inputmask("currency", maskOptions);
-            maskField = im.mask(input) ;
-        }
     }
 
     /**
@@ -1389,6 +1345,11 @@
         } ;
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
+            if(readOnly){
+                input.setAttribute('disabled', 'disabled') ;
+            }else{
+                input.removeAttribute('disabled') ;
+            }
         } ;
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
@@ -1492,9 +1453,10 @@
     function loadSelectCSS(){
         if(selectCSSLoaded){ return ;}
 
-        var css = ".choices[data-type*=select-one] .choices__inner { padding-bottom: 3.5px ;}";
-        css += ".choices__inner { background-color: white; padding: 3.5px 5.5px 2.75px; min-height: 34px;}";
-        css += ".choices.is-disabled[data-type*=select-one]:after { display: none; }";
+        var css = ".selectr-selected[disabled] { color: rgb(73, 80, 87); background-color: #e9ecef; border-color: rgb(206, 212, 218);}";
+        css += ".selectr-selected[disabled]::before { display: none; }";
+        css += ".selectr-selected { padding: 6px 28px 6px 14px !important; }";
+        css += ".selectr-disabled { opacity: 1 !important; }";
         
         var head = document.getElementsByTagName('head')[0];
         var s = document.createElement('style');
@@ -1506,6 +1468,26 @@
         }
         head.appendChild(s);
         selectCSSLoaded = true ;
+    }
+
+    /**
+     * load the number CSS
+     */
+    function loadNumberCSS(){
+        if(numberCSSLoaded){ return ;}
+
+        var css = 'input[type="number"] { text-align: right;}';
+        
+        var head = document.getElementsByTagName('head')[0];
+        var s = document.createElement('style');
+        s.setAttribute('type', 'text/css');
+        if (s.styleSheet) {   // IE
+            s.styleSheet.cssText = css;
+        } else {                // the world
+            s.appendChild(document.createTextNode(css));
+        }
+        head.appendChild(s);
+        numberCSSLoaded = true ;
     }
     
     /**
