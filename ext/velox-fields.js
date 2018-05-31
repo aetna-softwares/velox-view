@@ -1253,7 +1253,7 @@
         }
 
         element.getValue = function(){
-            return input.value ;
+            return Number(input.value) ;
         } ;
         element.setValue = function(value){
             input.value = value ;
