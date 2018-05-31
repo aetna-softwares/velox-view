@@ -1719,7 +1719,7 @@
                         el.setValue(bindData) ;
                     }
                 }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-                    if(el.tagName === "INPUT" && el.type === "checkbox"){
+                    if(el.tagName === "INPUT" && (el.type === "checkbox" || el.type === "radio")){
                         var checked = bindData === true || bindData === "true" || bindData === "TRUE" || bindData === 1 || bindData === "1" ;
                         if(el.checked !== checked){
                             el.checked = checked ;
@@ -2137,7 +2137,7 @@
                 if (el.getValue){
                     value = el.getValue();
                 }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
-                    if(el.tagName === "INPUT" && el.type === "checkbox"){
+                    if(el.tagName === "INPUT" && (el.type === "checkbox" || el.type === "radio")){
                         value = el.checked ;
                     }else{
                         value = el.value;
