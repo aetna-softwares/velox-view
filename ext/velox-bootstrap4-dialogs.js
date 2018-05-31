@@ -185,8 +185,15 @@
             this.closePopup() ;
         } ;
 
+        var modalSize = "";
+        if(options.size==="small"){
+            modalSize = "modal-sm";
+        }else if(options.size==="large"){
+            modalSize = "modal-lg";
+        }
+
         var modalHtml = '<div class="modal fade" data-focus="false" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
-        '  <div class="modal-dialog modal-dialog-centered" role="document">'+
+        '  <div class="modal-dialog modal-dialog-centered '+modalSize+'" role="document">'+
         '    <div class="modal-content">'+
         '      <div class="modal-header">'+
         '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>' ;
