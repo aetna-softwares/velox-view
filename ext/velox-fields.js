@@ -1286,33 +1286,28 @@
      */
     function createEmailField(element, fieldType, fieldSize, fieldOptions){
         var input = appendInputHtml(element) ;
-        var maskField = null;
+        input.type = "email" ;
 
         element.getValue = function(){
-            if(maskField){
-                return maskField._valueGet() ;
-            }
             return input.value ;
         } ;
         element.setValue = function(value){
-            input.value = value?""+value:"";
-            if(maskField){
-                maskField._valueSet(value) ;
-            }
+            input.value = value ;
         } ;
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+
+        element.focus = function(){
+            input.focus() ;
+        };
+        
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
                 var cloneEv = new ev.constructor(ev.type, ev);
                 element.dispatchEvent(cloneEv);
             }) ;
         }) ;
-
-        
-        var im = new libs.Inputmask("email");
-        maskField = im.mask(input) ;
     }
 
     /**
@@ -1539,7 +1534,7 @@
         var currentValue = null;
         
         var selectr = new window.Selectr(select, {
-            searchable: false,
+            searchable: true,
         });
 
         
