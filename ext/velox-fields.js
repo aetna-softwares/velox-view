@@ -1453,9 +1453,9 @@
     function loadSelectCSS(){
         if(selectCSSLoaded){ return ;}
 
-        var css = ".selectr-selected[disabled] { color: rgb(73, 80, 87); background-color: #e9ecef; border-color: rgb(206, 212, 218);}";
-        css += ".selectr-selected[disabled]::before { display: none; }";
-        css += ".selectr-selected { padding: 6px 28px 6px 14px !important; }";
+        var css = ".selectr-disabled .selectr-selected { color: rgb(73, 80, 87); background-color: #e9ecef; border-color: rgb(206, 212, 218);}";
+        css += ".selectr-disabled .selectr-selected::before { display: none; }";
+        css += ".selectr-selected { padding: 6px 28px 6px 14px !important; border: 1px solid #ced4da !important; color: #495057 !important;}";
         css += ".selectr-disabled { opacity: 1 !important; }";
         
         var head = document.getElementsByTagName('head')[0];
