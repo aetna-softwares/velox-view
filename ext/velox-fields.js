@@ -155,7 +155,7 @@
     var DECIMALJS_VERSION = "2.2.0" ;
     var FLATPICKR_VERSION = "4.5.0" ;
     var MOMENTJS_VERSION = "2.22.1" ;
-    var SELECTR_VERSION = "2.4.1" ;
+    var CHOSEN_VERSION = "1.8.5" ;
     
     var PDFOBJECT_VERSION = "2.0.201604172" ;
     var PDFJS_VERSION = "1.9.426" ;
@@ -235,22 +235,23 @@
     ];
 
     
-    var SELECTR_LIB = [
+    var CHOSEN_LIB = [
+        JQUERY_LIB,
         {
-            name: "selectr-css",
+            name: "chosen-css",
             type: "css",
-            version: SELECTR_VERSION,
-            cdn: "https://cdn.jsdelivr.net/gh/mobius1/selectr@latest/dist/selectr.min.css",
-            bowerPath: "mobius1-selectr/dist/selectr.min.css",
-            npmPath: "mobius1-selectr/dist/selectr.min.css",
+            version: CHOSEN_VERSION,
+            cdn: "http://cdnjs.cloudflare.com/ajax/libs/chosen/$VERSION/chosen.min.css",
+            bowerPath: "chosen/chosen.min.css",
+            npmPath: "chosen-js/chosen.min.css",
         },
         {
-            name: "selectr-js",
+            name: "chosen-js",
             type: "js",
-            version: SELECTR_VERSION,
-            cdn: "https://cdn.jsdelivr.net/gh/mobius1/selectr@latest/dist/selectr.min.js",
-            bowerPath: "mobius1-selectr/dist/selectr.min.js",
-            npmPath: "mobius1-selectr/dist/selectr.min.js"
+            version: CHOSEN_VERSION,
+            cdn: "http://cdnjs.cloudflare.com/ajax/libs/chosen/$VERSION/chosen.jquery.min.js",
+            bowerPath: "chosen/chosen.jquery.min.js",
+            npmPath: "chosen-js/chosen.jquery.min.js"
         }
     ];
 
@@ -443,7 +444,7 @@
         NUMBRO_LIB,
         DECIMALJS_LIB,
         FLATPICKR_LIB,
-        SELECTR_LIB,
+        CHOSEN_LIB,
         DATATABLES_LIB,
         PDFOBJECT_LIB,
         QUILL_LIB,
@@ -470,6 +471,14 @@
             cdn: "https://cdnjs.cloudflare.com/ajax/libs/moment.js/$VERSION/locale/*.js",
             bowerPath: "moment/locale/*.js",
             npmPath: "moment/locale/*.js"
+        },
+        {
+            name: "chosen-assets",
+            type: "js",
+            version: CHOSEN_VERSION,
+            cdn: "http://cdnjs.cloudflare.com/ajax/libs/chosen/$VERSION/*.png",
+            bowerPath: "chosen/*.png",
+            npmPath: "chosen-js/*.png"
         }
     ] ;
 
@@ -914,8 +923,8 @@
             setLibToLoad("locale", getLocale) ;
             setLibToLoad("localeDate", loadDateLibLocale) ;
         } else if(fieldType === "selection" || fieldType === "select"){
-            setLibToLoad("selectr", function(done){
-                loadLib("selectr", SELECTR_VERSION, SELECTR_LIB, done) ;
+            setLibToLoad("chosen", function(done){
+                loadLib("chosen", CHOSEN_VERSION, CHOSEN_LIB, done) ;
             }) ;
             loadSelectCSS() ;
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
@@ -1292,6 +1301,9 @@
             return input.value ;
         } ;
         element.setValue = function(value){
+            if(value === undefined || value === null){
+                value = "";
+            }
             input.value = value ;
         } ;
         element.setReadOnly = function(readOnly){
@@ -1448,10 +1460,10 @@
     function loadSelectCSS(){
         if(selectCSSLoaded){ return ;}
 
-        var css = ".selectr-disabled .selectr-selected { color: rgb(73, 80, 87); background-color: #e9ecef; border-color: rgb(206, 212, 218);}";
-        css += ".selectr-disabled .selectr-selected::before { display: none; }";
-        css += ".selectr-selected { padding: 6px 28px 6px 14px !important; border: 1px solid #ced4da !important; color: #495057 !important;}";
-        css += ".selectr-disabled { opacity: 1 !important; }";
+        var css = ".chosen-disabled .chosen-single { color: rgb(73, 80, 87); background-color: #e9ecef; border-color: rgb(206, 212, 218);}";
+        css += ".chosen-container-single.chosen-disabled a:not([href]):not([tabindex]).chosen-single:not(.chosen-default) { color: rgb(73, 80, 87) !important;  }";
+        css += ".chosen-disabled .chosen-single>div { display: none; }";
+        css += ".chosen-disabled { opacity: 1 !important; }";
         
         var head = document.getElementsByTagName('head')[0];
         var s = document.createElement('style');
@@ -1533,51 +1545,51 @@
 
         var currentValue = null;
         
-        var selectr = new window.Selectr(select, {
-            searchable: true,
+        var chosen = new window.jQuery(select).chosen({
+            allow_single_deselect: true,
+            width: '100%'
         });
 
-        
-        selectr.setValue("") ;
-        //element.style.visibility = "visible";
-
         element.getValue = function(){
-            var value = selectr.getValue()  ;
+            var value = select.value  ;
             return value||null ;
         } ;
         element.setValue = function(value){
             currentValue = value ;
             if(value === undefined || value === null){
-                return selectr.clear() ;
+                select.value = null;
+            }else{
+                select.value = value;
             }
-            return selectr.setValue(value) ;
+            chosen.trigger("chosen:updated");
         } ;
         element.setReadOnly = function(readOnly){
             if(readOnly) {
-                selectr.disable();
+                select.disabled = true;
             }else{
-                selectr.enable();
+                select.disabled = false;
             }
+            chosen.trigger("chosen:updated");
             setReadOnly(element, readOnly) ;
         } ;
-        // element.addEventListener = function(event, listener){
-        //     $select.on(event, function(ev){
-        //         ev.target = element;
-        //         listener(ev) ;
-        //     }); 
-        // } ;
 
         element.setOptions = function(options){
-            selectr.removeAll() ;
-            element._options= options.map(function(rec){ 
-                return {
-                    value: rec.id,
-                    text: rec.label
-                } ;
-            });
-            selectr.add(element._options) ;
+            select.innerHTML = "";
+            for(var i=0; i<options.length; i++){
+                var opt = document.createElement("OPTION") ;
+                opt.value = options[i].id;
+                opt.innerHTML = options[i].label;
+                select.appendChild(opt) ;
+            }
         } ;
         element.getOptions = function(){
+            var opts = [] ;
+            for(var i=0; i<select.options.length; i++){
+                opts.push({
+                    id: select.options[i].value,
+                    label: select.options[i].innerHTML,
+                }) ;
+            }
             return element._options ;
         } ;
 
@@ -1588,9 +1600,7 @@
                 }
                 element.setOptions(values) ;
                 if(currentValue){
-                    setTimeout(function(){
-                        selectr.setValue(currentValue) ;
-                    }, 1) ;
+                    element.setValue(currentValue) ;
                 }
             });
         }
