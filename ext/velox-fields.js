@@ -1542,6 +1542,14 @@
             select = subSelects[0];
         }
 
+        var attrs = ["required"];
+        for(var i=0; i<attrs.length; i++){
+            var attr = attrs[i] ;
+            if(element.hasAttribute(attr)){
+                select.setAttribute(attr, element.getAttribute(attr)) ;
+            }
+        }
+
 
         var currentValue = null;
         
