@@ -1464,6 +1464,32 @@
         css += ".chosen-container-single.chosen-disabled a:not([href]):not([tabindex]).chosen-single:not(.chosen-default) { color: rgb(73, 80, 87) !important;  }";
         css += ".chosen-disabled .chosen-single>div { display: none; }";
         css += ".chosen-disabled { opacity: 1 !important; }";
+        //handle open up, see https://github.com/harvesthq/chosen/issues/155#issuecomment-194787230
+        css += " .chosen-container .chosen-drop { display: none; }";
+        css += " .chosen-container.chosen-with-drop .chosen-drop { display: block; }";
+        css += " .chosen-container.chosen-drop-up .chosen-drop {";
+        css += "  border-bottom: 0;";
+        css += "  border-radius: 4px 4px 0 0;";
+        css += "  border-top: 1px solid #aaa;";
+        css += "  bottom: 100%;";
+        css += "  box-shadow: 0 -4px 5px rgba(0, 0, 0, 0.15);";
+        css += "  top: auto; }";
+        
+        css += ".chosen-container-active.chosen-with-drop .chosen-single:not(.chosen-drop-up) {";
+        css += "  border: 1px solid #aaa;";
+        css += "  border-bottom-right-radius: 0;";
+        css += "  border-bottom-left-radius: 0; }";
+        
+        css += ".chosen-container-active.chosen-with-drop.chosen-drop-up .chosen-drop {";
+        css += "  display: flex;";
+        css += "  flex-direction: column-reverse; }";
+        
+        css += ".chosen-container-active.chosen-with-drop.chosen-drop-up .chosen-single {";
+        css += "  border-radius: 0 0 4px 4px;";
+        css += "  border-top: 0;";
+        css += "  box-shadow: 0 1px 0 #FFF inset;";
+        css += "  border-top-right-radius: 0;";
+        css += "  border-top-left-radius: 0; }";
         
         var head = document.getElementsByTagName('head')[0];
         var s = document.createElement('style');
@@ -1558,6 +1584,27 @@
             width: '100%'
         });
 
+        //open up, see https://github.com/harvesthq/chosen/issues/155#issuecomment-194787230
+        chosen.on('chosen:showing_dropdown chosen:hiding_dropdown', function(e){
+            var chosen_container = $( e.target ).next( '.chosen-container' ),
+                mustShowUp = e.type == 'chosen:showing_dropdown' && dropdownExceedsBottomViewport();
+        
+            function dropdownExceedsBottomViewport(){
+                var dropdown        = chosen_container.find( '.chosen-drop' ),
+                    dropdown_top    = dropdown.offset().top - document.documentElement.scrollTop,
+                    dropdown_height = dropdown.height(),
+                    viewport_height = document.documentElement.clientHeight;
+        
+                return dropdown_top + dropdown_height > viewport_height;
+            }
+        
+            if(mustShowUp){
+                chosen_container.addClass( 'chosen-drop-up' );
+            }else{
+                chosen_container.removeClass( 'chosen-drop-up' );
+            }
+        });
+
         element.getValue = function(){
             var value = select.value  ;
             return value||null ;
@@ -1645,6 +1692,22 @@
         css += ".dt-table {flex-grow: 1; display: flex; flex-direction: column;} ";
         css += ".dataTables_scroll {display: flex; flex-direction: column;flex-grow: 1;}";
         css += ".dataTables_scrollBody { flex-grow: 1; flex-basis: 1px;}";
+        css += '@media screen and (max-width: 767px) {';
+        css += 'div.dataTables_wrapper div.dataTables_length, div.dataTables_wrapper div.dataTables_filter, div.dataTables_wrapper div.dataTables_info, div.dataTables_wrapper div.dataTables_paginate {';
+        css += '    text-align: right;';
+        css += '}';
+        css += '}';
+        css += '@media screen and (max-width: 576px) {';
+        css += 'div.dataTables_wrapper div.dataTables_length, div.dataTables_wrapper div.dataTables_filter, div.dataTables_wrapper div.dataTables_info, div.dataTables_wrapper div.dataTables_paginate {';
+        css += '    text-align: left;';
+        css += '}';
+        css += '}';
+        css += 'div.dataTables_wrapper div.dataTables_filter label {';
+        css += 'width: 100%; display: flex; line-height: 30px;';
+        css += '}';
+        css += 'div.dataTables_wrapper div.dataTables_filter label input {';
+        css += 'flex-grow: 1';
+        css += '}';
 
         var head = document.getElementsByTagName('head')[0];
         var s = document.createElement('style');
@@ -1825,6 +1888,26 @@
             return tableData;
         } ;
         element.setValue = function(value){
+            //sanitize values to avoid this error : https://datatables.net/manual/tech-notes/4
+            for(var i=0; i<value.length; i++){
+                var row = value[i] ;
+                for(var y=0; y<gridOptions.columns.length; y++){
+                    var fieldName = gridOptions.columns[y].data ;
+                    var path = fieldName.split(".") ;
+                    var obj = row ;
+                    while(path.length>0){
+                        var p = path.shift() ;
+                        if(!obj[p]){
+                            if(path.length===0){
+                                obj[p] = null;
+                            }else{
+                                obj[p] = {};
+                                obj = obj[p] ;
+                            }
+                        }
+                    }
+                }
+            }
             tableData = value;
             datatable.clear();
             datatable.rows.add(value);
