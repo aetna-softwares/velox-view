@@ -1072,6 +1072,9 @@
     VeloxWebView.prototype.pathExtract = function(obj, path, getParent) {
         return pathExtract(obj, path, getParent) ;
     };
+    VeloxWebView.pathExtract = function(obj, path, getParent) {
+        return pathExtract(obj, path, getParent) ;
+    };
 
     /**
      * Get HTML file through XHR
