@@ -729,6 +729,7 @@
 
         loadLib("datatables-locale-"+dtLangName, DATATABLES_VERSION, lib, function(err, results){
             if(err){ return callback(err) ;}
+            var results = JSON.parse(results[0][0].substring(results[0][0].indexOf("{"))) ;
             var existingLanguage = window.jQuery.fn.dataTable.defaults.language ;
             if(existingLanguage){
                 window.jQuery.extend( true, results, existingLanguage) ;
@@ -934,7 +935,7 @@
                 loadLib("datatables", DATATABLES_VERSION, DATATABLES_LIB, done) ;
             }) ;
             setLibToLoad("locale", getLocale) ;
-            setLibToLoad("localeW2ui", loadDatatablesLibLocale) ;
+            setLibToLoad("locale-datatables", loadDatatablesLibLocale) ;
         } else if(fieldType === "upload"){
             //no lib
         } else if(fieldType === "pdf"){
