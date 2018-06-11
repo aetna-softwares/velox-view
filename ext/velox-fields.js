@@ -1763,8 +1763,38 @@
 
         var gridOptions = {
             //scroller: true,
-            responsive: true,
+            responsive: {
+                details: {
+                    type: '',
+                    display: window.jQuery.fn.dataTable.Responsive.display.childRowImmediate,
+                    renderer: function ( api, rowIdx, columns ) {
+                        var htmlCell = '<ul data-dtr-index="'+rowIdx+'" class="dtr-details">' ;
+                        var found = false ;
+                        for(var i=0; i<columns.length; i++){
+                            var col = columns[i] ;
+                            if(col.hidden && !gridOptions.columns[i].className){
+                                found = true ;
+                                htmlCell += '<li data-dtr-index="'+col.columnIndex+'" data-dt-row="'+col.rowIndex+'" data-dt-column="'+col.columnIndex+'">'+
+                                    '<span class="dtr-title">'+
+                                        col.title+
+                                    '</span> '+
+                                    '<span class="dtr-data">'+api.cell( col.rowIndex, col.columnIndex ).node().innerHTML+'</span>'+
+                                '</li>' ;
+                            }
+                        }
+                        if(found){
+                            htmlCell += '</ul>' ;
+                            return htmlCell;
+                        }else{
+                            return false;
+                        }
+                    }
+                }
+            },
+            autoWidth: false,
+
             scrollY: "auto",
+
             paging: false,
             buttons: [
                 'colvis', 
@@ -1787,6 +1817,10 @@
             columns: []
         } ;
 
+
+    //     $($.fn.dataTable.tables()[0]).DataTable()
+    // .columns.adjust()
+    // .responsive.recalc();
 
         listTh.forEach(function(th, i){
             var colDef = {
@@ -1832,6 +1866,11 @@
                     colDef[colAtt] = colValue.trim().toLowerCase() !== "false" ;
                 }
             });
+
+            var attDevice = th.getAttribute("data-device");
+            if(attDevice){
+                colDef.className = attDevice;
+            }
             
             // var type = th.getAttribute("data-field-type") ;
             // colDef.fieldType = type;
@@ -1841,49 +1880,79 @@
             gridOptions.columns.push(colDef) ;
         }) ;
 
+
+        var datatable = null;//window.jQuery(table).DataTable( gridOptions );
         
-        
-        var datatable = window.jQuery(table).DataTable( gridOptions );
 
-        for(var i=0; i<toolbars.length; i++){
-            var toolbar = toolbars[i];
-
-            var customButtons = [] ;
-            Array.prototype.slice.apply(toolbar.children).forEach(function(item){
-                var id = item.getAttribute("data-original-id") ;
-                customButtons.push({
-                    text: item.innerHTML,
-                    className: (item.className||"")+(" table-custom-button-"+id),
-                    action: function(){
-                        view.emit(id) ;
-                    }
-                }) ;
-            }.bind(this)) ;
-
-            var buttons = new window.jQuery.fn.dataTable.Buttons( datatable, {
-                buttons: customButtons
-            } );
-         
-            if(toolbar.getAttribute("data-toolbar-prepend")){
-                buttons.container().prependTo(
-                    datatable.buttons().container().parent()
-                );
-            }else{
-                buttons.container().appendTo(
-                    datatable.buttons().container().parent()
-                );
-            }
-        }
+        var tableData = [] ;
+        var eventListeners = {} ;
 
         view.on("displayed", function(){
-            //force redraw on display as width compute are not correct when hidden
-            datatable.columns.adjust().draw();
+            if(!datatable){
+                //create only when displayed
+
+                datatable = window.jQuery(table).DataTable( gridOptions );
+                for(var i=0; i<toolbars.length; i++){
+                    var toolbar = toolbars[i];
+        
+                    var customButtons = [] ;
+                    Array.prototype.slice.apply(toolbar.children).forEach(function(item){
+                        var id = item.getAttribute("data-original-id") ;
+                        customButtons.push({
+                            text: item.innerHTML,
+                            className: (item.className||"")+(" table-custom-button-"+id),
+                            action: function(){
+                                view.emit(id) ;
+                            }
+                        }) ;
+                    }.bind(this)) ;
+        
+                    var buttons = new window.jQuery.fn.dataTable.Buttons( datatable, {
+                        buttons: customButtons
+                    } );
+                 
+                    if(toolbar.getAttribute("data-toolbar-prepend")){
+                        buttons.container().prependTo(
+                            datatable.buttons().container().parent()
+                        );
+                    }else{
+                        buttons.container().appendTo(
+                            datatable.buttons().container().parent()
+                        );
+                    }
+                }
+                decorators.forEach(function(deco){
+                    deco(element, fieldType, fieldSize, fieldOptions) ;
+                }) ;
+                Object.keys(eventListeners).forEach(function(event){
+                    eventListeners[event].forEach(function(listener){
+                        if(event === "rowClick"){
+                            window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
+                                console.log(ev) ;
+                                var data = datatable.row( this ).data();
+                                ev.rowData = data;
+                                listener.bind(this)(ev) ;
+                            } );
+                        }
+                    });
+                });
+                element.setValue(tableData) ;
+            }else{
+                //already exists, redraw
+                datatable
+                    .columns.adjust()
+                    .responsive.recalc().draw();
+            }
         }) ;
 
         element.render = function(){
-            datatable.columns.adjust().draw();
+            if(datatable){
+                datatable
+                    .columns.adjust()
+                    .responsive.recalc().draw();
+            }
         } ;
-        var tableData = [] ;
+        
         element.getValue = function(){
             return tableData;
         } ;
@@ -1909,21 +1978,23 @@
                 }
             }
             tableData = value;
-            datatable.clear();
-            datatable.rows.add(value);
-            datatable.draw();
+            if(datatable){
+                datatable.clear();
+                datatable.rows.add(value);
+                datatable.columns.adjust().responsive.recalc().draw();
+            }
         } ;
         element.setReadOnly = function(readOnly){
             //FIXME
             console.log("implement read only on grid ?") ;
         } ;
         element.addEventListener = function(event, listener){
-            if(event === "rowClick"){
-                window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
-                    var data = datatable.row( this ).data();
-                    ev.rowData = data;
-                    listener.bind(this)(ev) ;
-                } );
+            if(!eventListeners[event]){
+                eventListeners[event] = [] ;
+            }
+            eventListeners[event].push(listener) ;
+            if(!datatable){
+                return ;
             }
         } ;
 
