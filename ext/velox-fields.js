@@ -64,6 +64,8 @@
      */
     var apiClient;
 
+    var phoneCountry;
+
     /**
      * called on view prepare
      */
@@ -95,6 +97,7 @@
          */
         configure : function(options){
             apiClient = options.apiClient ;
+            phoneCountry = options.phoneCountry ;
             if(options.libs) {
                 Object.keys(options.libs).forEach(function(k){
                     libs[k] = options.libs[k] ;
@@ -164,6 +167,8 @@
     var JSZIP_VERSION = "3.1.5" ;
     var PDFMAKE_VERSION = "0.1.36" ;
     var DATATABLES_VERSION = "1.10.16" ;
+    
+    var LIBPHONE_VERSION = "3.1.6" ;
 
     var JQUERY_LIB = {
         name: "jquery",
@@ -438,6 +443,17 @@
     ];
 
 
+    var LIBPHONE_LIB = [
+        {
+            name: "google-libphonenumber",
+            type: "js",
+            version: LIBPHONE_VERSION,
+            cdn: "https://cdn.rawgit.com/ruimarinho/google-libphonenumber/v$VERSION/dist/libphonenumber.js",
+            bowerPath: "google-libphonenumber/dist/libphonenumber.js",
+            npmPath: "google-libphonenumber/dist/libphonenumber.js",
+        }
+    ] ;
+
     extension.libs = [
         JQUERY_LIB,
         INPUT_MASK_LIB,
@@ -448,6 +464,7 @@
         DATATABLES_LIB,
         PDFOBJECT_LIB,
         QUILL_LIB,
+        LIBPHONE_LIB,
         {
             name: "datatables-locales",
             type: "json",
@@ -914,8 +931,10 @@
             }) ;
             setLibToLoad("inputMask", loadInputMask) ;
             setLibToLoad("locale", getLocale) ;
-        } else if(fieldType === "email"){
-            setLibToLoad("inputMask", loadInputMask) ;
+        } else if(fieldType === "phone"){
+            setLibToLoad("libphone", function(done){
+                loadLib("libphone", LIBPHONE_VERSION, LIBPHONE_LIB, done) ;
+            }) ;
         } else if(["date", "datetime", "time", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
             setLibToLoad("flatpickr", function(done){
                 loadLib("flatpickr", FLATPICKR_VERSION, FLATPICKR_LIB, done) ;
@@ -923,7 +942,7 @@
             setLibToLoad("inputMask", loadInputMask) ;
             setLibToLoad("locale", getLocale) ;
             setLibToLoad("localeDate", loadDateLibLocale) ;
-        } else if(fieldType === "selection" || fieldType === "select"){
+        } else if(fieldType === "selection" || fieldType === "select" || fieldType === "multiple"){
             setLibToLoad("chosen", function(done){
                 loadLib("chosen", CHOSEN_VERSION, CHOSEN_LIB, done) ;
             }) ;
@@ -947,6 +966,8 @@
                 loadLib("Quill", QUILL_VERSION, QUILL_LIB, done) ;
             }) ;
             loadHTMLEditorCSS() ;
+        } else if(fieldType === "textarea" || fieldType === "email" ){
+            //no lib to load
         } else {
             throw "Unknow field type "+fieldType ; 
         }
@@ -991,9 +1012,11 @@
             createNumberField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "email"){
             createEmailField(element, fieldType, fieldSize, fieldOptions) ;
+        } else if(fieldType === "phone"){
+            createPhoneField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(["date", "datetime", "time", "timestamp", "timestamptz"].indexOf(fieldType) !== -1){
             createDateField(element, fieldType, fieldSize, fieldOptions) ;
-        } else if(fieldType === "selection" || fieldType === "select"){
+        } else if(fieldType === "selection" || fieldType === "select" || fieldType === "multiple"){
             createSelectField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
             createCheckboxField(element, fieldType, fieldSize, fieldOptions) ;
@@ -1005,6 +1028,8 @@
             createPdfField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "html"){
             createHTMLField(element, fieldType, fieldSize, fieldOptions) ;
+        } else if(fieldType === "textarea"){
+            createTextareaField(element, fieldType, fieldSize, fieldOptions) ;
         } else {
             throw "Unknow field type "+fieldType ; 
         }
@@ -1060,7 +1085,14 @@
             }
         } else {
             var select = element.getElementsByTagName("select")[0] ;
-            select.disabled = readOnly ;
+            if(select){
+                select.disabled = readOnly ;
+            }else{
+                var textarea = element.getElementsByTagName("textarea")[0] ;
+                if(textarea){
+                    textarea.disabled = readOnly ;
+                }   
+            }
         }
 
         if(readOnly){
@@ -1070,6 +1102,47 @@
         }else{
             if(element.className.indexOf("readonly") !== -1){
                 element.className = element.className.replace("readonly", "") ;
+            }
+        }
+    }
+
+    /**
+     * Set the field as required or not
+     * 
+     * @param {HTMLElement} element the element to set as readonly
+     * @param {boolean} readOnly the flag read only or not
+     */
+    function setRequired(element, required) {
+        element._veloxIsRequired = required ;
+        if(required){
+            element.setAttribute("required", "required") ;
+        }else{
+            element.removeAttribute("required") ;
+        }
+        var input = element.getElementsByTagName("input")[0] ;
+        if(input){
+            if(required){
+                input.setAttribute("required", "required") ;
+            }else{
+                input.removeAttribute("required") ;
+            }
+        } else {
+            var select = element.getElementsByTagName("select")[0] ;
+            if(select){
+                if(required){
+                    input.setAttribute("required", "required") ;
+                }else{
+                    input.removeAttribute("required") ;
+                }
+            }else{
+                var textarea = element.getElementsByTagName("textarea")[0] ;
+                if(textarea){
+                    if(required){
+                        input.setAttribute("required", "required") ;
+                    }else{
+                        input.removeAttribute("required") ;
+                    }
+                }   
             }
         }
     }
@@ -1141,22 +1214,83 @@
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
+        } ;
 
         element.focus = function(){
             input.focus() ;
         };
 
-        // ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
-        //     input.addEventListener(eventName, function(ev){
-        //         var cloneEv = new ev.constructor(ev.type, ev);
-        //         element.dispatchEvent(cloneEv);
-        //     }) ;
-        // }) ;
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
 
         if( fieldOptions.mask){
             var im = new libs.Inputmask(fieldOptions.mask);
             maskField = im.mask(input) ;
         }
+    }
+    
+    /**
+     * Create a textarea field
+     * 
+     * The maxlength is set accordingly to the fieldSize option if given
+     * 
+     * @param {HTMLElement} element HTML element to transform
+     * @param {"textarea"} fieldType the field type
+     * @param {string} fieldSize the field size
+     * @param {object} fieldOptions field option (from attributes)
+     * @param {function(Error)} callback called when finished
+     */
+    function createTextareaField(element, fieldType, fieldSize, fieldOptions){
+        var input = appendInputHtml(element) ;
+
+        var input = document.createElement("TEXTAREA") ;
+        element.innerHTML = "" ;
+        element.appendChild(input) ;
+        var attrs = ["required", "maxlength"];
+        for(var i=0; i<attrs.length; i++){
+            var attr = attrs[i] ;
+            if(element.hasAttribute(attr)){
+                input.setAttribute(attr, element.getAttribute(attr)) ;
+            }
+        }
+        
+        if(fieldSize){
+            var fieldSize = parseInt(fieldSize, 10) ;
+            if(isNaN(fieldSize)){
+                throw ("Incorrect field size option : "+fieldSize+" on "+elToString(element)) ;
+            }
+            input.maxLength = fieldSize ;
+        }
+
+        element.getValue = function(){
+            return input.value ;
+        } ;
+        element.setValue = function(value){
+            input.value = value?""+value:"";
+        } ;
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
+        } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
+        } ;
+
+        element.focus = function(){
+            input.focus() ;
+        };
+
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
     }
 
     /**
@@ -1271,6 +1405,9 @@
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
+        } ;
 
         element.focus = function(){
             input.focus() ;
@@ -1310,10 +1447,87 @@
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
+        } ;
 
         element.focus = function(){
             input.focus() ;
         };
+        
+        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            input.addEventListener(eventName, function(ev){
+                var cloneEv = new ev.constructor(ev.type, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
+    }
+    
+    /**
+     * Create a input masked phone field.
+     * 
+     * 
+     * @param {HTMLElement} element the HTML element to transform
+     * @param {string} fieldType the field type
+     * @param {string} fieldSize the field size
+     * @param {object} fieldOptions field options (from attributes)
+     */
+    function createPhoneField(element, fieldType, fieldSize, fieldOptions){
+        var input = appendInputHtml(element) ;
+        input.type = "tel" ;
+
+        element.getValue = function(){
+            return input.value ;
+        } ;
+        element.setValue = function(value){
+            if(value === undefined || value === null){
+                value = "";
+            }
+            input.value = value ;
+        } ;
+        element.setReadOnly = function(readOnly){
+            setReadOnly(element, readOnly) ;
+        } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
+        } ;
+
+        element.focus = function(){
+            input.focus() ;
+        };
+
+        var PNF = window.libphonenumber.PhoneNumberFormat ;
+        var phoneUtil = window.libphonenumber.PhoneNumberUtil.getInstance();
+        input.addEventListener("blur", function(ev){
+            var value = this.value;
+            if(value){
+                try{
+                    var parsed = phoneUtil.parseAndKeepRawInput(value, phoneCountry||"FR");
+                    if(!phoneUtil.isValidNumber(parsed)){
+                    }else{
+                        this.value = phoneUtil.format(parsed, PNF.INTERNATIONAL);
+                    }
+                }catch(e){}
+            }
+        }) ;
+
+        input.addEventListener("keyup", function(ev){
+            var value = this.value;
+            if(value){
+                try{
+                    var parsed = phoneUtil.parseAndKeepRawInput(value, window.phoneCountry||"FR");
+                    if(!phoneUtil.isValidNumber(parsed)){
+                        input.setCustomValidity(VeloxWebView.tr?VeloxWebView.tr("form.wrongPhoneNumber"):"Wrong phone number");
+                    }else{
+                        input.setCustomValidity("");
+                    }
+                }catch(e){
+                    input.setCustomValidity(VeloxWebView.tr?VeloxWebView.tr("form.wrongPhoneNumber"):"Wrong phone number");
+                }
+            }else{
+                input.setCustomValidity("");
+            }
+        });
         
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
@@ -1358,6 +1572,9 @@
             }else{
                 input.removeAttribute('disabled') ;
             }
+        } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
         } ;
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
@@ -1581,6 +1798,8 @@
         var currentValue = null;
         
         var chosen = new window.jQuery(select).chosen({
+            placeholder_text_multiple: " ",
+            placeholder_text_single: " ",
             allow_single_deselect: true,
             width: '100%'
         });
@@ -1607,15 +1826,34 @@
         });
 
         element.getValue = function(){
+            if(select.multiple){
+                var result = [];
+                var options = select && select.options;
+                for (var i=0; i<options.length; i++) {
+                    var opt = options[i];
+                    if (opt.selected) {
+                        result.push(opt.value);
+                    }
+                }
+                return result;
+            }
             var value = select.value  ;
             return value||null ;
         } ;
         element.setValue = function(value){
             currentValue = value ;
-            if(value === undefined || value === null){
-                select.value = null;
+            if(select.multiple){
+                var options = select && select.options;
+                for (var i=0; i<options.length; i++) {
+                    var opt = options[i];
+                    opt.selected = value && value.indexOf(opt.value) !== -1 ;
+                }
             }else{
-                select.value = value;
+                if(value === undefined || value === null){
+                    select.value = null;
+                }else{
+                    select.value = value;
+                }
             }
             chosen.trigger("chosen:updated");
         } ;
@@ -1628,7 +1866,34 @@
             chosen.trigger("chosen:updated");
             setReadOnly(element, readOnly) ;
         } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
+        } ;
 
+        element.setValueEnable = function(value, isEnabled){
+            for(var i=0; i<select.options.length; i++){
+                var opt = select.options[i] ;
+                if(opt.value == value){
+                    opt.disabled = !isEnabled;
+                }
+            }
+            if(!isEnabled){
+                //remove disabled value if already selected
+                var currentValue = element.getValue() ;
+                if(select.multiple){
+                    var indexVal = currentValue.indexOf(value) ;
+                    if(indexVal !== -1){
+                        currentValue.splice(indexVal, 1) ;
+                        element.setValue(currentValue) ;
+                    }
+                }else{
+                    if(currentValue === value){
+                        element.setValue(null) ;
+                    }
+                }
+            }
+            chosen.trigger("chosen:updated");
+        } ;
         element.setOptions = function(options){
             select.innerHTML = "";
             for(var i=0; i<options.length; i++){
@@ -1637,6 +1902,7 @@
                 opt.innerHTML = options[i].label;
                 select.appendChild(opt) ;
             }
+            chosen.trigger("chosen:updated");
         } ;
         element.getOptions = function(){
             var opts = [] ;
@@ -1660,6 +1926,13 @@
                 }
             });
         }
+
+        ["change"].forEach(function(eventName){
+            chosen.on(eventName, function(ev){
+                var cloneEv = new Event(eventName, ev);
+                element.dispatchEvent(cloneEv);
+            }) ;
+        }) ;
 
     }
 
@@ -1958,6 +2231,9 @@
             return tableData;
         } ;
         element.setValue = function(value){
+            if(!value){
+                value = [] ;
+            }
             //sanitize values to avoid this error : https://datatables.net/manual/tech-notes/4
             for(var i=0; i<value.length; i++){
                 var row = value[i] ;
@@ -2444,6 +2720,9 @@
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
         } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
+        } ;
 
     }
 
@@ -2488,6 +2767,9 @@
         } ;
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
+        } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
         } ;
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
@@ -2545,6 +2827,9 @@
             }else{
                 quill.enable();
             }
+        } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
         } ;
     }
 

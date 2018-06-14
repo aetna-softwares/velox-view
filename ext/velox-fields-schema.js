@@ -157,10 +157,18 @@
             }
             VeloxWebView.fields.addDecorator(function(element, fieldType){
                 if(fieldType === "grid"){ return ;}//ignore grids
+
+                
+
                 var fieldDef = element.getAttribute("data-field-def") ;
                 if(!fieldDef){ return ; }
-                var strLabel = VeloxWebView.tr("fields."+fieldDef);
-                element.setAttribute("data-field-label", strLabel) ;
+                var strLabel = "" ;
+                if(!element.hasAttribute("data-field-label")){
+                    strLabel = VeloxWebView.tr("fields."+fieldDef);
+                    element.setAttribute("data-field-label", strLabel) ;
+                }else{
+                    strLabel = element.getAttribute("data-field-label")
+                }
 
                 if(element.hasAttribute("data-field-nolabel")){
                     return ;
@@ -224,12 +232,15 @@
      * @param {object} colDef the column configuration to apply
      */
     function prepareElement(element, table, colDef){
-        if(colDef.type === "selection" || colDef.type === "select"){
+        if(colDef.type === "selection" || colDef.type === "select" || colDef.type === "multiple"){
             if(element.tagName !== "SELECT" && element.getElementsByTagName("select").length === 0){
                 var select = document.createElement("SELECT") ;
                 var emptyOption = document.createElement("OPTION") ;
                 emptyOption.value = "";
                 emptyOption.innerHTML = "&nbsp;" ;
+                if(colDef.type === "multiple"){
+                    select.multiple = true;
+                }
                 select.appendChild(emptyOption) ;
                 element.appendChild(select) ;
                 if(colDef.values && Array.isArray(colDef.values)){
