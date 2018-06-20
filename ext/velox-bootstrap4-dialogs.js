@@ -185,6 +185,8 @@
             this.closePopup() ;
         } ;
 
+        
+
         var modalSize = "";
         if(options.size==="small"){
             modalSize = "modal-sm";
@@ -212,6 +214,13 @@
         if(options.zIndex){
             $modal[0].style.zIndex = options.zIndex ; 
         }
+
+        var view = this ;
+        $modal.on('hidden.bs.modal', function () {
+            if(window.jQuery(this).data('bs.modal')){
+                view.close() ;
+            }
+        });
 
         this.options.container = $modal.find(".modal-body")[0];
         this.open(function(err){
