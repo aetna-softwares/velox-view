@@ -1965,7 +1965,7 @@
         css += ".dataTables_wrapper { display: flex; flex-direction: column; }";
         css += ".dt-table {flex-grow: 1; display: flex; flex-direction: column;} ";
         css += ".dataTables_scroll {display: flex; flex-direction: column;flex-grow: 1;}";
-        css += ".dataTables_scrollBody { flex-grow: 1; flex-basis: 1px;}";
+        css += ".dataTables_scrollBody { flex-grow: 1; /*flex-basis: 1px;*/}";
         css += '@media screen and (max-width: 767px) {';
         css += 'div.dataTables_wrapper div.dataTables_length, div.dataTables_wrapper div.dataTables_filter, div.dataTables_wrapper div.dataTables_info, div.dataTables_wrapper div.dataTables_paginate {';
         css += '    text-align: right;';
@@ -2035,6 +2035,36 @@
         }
         var title = filename;
 
+        var buttons = [
+            'colvis', 
+            'copy',
+            {
+                extend: 'excel',
+                title: title,
+                filename: filename,
+            },
+            {
+                extend: 'pdf',
+                title: title,
+                filename: filename,
+            },
+            {
+                extend: 'print',
+                title: title,
+            },
+        ] ;
+        if(table.hasAttribute("no-toolbar")){
+            buttons = [];
+        }
+        var searching = true;
+        if(table.hasAttribute("no-search")){
+            searching = false;
+        }
+        var info = true;
+        if(table.hasAttribute("no-footer")){
+            info = false;
+        }
+
         var gridOptions = {
             //scroller: true,
             responsive: {
@@ -2068,26 +2098,13 @@
             autoWidth: false,
 
             scrollY: "auto",
+            scrollCollapse: false,
+
+            info: info,
 
             paging: false,
-            buttons: [
-                'colvis', 
-                'copy',
-                {
-                    extend: 'excel',
-                    title: title,
-                    filename: filename,
-                },
-                {
-                    extend: 'pdf',
-                    title: title,
-                    filename: filename,
-                },
-                {
-                    extend: 'print',
-                    title: title,
-                },
-            ],
+            buttons: buttons,
+            searching: searching,
             columns: []
         } ;
 
@@ -2106,8 +2123,18 @@
             if(scriptRender){
                 var scriptBody = scriptRender.text ;
                 scriptBody +=  "//# sourceURL=/column/render/"+element.getAttribute("data-original-id")+"/"+colDef.field+".js" ;
-                var functionRender = new Function("data", "type", "row", scriptBody) ;
-                colDef.render = functionRender ;
+                var functionRender = new Function("td", "data", "row", "rowNum", "col", "view", scriptBody) ;
+                colDef.createdCell = function (td, cellData, rowData, row, col) {
+                    var rendered = functionRender(td, cellData, rowData, row, col, view);
+                    if(rendered){
+                        if(typeof(rendered) === "string"){
+                            td.innerHTML = rendered ;
+                        }else if(typeof(rendered) === "object" && rendered instanceof HTMLElement){
+                            td.innerHTML = "" ;
+                            td.appendChild(rendered) ;
+                        }
+                    }
+                };
                 th.removeChild(scriptRender) ;
             }
 
@@ -2132,12 +2159,19 @@
             // }
             
             ["orderable", "sortable", "searchable", "visible"].forEach(function(colAtt){
+                var colValue = th.getAttribute(colAtt);
                 if(colAtt === "sortable"){
                     colAtt = "orderable" ;
                 }
-                var colValue = th.getAttribute(colAtt);
                 if(colValue !== null){
                     colDef[colAtt] = colValue.trim().toLowerCase() !== "false" ;
+                }
+            });
+
+            ["width"].forEach(function(colAtt){
+                var colValue = th.getAttribute(colAtt);
+                if(colValue !== null){
+                    colDef[colAtt] = colValue ;
                 }
             });
 
@@ -2202,7 +2236,6 @@
                     eventListeners[event].forEach(function(listener){
                         if(event === "rowClick"){
                             window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
-                                console.log(ev) ;
                                 var data = datatable.row( this ).data();
                                 ev.rowData = data;
                                 listener.bind(this)(ev) ;
@@ -2211,6 +2244,9 @@
                     });
                 });
                 element.setValue(tableData) ;
+                var event = document.createEvent('Event');
+                event.initEvent('tableinit', true, true);
+                element.dispatchEvent(event);
             }else{
                 //already exists, redraw
                 datatable
@@ -2219,12 +2255,26 @@
             }
         }) ;
 
+        function ensureDatatable(callback){
+            if(datatable){ return callback() ;}
+            var cb = function(){
+                HTMLElement.prototype.removeEventListener.call(element,"tableinit", cb) ;
+                callback() ;    
+            } ;
+            HTMLElement.prototype.addEventListener.call(element,"tableinit", cb) ;
+        }
+
         element.render = function(){
             if(datatable){
                 datatable
                     .columns.adjust()
                     .responsive.recalc().draw();
             }
+        } ;
+        element.search = function(value){
+            ensureDatatable(function(){
+                datatable.search( value||"" ).draw();
+            }) ;
         } ;
         
         element.getValue = function(){
