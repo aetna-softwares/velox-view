@@ -62,6 +62,15 @@
                     if(!colDef){
                         throw ("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
                     }
+
+                    if(tableDef.fk){
+                        tableDef.fk.some(function(fk){
+                            if(fk.thisColumn === schemaId[1]){
+                                colDef.type = "select" ;
+                                colDef.values = "2one" ;
+                            }
+                        });
+                    }
     
     
                     if(!element.hasAttribute("data-bind")){
@@ -300,6 +309,13 @@
             //val column not given and not found in FK
             throw ("Can't find target column value for "+table+"."+colDef.name+" you should define a FK or give option valField in col def") ;
         }
+
+        if(!colDef.labelField){
+            //if no label specified, add 3 first not primary key columns as label
+            colDef.labelField = schema[otherTable].columns.filter(function(c){
+                return schema[otherTable].pk.indexOf(c.name) === -1 ;
+            }).map(function(c){ return c.name; }).slice(0,3) ;
+        }
         
         var orderBy = colDef.orderBy ;
 
@@ -328,7 +344,7 @@
             readFromTable: otherTable,
             orderByFromTable: orderBy,
             readFieldId: valColumn,
-            readFieldLabel: colDef.labelField || valColumn,
+            readFieldLabel: colDef.labelField.join(" - "),
         };
     }
 

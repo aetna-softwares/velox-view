@@ -3017,9 +3017,11 @@
         apiClient.__velox_database[otherTable].search({}, orderBy, function(err, results){
             if(err){ return callback(err); }
             var values = results.map(function(r){
+                var label = labelField; 
+                Object.keys(r).forEach(function(k){ label = label.replace(new RegExp(k,"g"), r[k]); }); 
                 return {
                     id: r[idField],
-                    label: r[labelField] 
+                    label: label 
                 } ;
             }) ;
             callback(null, values) ;
