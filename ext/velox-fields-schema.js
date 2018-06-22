@@ -244,13 +244,14 @@
         if(colDef.type === "selection" || colDef.type === "select" || colDef.type === "multiple"){
             if(element.tagName !== "SELECT" && element.getElementsByTagName("select").length === 0){
                 var select = document.createElement("SELECT") ;
-                var emptyOption = document.createElement("OPTION") ;
-                emptyOption.value = "";
-                emptyOption.innerHTML = "&nbsp;" ;
                 if(colDef.type === "multiple"){
                     select.multiple = true;
+                }else{
+                    var emptyOption = document.createElement("OPTION") ;
+                    emptyOption.value = "";
+                    emptyOption.innerHTML = "&nbsp;" ;
+                    select.appendChild(emptyOption) ;
                 }
-                select.appendChild(emptyOption) ;
                 element.appendChild(select) ;
                 if(colDef.values && Array.isArray(colDef.values)){
                     //case where values are defined by list of values
