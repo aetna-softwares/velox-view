@@ -10,6 +10,8 @@
     }
 }(this, (function (VeloxScriptLoader, VeloxWebView) { 'use strict';
 
+
+
     /**
      * field extension definition
      */
@@ -154,7 +156,7 @@
     ///// DEPENDENCIES LIBRARIES LOADING ////////
     var INPUTMASK_VERSION = "3.3.11"; //v4 will drop jquery dependency 
     var JQUERY_VERSION = "3.3.1" ;
-    var NUMBRO_VERSION = "2.0.6" ;
+    var LANG_NUMBERS_VERSION = "1.0.0" ;
     var DECIMALJS_VERSION = "2.2.0" ;
     var FLATPICKR_VERSION = "4.5.0" ;
     var MOMENTJS_VERSION = "2.22.1" ;
@@ -190,24 +192,14 @@
         }
     ];
 
-    var NUMBRO_LIB = [
-        {
-            name: "numbro",
-            type: "js",
-            version: NUMBRO_VERSION,
-            cdn: "https://cdnjs.cloudflare.com/ajax/libs/numbro/$VERSION/numbro.min.js",
-            bowerPath: "numbro/dist/numbro.min.js",
-            npmPath: "numbro/dist/numbro.min.js"
-        },
-        {
-            name: "numbro-language",
-            type: "js",
-            version: NUMBRO_VERSION,
-            cdn: "https://cdnjs.cloudflare.com/ajax/libs/numbro/$VERSION/languages.min.js",
-            bowerPath: "numbro/dist/languages.min.js",
-            npmPath: "numbro/dist/languages.min.js"
-        }
-    ];
+    var LANG_NUMBERS_LIB = {
+        name: "lang-numbers",
+        type: "json",
+        version: LANG_NUMBERS_VERSION,
+        cdn: "https://cdn.rawgit.com/aetna-softwares/velox-view/master/ext/lang/numbers.json",
+        bowerPath: "velox-view/ext/lang/numbers.json",
+        npmPath: "velox-view/ext/lang/numbers.json"
+    };
 
     var DECIMALJS_LIB = [
         {
@@ -457,7 +449,7 @@
     extension.libs = [
         JQUERY_LIB,
         INPUT_MASK_LIB,
-        NUMBRO_LIB,
+        LANG_NUMBERS_LIB,
         DECIMALJS_LIB,
         FLATPICKR_LIB,
         CHOSEN_LIB,
@@ -831,6 +823,28 @@
         
         series(calls, callback) ;
     }
+
+    function triggerEvent(element, eventOrName){
+        var ev;
+        if(typeof(Event) === 'function') {
+            //normal browser
+            if(typeof(eventOrName) === "string"){
+                ev = new Event(eventOrName);
+            }else{
+                ev = new eventOrName.constructor(eventOrName.type, eventOrName);
+            }
+        }else{
+            //IE
+            if(typeof(eventOrName) === "string"){
+                ev = document.createEvent('Event');
+                ev.initEvent(eventOrName, true, true);
+            }else{
+                ev = document.createEvent('Event');
+                ev.initEvent(eventOrName.type, true, true);
+            }
+        }
+        element.dispatchEvent(ev);
+    }
     
 
     /**
@@ -1119,28 +1133,28 @@
         }else{
             element.removeAttribute("required") ;
         }
-        var input = element.getElementsByTagName("input")[0] ;
-        if(input){
+        var select = element.getElementsByTagName("select")[0] ;
+        if(select){
             if(required){
-                input.setAttribute("required", "required") ;
+                select.setAttribute("required", "required") ;
             }else{
-                input.removeAttribute("required") ;
+                select.removeAttribute("required") ;
             }
-        } else {
-            var select = element.getElementsByTagName("select")[0] ;
-            if(select){
+        }else{
+            var input = element.getElementsByTagName("input")[0] ;
+            if(input){
                 if(required){
                     input.setAttribute("required", "required") ;
                 }else{
                     input.removeAttribute("required") ;
                 }
-            }else{
+            } else {
                 var textarea = element.getElementsByTagName("textarea")[0] ;
                 if(textarea){
                     if(required){
-                        input.setAttribute("required", "required") ;
+                        textarea.setAttribute("required", "required") ;
                     }else{
-                        input.removeAttribute("required") ;
+                        textarea.removeAttribute("required") ;
                     }
                 }   
             }
@@ -1224,8 +1238,7 @@
 
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
-                element.dispatchEvent(cloneEv);
+                triggerEvent(element, ev) ;
             }) ;
         }) ;
 
@@ -1287,8 +1300,7 @@
 
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
-                element.dispatchEvent(cloneEv);
+                triggerEvent(element, ev) ;
             }) ;
         }) ;
     }
@@ -1309,17 +1321,16 @@
             callback() ;
         }else{
             //the browser does not support locale string, load numbro lib
-            loadLib("numbro", NUMBRO_VERSION, NUMBRO_LIB, function(err){
+            VeloxScriptLoader.load(LANG_NUMBERS_LIB, function(err, result){
                 if(err){ return callback(err); }
-
+                var numbroLanguages = result[0][0] ;
                 var numbroLangName = currentLocale.lang ;
-                var numbroCultures = libs.numbro.cultures() ;
-                if(!numbroCultures[numbroLangName]){ //lang code not found
-                    if(numbroCultures[numbroLangName+"-"+numbroLangName.toUpperCase()]){ //try with same as region code (ex : fr-FR)
+                if(!numbroLanguages[numbroLangName]){ //lang code not found
+                    if(numbroLanguages[numbroLangName+"-"+numbroLangName.toUpperCase()]){ //try with same as region code (ex : fr-FR)
                         numbroLangName = numbroLangName+"-"+numbroLangName.toUpperCase() ;
                     }else{
                         //search a lang code starting with our lang code
-                        var foundStartWith = Object.keys(numbroCultures).some(function(l){
+                        var foundStartWith = Object.keys(numbroLanguages).some(function(l){
                             if(l.indexOf(numbroLangName) === 0){
                                 numbroLangName = l;
                                 return true;
@@ -1332,7 +1343,7 @@
                     }
                 }
 
-                var langData = libs.numbro.cultureData(numbroLangName); 
+                var langData = numbroLanguages[numbroLangName]; 
                 currentLocale.delimiters.thousands = langData.delimiters.thousands ;
                 currentLocale.delimiters.decimal = langData.delimiters.decimal ;
                 callback() ;
@@ -1396,11 +1407,16 @@
             input.step="0.01" ;
         }
 
+        //prevent modify value with wheel
+        input.addEventListener("mousewheel", function(){ this.blur(); }) ;
+
+
         element.getValue = function(){
             return Number(input.value) ;
         } ;
         element.setValue = function(value){
             input.value = value ;
+            triggerEvent(element, "change") ;
         } ;
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
@@ -1415,8 +1431,7 @@
         
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
-                element.dispatchEvent(cloneEv);
+                triggerEvent(element, ev) ;
             }) ;
         }) ;
 
@@ -1457,8 +1472,7 @@
         
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
-                element.dispatchEvent(cloneEv);
+                triggerEvent(element, ev) ;
             }) ;
         }) ;
     }
@@ -1531,8 +1545,7 @@
         
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
-                element.dispatchEvent(cloneEv);
+                triggerEvent(element, ev) ;
             }) ;
         }) ;
     }
@@ -1578,8 +1591,7 @@
         } ;
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
-                element.dispatchEvent(cloneEv);
+                triggerEvent(element, ev) ;
             }) ;
         }) ;
         
@@ -1896,10 +1908,21 @@
         } ;
         element.setOptions = function(options){
             select.innerHTML = "";
+            if(!select.multiple){
+                var emptyOption = document.createElement("OPTION") ;
+                emptyOption.value = "";
+                emptyOption.innerHTML = "&nbsp;" ;
+                select.appendChild(emptyOption) ;
+            }
             for(var i=0; i<options.length; i++){
                 var opt = document.createElement("OPTION") ;
                 opt.value = options[i].id;
                 opt.innerHTML = options[i].label;
+                if(currentValue === options[i].id){
+                    opt.selected = true ;
+                }else if(Array.isArray(currentValue) && currentValue.indexOf(options[i].id) !== -1){
+                    opt.selected = true ;
+                }
                 select.appendChild(opt) ;
             }
             chosen.trigger("chosen:updated");
@@ -1929,8 +1952,7 @@
 
         ["change"].forEach(function(eventName){
             chosen.on(eventName, function(ev){
-                var cloneEv = new Event(eventName, ev);
-                element.dispatchEvent(cloneEv);
+                triggerEvent(element, eventName) ;
             }) ;
         }) ;
 
@@ -2244,9 +2266,7 @@
                     });
                 });
                 element.setValue(tableData) ;
-                var event = document.createEvent('Event');
-                event.initEvent('tableinit', true, true);
-                element.dispatchEvent(event);
+                triggerEvent(element, "tableinit") ;
             }else{
                 //already exists, redraw
                 datatable
@@ -2823,8 +2843,7 @@
         } ;
         ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
             input.addEventListener(eventName, function(ev){
-                var cloneEv = new ev.constructor(ev.type, ev);
-                element.dispatchEvent(cloneEv);
+                triggerEvent(element, ev) ;
             }) ;
         }) ;
     }
