@@ -292,6 +292,22 @@
      * @property {string} yesLabel Yes button label
      * @property {string} noLabel No button label
      */
+     
+     /**
+     * @typedef VeloxDialogQuestionButton
+     * @type {object}
+     * @property {boolean} focus this button has default focus
+     * @property {string} label Button label
+     * @property {string} className Button label
+     * @property {boolean} isDefault will be return if user close popup with no button (ESC, cross)
+     * @property {string} code Code return when user choose this button
+     */
+
+     /**
+     * This callback is called when user answer confirm dialong
+     * @callback VeloxDialogQuestionCallback
+     * @param {string} code the code of chosen button
+     */
 
      /**
      * This callback is called when user answer confirm dialong
@@ -321,42 +337,103 @@
         if(!labelNo){
             labelNo = VeloxWebView.tr?VeloxWebView.tr("global.no"):"No";
         }
+        this.question(message, options, [
+            {label : labelNo, code: false, className: "btn-secondary", focus: options.focusToNoButton, isDefault: true},
+            {label : labelYes, code: true, className: "btn-primary", focus: !options.focusToNoButton}
+        ], callback) ;
+
+    } ;
+    
+    /**
+     * Display question box
+     * 
+     * @param {string} message the message to display
+     * @param {VeloxPopupOptions} [options] the popup title
+     * @param {VeloxDialogQuestionButton[]} buttons Button
+     * @param {VeloxDialogQuestionCallback} callback called when user answer dialog
+     */
+    extension.extendsProto.question = function (message, options, buttons, callback) {
+        if(Array.isArray(options)){
+            callback = buttons;
+            buttons = options ;
+            options = null;
+        }
+
+        if(!options){
+            options = {} ;
+        }
+
+        options.keyboard = options.closeWithEsc ;
+        if(options.keyboard === undefined){
+            options.keyboard = true ;
+        }
+        if(options.closeWithEsc === false && options.closeByClickOutside === undefined){
+            options.closeByClickOutside = false ;
+        }
+        if(options.closeByClickOutside === false){
+            options.backdrop = "static" ;
+        }
+        
+        var modalSize = "";
+        if(options.size==="small"){
+            modalSize = "modal-sm";
+        }else if(options.size==="large"){
+            modalSize = "modal-lg";
+        }
+
+        
 
         var modalHtml = '<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
-        '  <div class="modal-dialog modal-dialog-centered" role="document">'+
+        '  <div class="modal-dialog modal-dialog-centered '+modalSize+'" role="document">'+
         '    <div class="modal-content">'+
         '      <div class="modal-header bg-secondary">'+
-        '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>'+
-        '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
-        '          <span aria-hidden="true">&times;</span>'+
-        '        </button>'+
-        '      </div>'+
+        '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>';
+        if(options.closeable === true || options.closeable === undefined){
+            modalHtml += '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
+            '          <span aria-hidden="true">&times;</span>'+
+            '        </button>' ;
+        } 
+        modalHtml += '      </div>'+
         '      <div class="modal-body">'+
         message.replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+
-        '        <button type="button" class="btn btn-secondary btn-no">'+labelNo+'</button>'+
-        '        <button type="button" class="btn btn-primary btn-yes">'+labelYes+'</button>'+
+        buttons.map(function(button){
+            return '<button type="button" class="btn '+button.className+' btn-'+button.code+'">'+button.label+'</button>' ;  
+        }).join("")+
         '      </div>'+
         '    </div>'+
         '  </div>'+
         '</div>' ;
+
         var $modal = window.jQuery(modalHtml);
-        $modal.modal() ;
-        var $btnYes = $modal.find(".btn-yes");
-        var $btnNo = $modal.find(".btn-no");
+        if(options.zIndex){
+            $modal[0].style.zIndex = options.zIndex ; 
+        }
+        $modal.modal(options) ;
+        var callbackCalled = false;
+        buttons.forEach(function(button){
+            var $button = $modal.find(".btn-"+button.code);
+            if(button.focus){
+                $modal.on('shown.bs.modal', function () {
+                    $button.focus() ;
+                });
+            }
+            $button.on("click", function(){
+                callbackCalled = true;
+                $modal.modal("hide");
+                callback(button.code) ;
+            });
+            if(button.isDefault){
+                $modal.on('hide.bs.modal', function () {
+                    if(!callbackCalled){
+                        //closed by ESC
+                        callback(button.code) ;
+                    }
+                });
+            }
+        }) ;
         makeDraggable($modal) ;
-        $modal.on('shown.bs.modal', function () {
-            options.focusToNoButton?$btnNo.focus():$btnYes.focus() ;
-        });
-        $btnYes.on("click", function(){
-            $modal.modal("hide");
-            callback(true) ;
-        });
-        $btnNo.on("click", function(){
-            $modal.modal("hide");
-            callback(false) ;
-        });
     } ;
 
             
