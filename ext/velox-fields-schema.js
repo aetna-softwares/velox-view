@@ -12,6 +12,22 @@
 
 
     /**
+     * Create an unique ID
+     */
+    function uuidv4() {
+        if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
+            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c){
+                return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16) ;
+            }) ;
+        }else{
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+    }
+
+    /**
      * fieldsSchema extension definition
      */
     var extension = {} ;
@@ -176,14 +192,30 @@
                     strLabel = VeloxWebView.tr("fields."+fieldDef);
                     element.setAttribute("data-field-label", strLabel) ;
                 }else{
-                    strLabel = element.getAttribute("data-field-label")
+                    strLabel = element.getAttribute("data-field-label") ;
                 }
 
                 if(element.hasAttribute("data-field-nolabel")){
                     return ;
                 }
+
+                var inputEl = element.querySelector("select");
+                if(!inputEl){
+                    inputEl = element.querySelector("input");
+                }
+                if(!inputEl){
+                    inputEl = element.querySelector("textarea");
+                }
+                var forId = "" ;
+                if(inputEl){
+                    if(!inputEl.id){
+                        inputEl.id = uuidv4() ;
+                    }
+                    forId = inputEl.id ;
+                }
                 
                 var label = document.createElement("LABEL") ;
+                label.setAttribute("for", forId) ;
                 var text = document.createTextNode(strLabel);
                 if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
                     //for checkbox, add input after the label
@@ -272,6 +304,56 @@
                         option.value = val;
                         option.innerHTML = colDef.values[val] ;
                         select.appendChild(option) ;
+                    }) ;
+                }else if(colDef.values === "2one"){
+                    //case where values are content of another table
+                    var options = getReadTableOptions(table, colDef) ;
+                    element.setAttribute("data-field-readfromtable", options.readFromTable);
+                    element.setAttribute("data-field-orderbyfromtable", options.orderByFromTable);
+                    element.setAttribute("data-field-readfieldid", options.readFieldId);
+                    element.setAttribute("data-field-readfieldlabel", options.readFieldLabel);
+                }
+            }
+        }else if(colDef.type === "radio" || colDef.type === "checkboxes"){
+            if(element.getElementsByTagName("input").length === 0){
+
+                var isMultiple = colDef.type === "checkboxes" ;
+                var nameOfGroup = uuidv4(); ;
+                if(colDef.values && Array.isArray(colDef.values)){
+                    //case where values are defined by list of values
+                    colDef.values.forEach(function(val){
+                        var opt = document.createElement("INPUT") ;
+                        opt.type = isMultiple?"checkbox":"radio" ;
+                        opt.value = val;
+                        opt.id = uuidv4();
+                        opt.name = nameOfGroup ;
+                        
+                        var label = document.createElement("LABEL") ;
+                        if(VeloxWebView.i18n){
+                            label.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+colDef.name+"."+val) ;
+                        }else{
+                            label.innerHTML = val ;
+                        }
+                        label.setAttribute("for",opt.id);
+                        
+                        element.appendChild(opt) ;
+                        element.appendChild(label) ;
+                    }) ;
+                }else if(colDef.values && typeof(colDef.values) === "object"){
+                    //case where values are defined as key:label object
+                    Object.keys(colDef.values).forEach(function(val){
+                        var opt = document.createElement("INPUT") ;
+                        opt.type = isMultiple?"checkbox":"radio" ;
+                        opt.value = val;
+                        opt.id = uuidv4();
+                        opt.name = nameOfGroup ;
+                        
+                        var label = document.createElement("LABEL") ;
+                        label.innerHTML = colDef.values[val];
+                        label.setAttribute("for",opt.id);
+                        
+                        element.appendChild(opt) ;
+                        element.appendChild(label) ;
                     }) ;
                 }else if(colDef.values === "2one"){
                     //case where values are content of another table

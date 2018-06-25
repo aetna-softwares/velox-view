@@ -961,6 +961,8 @@
                 loadLib("chosen", CHOSEN_VERSION, CHOSEN_LIB, done) ;
             }) ;
             loadSelectCSS() ;
+        } else if(fieldType === "radio" || fieldType === "checkboxes"){
+            //no lib
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
             //no lib
         } else if(fieldType === "grid"){
@@ -1032,6 +1034,8 @@
             createDateField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "selection" || fieldType === "select" || fieldType === "multiple"){
             createSelectField(element, fieldType, fieldSize, fieldOptions) ;
+        } else if(fieldType === "radio" || fieldType === "checkboxes"){
+            createRadioField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "bool" || fieldType === "boolean" || fieldType === "checkbox"  || fieldType === "toggle" || fieldType === "switch"){
             createCheckboxField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "grid"){
@@ -1405,6 +1409,12 @@
         input.type = "number" ;
         if(fieldType==="decimal" || fieldType==="numeric" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
             input.step="0.01" ;
+        }else{
+            input.addEventListener("keydown", function(ev){
+                if([188,110,190].indexOf(ev.keyCode) !== -1){
+                    ev.preventDefault() ;
+                }
+            }) ;
         }
 
         //prevent modify value with wheel
@@ -1777,6 +1787,157 @@
         htmlEditorCSSLoaded = true ;
     }
 
+    function createRadioField(element, fieldType, fieldSize, fieldOptions){
+        var inputs = Array.prototype.slice.apply(element.getElementsByTagName("INPUT")) ;
+        var nameOfGroup = "";
+        if(inputs[0] && inputs[0].name){
+            nameOfGroup = inputs[0].name;
+        }else{
+            nameOfGroup = uuidv4() ;
+        }
+
+        var isMultiple = inputs.type === "checkbox" ;
+
+        function registerEvents(){
+            ["change"].forEach(function(eventName){
+                inputs.forEach(function(input){
+                    input.addEventListener(eventName, function(){
+                        triggerEvent(element, eventName) ;
+                    });
+                });
+            }) ;
+        } ;
+        registerEvents();
+        
+        element.getValue = function(){
+            var result = [];
+            for (var i=0; i<inputs.length; i++) {
+                var opt = inputs[i];
+                if (opt.checked) {
+                    result.push(opt.value);
+                }
+            }
+            return isMultiple?result:result[0];
+        } ;
+
+        var _currentValue = null;
+        element.setValue = function(value){
+            _currentValue = value ;
+            if(!value){
+                value = [] ;
+            }
+            if(!Array.isArray(value)){
+                value = [value] ;
+            }
+            for (var i=0; i<inputs.length; i++) {
+                var opt = inputs[i];
+                opt.checked = value.indexOf(opt.value) !== -1 ;
+            }
+        } ;
+        element.setReadOnly = function(readOnly){
+            for (var i=0; i<inputs.length; i++) {
+                var opt = inputs[i];
+                if(readOnly) {
+                    opt.disabled = true;
+                }else{
+                    opt.disabled = false;
+                }
+            }
+            setReadOnly(element, readOnly) ;
+        } ;
+        element.setRequired = function(readOnly){
+            setRequired(element, readOnly) ;
+        } ;
+
+        element.setValueEnable = function(value, isEnabled){
+            for (var i=0; i<inputs.length; i++) {
+                var opt = inputs[i];
+                if(opt.value == value){
+                    opt.disabled = !isEnabled;
+                }
+            }
+            if(!isEnabled){
+                //remove disabled value if already selected
+                var currentValue = element.getValue() ;
+                if(Array.isArray(currentValue)){
+                    var indexVal = currentValue.indexOf(value) ;
+                    if(indexVal !== -1){
+                        currentValue.splice(indexVal, 1) ;
+                        element.setValue(currentValue) ;
+                    }
+                }else{
+                    if(currentValue === value){
+                        element.setValue(null) ;
+                    }
+                }
+            }
+        } ;
+        element.setOptions = function(options){
+            var currentValue = element.getValue() ;
+            if(!currentValue){ currentValue = [] ;}
+            if(!Array.isArray(currentValue)){
+                currentValue = [currentValue] ;
+            }
+            
+            element.innerHTML = "" ;
+
+                
+            
+            inputs = [] ;
+            
+            for(var i=0; i<options.length; i++){
+                var opt = document.createElement("INPUT") ;
+                opt.type = isMultiple?"checkbox":"radio" ;
+                opt.value = options[i].id;
+                opt.id = uuidv4();
+                opt.name = nameOfGroup ;
+                
+                var label = document.createElement("LABEL") ;
+                label.innerHTML = options[i].label ;
+                label.setAttribute("for",opt.id);
+
+                if(currentValue.indexOf(options[i].id) !== -1){
+                    opt.checked = true ;
+                }
+                element.appendChild(opt) ;
+                element.appendChild(label) ;
+                inputs.push(opt) ;
+            }
+
+            decorators.forEach(function(deco){
+                deco(element, fieldType, fieldSize, fieldOptions) ;
+            }) ; 
+
+            registerEvents();
+        } ;
+        element.getOptions = function(){
+            var opts = [] ;
+            for(var i=0; i<inputs.length; i++){
+                opts.push({
+                    id: inputs[i].value,
+                    label: inputs[i].innerHTML,
+                }) ;
+            }
+            return opts ;
+        } ;
+
+        if(fieldOptions.readfromtable){
+            
+            getPossibleValues(fieldOptions, function(err, values){
+                if(err){
+                    throw err ;
+                }
+                element.setOptions(values) ;
+                if(_currentValue){
+                    element.setValue(_currentValue) ;
+                }
+            });
+        }
+
+        
+    }
+
+
     /**
      * Create a select field
      * 
@@ -1935,7 +2096,7 @@
                     label: select.options[i].innerHTML,
                 }) ;
             }
-            return element._options ;
+            return opts ;
         } ;
 
         if(fieldOptions.readfromtable){
