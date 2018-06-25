@@ -687,16 +687,16 @@
 
                         asyncSeries(calls, function(err){
                             if(err){ throw err; }
-                            parsed.subviews = this.prepareSubViews(parsed.xmlDoc.body) ;
-                            parsed.boundElements = this.computeBoundElements(parsed.xmlDoc) ;
-                            parsed.ids = this.prepareIds(parsed.xmlDoc) ;
-                            parsed.childrenCount = parsed.xmlDoc.body.childNodes.length ;
+                            // parsed.childrenCount = parsed.xmlDoc.body.childNodes.length ;
                             parsed.childrenCount = 0 ;
                             for(var cn = 0; cn <parsed.xmlDoc.body.childNodes.length; cn++){
                                 if(parsed.xmlDoc.body.childNodes[cn].nodeType !== Node.TEXT_NODE || parsed.xmlDoc.body.childNodes[cn].textContent.trim() !== ""){
                                         parsed.childrenCount++;
                                 }
                             }
+                            parsed.subviews = this.prepareSubViews(parsed.xmlDoc.body) ;
+                            parsed.boundElements = this.computeBoundElements(parsed.xmlDoc) ;
+                            parsed.ids = this.prepareIds(parsed.xmlDoc) ;
                            
                             
                             calls = [] ;
@@ -956,7 +956,7 @@
             }
             var elFor = bodyNode.querySelectorAll('[for="'+id+'"]') ;
             for(var y=0; y<elFor.length; y++){
-                elFor[y].setAttribute("data-target", modifiedId) ;
+                elFor[y].setAttribute("for", modifiedId) ;
             }
         }
     } ;
@@ -1595,8 +1595,7 @@
             } ;
             //create decorator around element properties and function
             var fakeElKeys = Object.keys(fakeEl) ;
-            for(var i=0; i<HTMLELEMENT_PROTO_KEYS.length; i++){
-                var k = HTMLELEMENT_PROTO_KEYS[i] ;
+            HTMLELEMENT_PROTO_KEYS.forEach(function(k, i){
                 if(fakeElKeys.indexOf(k) === -1){
                     if(typeof(HTMLELEMENT_PROTO_KEYS[k]) === "function"){
                         fakeEl[k] = function(){
@@ -1616,7 +1615,7 @@
                         }) ;
                     }
                 }
-            }
+            }) ;
             this.innerViewIds.push(fakeEl) ;
             this.EL[id] = fakeEl;
         }
