@@ -1767,13 +1767,29 @@
                     }else{
                         bindData = ""+bindData ;
                     }
-                    if(boundEl.isHTML){
-                        if(el.innerHTML != bindData){
-                            el.innerHTML = bindData;
+                    if(el.tagName === "IFRAME"){
+                        if(!el.contentWindow){
+                            el.addEventListener("load", function(){
+                                while(el.contentWindow.document.firstChild){
+                                    el.contentWindow.document.removeChild(el.contentWindow.document.firstChild) ;
+                                }
+                                el.contentWindow.document.write(bindData) ;
+                            });
+                        }else{
+                            while(el.contentWindow.document.firstChild){
+                                el.contentWindow.document.removeChild(el.contentWindow.document.firstChild) ;
+                            }
+                            el.contentWindow.document.write(bindData) ;
                         }
                     }else{
-                        if(el.textContent != bindData){
-                            el.textContent = bindData;
+                        if(boundEl.isHTML){
+                            if(el.innerHTML != bindData){
+                                el.innerHTML = bindData;
+                            }
+                        }else{
+                            if(el.textContent != bindData){
+                                el.textContent = bindData;
+                            }
                         }
                     }
                 }
