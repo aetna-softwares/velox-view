@@ -79,7 +79,7 @@
                         throw ("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
                     }
 
-                    if(tableDef.fk){
+                    if(!colDef.values && tableDef.fk){
                         tableDef.fk.some(function(fk){
                             if(fk.thisColumn === schemaId[1]){
                                 colDef.type = "select" ;
