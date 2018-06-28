@@ -278,12 +278,12 @@
                 var select = document.createElement("SELECT") ;
                 if(colDef.type === "multiple"){
                     select.multiple = true;
-                }else{
-                    var emptyOption = document.createElement("OPTION") ;
-                    emptyOption.value = "";
-                    emptyOption.innerHTML = "&nbsp;" ;
-                    select.appendChild(emptyOption) ;
                 }
+                var emptyOption = document.createElement("OPTION") ;
+                emptyOption.value = "";
+                emptyOption.innerHTML = "&nbsp;" ;
+                select.appendChild(emptyOption) ;
+            
                 element.appendChild(select) ;
                 if(colDef.values && Array.isArray(colDef.values)){
                     //case where values are defined by list of values

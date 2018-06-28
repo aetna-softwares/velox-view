@@ -160,7 +160,7 @@
     var DECIMALJS_VERSION = "2.2.0" ;
     var FLATPICKR_VERSION = "4.5.0" ;
     var MOMENTJS_VERSION = "2.22.1" ;
-    var CHOSEN_VERSION = "1.8.5" ;
+    var SELECTRIC_VERSION = "1.13.0" ;
     
     var PDFOBJECT_VERSION = "2.0.201604172" ;
     var PDFJS_VERSION = "1.9.426" ;
@@ -232,23 +232,23 @@
     ];
 
     
-    var CHOSEN_LIB = [
+    var SELECTRIC_LIB = [
         JQUERY_LIB,
         {
-            name: "chosen-css",
+            name: "selectric-css",
             type: "css",
-            version: CHOSEN_VERSION,
-            cdn: "http://cdnjs.cloudflare.com/ajax/libs/chosen/$VERSION/chosen.min.css",
-            bowerPath: "chosen/chosen.min.css",
-            npmPath: "chosen-js/chosen.min.css",
+            version: SELECTRIC_VERSION,
+            cdn: "https://cdn.rawgit.com/lcdsantos/jQuery-Selectric/$VERSION/public/selectric.css",
+            bowerPath: "selectric/public/selectric.css",
+            npmPath: "selectric/public/selectric.css",
         },
         {
-            name: "chosen-js",
+            name: "selectric-js",
             type: "js",
-            version: CHOSEN_VERSION,
-            cdn: "http://cdnjs.cloudflare.com/ajax/libs/chosen/$VERSION/chosen.jquery.min.js",
-            bowerPath: "chosen/chosen.jquery.min.js",
-            npmPath: "chosen-js/chosen.jquery.min.js"
+            version: SELECTRIC_VERSION,
+            cdn: "https://cdn.rawgit.com/lcdsantos/jQuery-Selectric/$VERSION/public/jquery.selectric.min.js",
+            bowerPath: "selectric/public/jquery.selectric.min.js",
+            npmPath: "selectric/public/jquery.selectric.js"
         }
     ];
 
@@ -452,7 +452,7 @@
         LANG_NUMBERS_LIB,
         DECIMALJS_LIB,
         FLATPICKR_LIB,
-        CHOSEN_LIB,
+        SELECTRIC_LIB,
         DATATABLES_LIB,
         PDFOBJECT_LIB,
         QUILL_LIB,
@@ -480,14 +480,6 @@
             cdn: "https://cdnjs.cloudflare.com/ajax/libs/moment.js/$VERSION/locale/*.js",
             bowerPath: "moment/locale/*.js",
             npmPath: "moment/locale/*.js"
-        },
-        {
-            name: "chosen-assets",
-            type: "js",
-            version: CHOSEN_VERSION,
-            cdn: "http://cdnjs.cloudflare.com/ajax/libs/chosen/$VERSION/*.png",
-            bowerPath: "chosen/*.png",
-            npmPath: "chosen-js/*.png"
         }
     ] ;
 
@@ -957,8 +949,8 @@
             setLibToLoad("locale", getLocale) ;
             setLibToLoad("localeDate", loadDateLibLocale) ;
         } else if(fieldType === "selection" || fieldType === "select" || fieldType === "multiple"){
-            setLibToLoad("chosen", function(done){
-                loadLib("chosen", CHOSEN_VERSION, CHOSEN_LIB, done) ;
+            setLibToLoad("selectric", function(done){
+                loadLib("selectric", SELECTRIC_VERSION, SELECTRIC_LIB, done) ;
             }) ;
             loadSelectCSS() ;
         } else if(fieldType === "radio" || fieldType === "checkboxes"){
@@ -1970,33 +1962,9 @@
 
         var currentValue = null;
         
-        var chosen = new window.jQuery(select).chosen({
-            placeholder_text_multiple: " ",
-            placeholder_text_single: " ",
-            allow_single_deselect: true,
-            width: '100%'
-        });
+        var chosen = new window.jQuery(select).selectric({});
 
-        //open up, see https://github.com/harvesthq/chosen/issues/155#issuecomment-194787230
-        chosen.on('chosen:showing_dropdown chosen:hiding_dropdown', function(e){
-            var chosen_container = $( e.target ).next( '.chosen-container' ),
-                mustShowUp = e.type == 'chosen:showing_dropdown' && dropdownExceedsBottomViewport();
-        
-            function dropdownExceedsBottomViewport(){
-                var dropdown        = chosen_container.find( '.chosen-drop' ),
-                    dropdown_top    = dropdown.offset().top - document.documentElement.scrollTop,
-                    dropdown_height = dropdown.height(),
-                    viewport_height = document.documentElement.clientHeight;
-        
-                return dropdown_top + dropdown_height > viewport_height;
-            }
-        
-            if(mustShowUp){
-                chosen_container.addClass( 'chosen-drop-up' );
-            }else{
-                chosen_container.removeClass( 'chosen-drop-up' );
-            }
-        });
+       
 
         element.getValue = function(){
             if(select.multiple){
@@ -2028,7 +1996,7 @@
                     select.value = value;
                 }
             }
-            chosen.trigger("chosen:updated");
+            chosen.selectric('refresh');
         } ;
         element.setReadOnly = function(readOnly){
             if(readOnly) {
@@ -2036,7 +2004,7 @@
             }else{
                 select.disabled = false;
             }
-            chosen.trigger("chosen:updated");
+            chosen.selectric('refresh');
             setReadOnly(element, readOnly) ;
         } ;
         element.setRequired = function(readOnly){
@@ -2065,16 +2033,16 @@
                     }
                 }
             }
-            chosen.trigger("chosen:updated");
+            chosen.selectric('refresh');
         } ;
         element.setOptions = function(options){
             select.innerHTML = "";
-            if(!select.multiple){
+            //if(!select.multiple){
                 var emptyOption = document.createElement("OPTION") ;
                 emptyOption.value = "";
                 emptyOption.innerHTML = "&nbsp;" ;
                 select.appendChild(emptyOption) ;
-            }
+            // }
             for(var i=0; i<options.length; i++){
                 var opt = document.createElement("OPTION") ;
                 opt.value = options[i].id;
@@ -2086,7 +2054,7 @@
                 }
                 select.appendChild(opt) ;
             }
-            chosen.trigger("chosen:updated");
+            chosen.selectric('refresh');
         } ;
         element.getOptions = function(){
             var opts = [] ;
@@ -2112,7 +2080,7 @@
         }
 
         ["change"].forEach(function(eventName){
-            chosen.on(eventName, function(ev){
+            chosen.on("selectric-"+eventName, function(ev){
                 triggerEvent(element, eventName) ;
             }) ;
         }) ;
