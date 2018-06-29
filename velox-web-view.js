@@ -2104,6 +2104,13 @@
         return v;
     } ;
 
+    VeloxWebView.prototype.getRootView = function () {
+        var v = this ;
+        while(v.parentView){
+            v = v.parentView ;
+        }
+        return v;
+    };
     
 
     /**
