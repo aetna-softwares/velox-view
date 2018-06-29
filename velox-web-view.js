@@ -9,8 +9,27 @@
      */
     var ID_SEP = "_-_";
 
-   
-    var HTMLELEMENT_PROTO_KEYS = typeof(Element)!=="undefined"?Object.keys(Element.prototype).concat(Object.keys(HTMLElement.prototype)):[];
+    var HTMLELEMENT_PROTO_KEYS = [] ;
+    if(typeof(Element)!=="undefined"){
+        [Element.prototype, HTMLElement.prototype].forEach(function(proto){
+            Object.keys(proto).forEach(function(k){
+                try{
+                    if(typeof(proto[k]) === "function"){
+                        HTMLELEMENT_PROTO_KEYS.push({prop : k, type: "function"}) ;
+                    }else{
+                        HTMLELEMENT_PROTO_KEYS.push({prop : k, type: "property"}) ;
+                    }
+                }catch(e){
+                    HTMLELEMENT_PROTO_KEYS.push({prop : k, type: "property"}) ;
+                }
+            }) ;
+        }) ;
+    }
+    HTMLELEMENT_PROTO_KEYS = HTMLELEMENT_PROTO_KEYS.concat([
+        {prop : "setOptions", type: "function"}, {prop : "setValue", type: "function"}, {prop : "getValue", type: "function"}, 
+        {prop : "setReadOnly", type: "function"}, {prop : "setRequired", type: "function"}, {prop : "setValueEnable", type: "function"}, 
+        {prop : "getOptions", type: "function"}, {prop : "render", type: "function"}, {prop : "search", type: "function"}, 
+    ]) ;
 
     /**
      * Dictionnary of all loaded CSS
@@ -1579,8 +1598,7 @@
 
     VeloxWebView.prototype.prepareSubViewsSubElements = function (viewDef) {
 
-        for(var y=0; y<viewDef.ids.length; y++){
-            var id = viewDef.ids[y] ;
+        viewDef.ids.forEach(function(id){
             var fakeEl = {
                 id : id,
                 //el: el,
@@ -1595,22 +1613,22 @@
             } ;
             //create decorator around element properties and function
             var fakeElKeys = Object.keys(fakeEl) ;
-            HTMLELEMENT_PROTO_KEYS.forEach(function(k, i){
-                if(fakeElKeys.indexOf(k) === -1){
-                    if(typeof(HTMLELEMENT_PROTO_KEYS[k]) === "function"){
-                        fakeEl[k] = function(){
+            HTMLELEMENT_PROTO_KEYS.forEach(function(k){
+                if(fakeElKeys.indexOf(k.prop) === -1){
+                    if(k.type === "function"){
+                        fakeEl[k.prop] = function(){
                             if(fakeEl.realEl){
-                                return fakeEl.realEl[k].apply(fakeEl.realEl, arguments) ;
+                                return fakeEl.realEl[k.prop].apply(fakeEl.realEl, arguments) ;
                             }
                         } ;
                     }else{
-                        Object.defineProperty(fakeEl, k, {
+                        Object.defineProperty(fakeEl, k.prop, {
                             get: function(){
-                                if(fakeEl.realEl){ return fakeEl.realEl[k] ;}
+                                if(fakeEl.realEl){ return fakeEl.realEl[k.prop] ;}
                                 return null;
                             },
                             set : function(value){
-                                if(fakeEl.realEl){ fakeEl.realEl[k] = value ;}
+                                if(fakeEl.realEl){ fakeEl.realEl[k.prop] = value ;}
                             }
                         }) ;
                     }
@@ -1618,7 +1636,7 @@
             }) ;
             this.innerViewIds.push(fakeEl) ;
             this.EL[id] = fakeEl;
-        }
+        }.bind(this));
     } ;
     
 
