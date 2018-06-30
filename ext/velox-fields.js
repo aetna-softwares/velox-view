@@ -1,3 +1,4 @@
+/*global define*/
 ; (function (global, factory) {
     if (typeof exports === 'object' && typeof module !== 'undefined') {
         var VeloxScriptLoader = require("velox-loader") ;
@@ -156,7 +157,6 @@
     ///// DEPENDENCIES LIBRARIES LOADING ////////
     var INPUTMASK_VERSION = "3.3.11"; //v4 will drop jquery dependency 
     var JQUERY_VERSION = "3.3.1" ;
-    var LANG_NUMBERS_VERSION = "1.0.0" ;
     var DECIMALJS_VERSION = "2.2.0" ;
     var FLATPICKR_VERSION = "4.5.0" ;
     var MOMENTJS_VERSION = "2.22.1" ;
@@ -191,15 +191,6 @@
             npmPath: "inputmask/dist/jquery.inputmask.bundle.js",
         }
     ];
-
-    var LANG_NUMBERS_LIB = {
-        name: "lang-numbers",
-        type: "json",
-        version: LANG_NUMBERS_VERSION,
-        cdn: "https://cdn.rawgit.com/aetna-softwares/velox-view/master/ext/lang/numbers.json",
-        bowerPath: "velox-view/ext/lang/numbers.json",
-        npmPath: "velox-view/ext/lang/numbers.json"
-    };
 
     var DECIMALJS_LIB = [
         {
@@ -449,7 +440,6 @@
     extension.libs = [
         JQUERY_LIB,
         INPUT_MASK_LIB,
-        LANG_NUMBERS_LIB,
         DECIMALJS_LIB,
         FLATPICKR_LIB,
         SELECTRIC_LIB,
@@ -839,6 +829,7 @@
     }
     
 
+
     /**
      * init view fields
      * 
@@ -862,7 +853,23 @@
                 setNeededLib(fieldType, fieldOptions) ;
             })(elements[i]) ;
         }
-        loadLibs(callback) ;
+        loadLibs(function(err){
+            if(err){ return callback(err) ;}
+
+            var elements = params.doc.querySelectorAll("[data-cell-view]");
+            var compiles = [] ;
+            this.cellViews = {} ;
+            elements.forEach(function(el, i){
+                el.parentElement.setAttribute("data-cell-view-id", i) ;
+                el.removeAttribute("data-cell-view") ;
+                compiles.push(function(cb){
+                    this.cellViews[i] = el;
+                    var cellView = new VeloxWebView(null, null, {htmlEl : el});
+                    cellView.compileView(cb) ;
+                }.bind(this)) ;
+            }.bind(this)) ;
+            series(compiles, callback) ;
+        }.bind(this)) ;
     }
 
     /**
@@ -1301,51 +1308,7 @@
         }) ;
     }
 
-    /**
-     * Add extra data to localdata such as thousands and decimal delimiters
-     * 
-     * Try to rely on toLocaleString browser if supported, if not supported, the numbro lib is loaded
-     * 
-     * @param {function(Error)} callback called on finished
-     */
-    function fillLocales(callback){
-        if((99.99).toLocaleString('fr') === "99,99"){
-            //the browser support locale string
-            var localizedNumber = (1000.99).toLocaleString(currentLocale.lang) ;
-            currentLocale.delimiters.thousands = localizedNumber[1] ;
-            currentLocale.delimiters.decimal = localizedNumber[5] ;
-            callback() ;
-        }else{
-            //the browser does not support locale string, load numbro lib
-            VeloxScriptLoader.load(LANG_NUMBERS_LIB, function(err, result){
-                if(err){ return callback(err); }
-                var numbroLanguages = result[0][0] ;
-                var numbroLangName = currentLocale.lang ;
-                if(!numbroLanguages[numbroLangName]){ //lang code not found
-                    if(numbroLanguages[numbroLangName+"-"+numbroLangName.toUpperCase()]){ //try with same as region code (ex : fr-FR)
-                        numbroLangName = numbroLangName+"-"+numbroLangName.toUpperCase() ;
-                    }else{
-                        //search a lang code starting with our lang code
-                        var foundStartWith = Object.keys(numbroLanguages).some(function(l){
-                            if(l.indexOf(numbroLangName) === 0){
-                                numbroLangName = l;
-                                return true;
-                            }
-                        });
-                        if(!foundStartWith){
-                            //found nothing, fallback to en-US
-                            numbroLangName = "en-US" ;
-                        }
-                    }
-                }
-
-                var langData = numbroLanguages[numbroLangName]; 
-                currentLocale.delimiters.thousands = langData.delimiters.thousands ;
-                currentLocale.delimiters.decimal = langData.delimiters.decimal ;
-                callback() ;
-            }) ;
-        }
-    }
+    
 
     /**
      * Get the current locale of user
@@ -1368,16 +1331,10 @@
                 currentLocale.lang = VeloxWebView.i18n.getLang() ;
                 VeloxWebView.i18n.onLanguageChanged(function(newLang){
                     currentLocale.lang = newLang ;
-                    fillLocales(function(err){
-                        if(err){
-                            return console.error("Error while reloading locales", err) ;
-                        }
-                        console.debug("Locales reloaded") ;
-                    });
                 });
-                fillLocales(callback) ;
+                callback() ;
             }else{
-                fillLocales(callback) ;
+                callback() ;
             }
         }else{
             callback() ;
@@ -2114,9 +2071,10 @@
         //
         var css = ".velox-grid { display: flex; }";
         css += ".dataTables_wrapper { display: flex; flex-direction: column; }";
-        css += ".dt-table {flex-grow: 1; display: flex; flex-direction: column;} ";
+        css += ".dt-table {flex-grow: 1; display: flex; flex-direction: column;flex-shrink: 1;flex-basis: 10px;} ";
         css += ".dataTables_scroll {display: flex; flex-direction: column;flex-grow: 1;}";
-        css += ".dataTables_scrollBody { flex-grow: 1; /*flex-basis: 1px;*/}";
+        css += ".dataTables_scrollHead { flex-basis: 50px; }";
+        css += ".dataTables_scrollBody { flex-grow: 1;flex-basis: 50px; flex-shrink: 1; overflow-x: hidden !important; }";
         css += '@media screen and (max-width: 767px) {';
         css += 'div.dataTables_wrapper div.dataTables_length, div.dataTables_wrapper div.dataTables_filter, div.dataTables_wrapper div.dataTables_info, div.dataTables_wrapper div.dataTables_paginate {';
         css += '    text-align: right;';
@@ -2164,7 +2122,7 @@
         var table = subTables[0];
 
         var listThead = table.getElementsByTagName("THEAD") ;
-        var thead = listThead.length>0?listThead[0]:null ;
+        //var thead = listThead.length>0?listThead[0]:null ;
 
         var toolbars = table.querySelectorAll("[data-toolbar]") ;
         for(var i=0; i<toolbars.length; i++){
@@ -2225,19 +2183,39 @@
                     renderer: function ( api, rowIdx, columns ) {
                         var htmlCell = '<ul data-dtr-index="'+rowIdx+'" class="dtr-details">' ;
                         var found = false ;
+                        var cellRenders = {} ;
                         for(var i=0; i<columns.length; i++){
                             var col = columns[i] ;
                             if(col.hidden && !gridOptions.columns[i].className){
                                 found = true ;
+                                var cellId = uuidv4();
                                 htmlCell += '<li data-dtr-index="'+col.columnIndex+'" data-dt-row="'+col.rowIndex+'" data-dt-column="'+col.columnIndex+'">'+
                                     '<span class="dtr-title">'+
                                         col.title+
                                     '</span> '+
-                                    '<span class="dtr-data">'+api.cell( col.rowIndex, col.columnIndex ).node().innerHTML+'</span>'+
+                                    '<span class="dtr-data" id="'+cellId+'" data-row="'+col.rowIndex+'" data-col="'+col.columnIndex+'"></span>'+
                                 '</li>' ;
+                                cellRenders[cellId] = {row : col.rowIndex, col: col.columnIndex};
                             }
                         }
                         if(found){
+                            //datatable add the HTML as innerHTML = ...
+                            //so we wait after the HTML change and do proper render in the DOM
+                            //to avoid loosing all event listening we done in the cell generation
+                            setTimeout(function(){
+                                var cellIds = Object.keys(cellRenders);
+                                for(var i=0; i<cellIds.length; i++){
+                                    var cellId = cellIds[i] ;
+                                    var span = document.getElementById(cellId) ;
+                                    if(span){
+                                        var cellInfos = cellRenders[cellId] ;
+                                        var cellEl = api.cell(cellInfos.row, cellInfos.col).node() ;
+                                        while(cellEl.firstChild){
+                                            span.appendChild(cellEl.firstChild) ;
+                                        }
+                                    }
+                                }
+                            }, 1) ;
                             htmlCell += '</ul>' ;
                             return htmlCell;
                         }else{
@@ -2256,7 +2234,8 @@
             paging: false,
             buttons: buttons,
             searching: searching,
-            columns: []
+            columns: [],
+            order: []
         } ;
 
 
@@ -2270,24 +2249,49 @@
                 //width    : th.getAttribute("data-field-size")
             };
 
-            var scriptRender = th.querySelector("script") ;
-            if(scriptRender){
-                var scriptBody = scriptRender.text ;
-                scriptBody +=  "//# sourceURL=/column/render/"+element.getAttribute("data-original-id")+"/"+colDef.field+".js" ;
-                var functionRender = new Function("td", "data", "row", "rowNum", "col", "view", scriptBody) ;
+            if(th.hasAttribute("data-cell-view-id")){
+                var elView = view.cellViews[th.getAttribute("data-cell-view-id")] ;
                 colDef.createdCell = function (td, cellData, rowData, row, col) {
-                    var rendered = functionRender(td, cellData, rowData, row, col, view);
-                    if(rendered){
-                        if(typeof(rendered) === "string"){
-                            td.innerHTML = rendered ;
-                        }else if(typeof(rendered) === "object" && rendered instanceof HTMLElement){
-                            td.innerHTML = "" ;
-                            td.appendChild(rendered) ;
+                    var viewOptions = {
+                        container: td,
+                        htmlEl: elView,
+                        css: "",
+                        bindObject: rowData
+                    } ;
+                    
+                    var cellView = new VeloxWebView(null, null, viewOptions);
+
+                    //the emitted event are propagated to this view
+                    var _emit = cellView.emit ;
+                    cellView.emit = function(event, data, source, dontPropagate){
+                        _emit.bind(cellView)(event, data, source) ; //emit the event inside the view
+                        if(!dontPropagate){
+                            this.emit(event, data, cellView) ; //propagate on this view
                         }
-                    }
+                    }.bind(view) ;
+                    cellView.openCompiled() ;
                 };
-                th.removeChild(scriptRender) ;
+            }else{
+                var scriptRender = th.querySelector("script") ;
+                if(scriptRender){
+                    var scriptBody = scriptRender.text ;
+                    scriptBody +=  "//# sourceURL=/column/render/"+element.getAttribute("data-original-id")+"/"+colDef.field+".js" ;
+                    var functionRender = new Function("td", "data", "row", "rowNum", "col", "view", scriptBody) ;
+                    colDef.createdCell = function (td, cellData, rowData, row, col) {
+                        var rendered = functionRender(td, cellData, rowData, row, col, view);
+                        if(rendered){
+                            if(typeof(rendered) === "string"){
+                                td.innerHTML = rendered ;
+                            }else if(typeof(rendered) === "object" && rendered instanceof HTMLElement){
+                                td.innerHTML = "" ;
+                                td.appendChild(rendered) ;
+                            }
+                        }
+                    };
+                    th.removeChild(scriptRender) ;
+                }
             }
+
 
             var labelEl = th.querySelector("label") ;
             if(labelEl){
@@ -2308,6 +2312,10 @@
             //         totalColsWithSizePercent += parseInt(colDef.size.replace("%", ""), 10) ;
             //     }
             // }
+
+            if(th.hasAttribute("data-sort")){
+                gridOptions.order.push([i, th.getAttribute("data-sort")]) ;
+            }
             
             ["orderable", "sortable", "searchable", "visible"].forEach(function(colAtt){
                 var colValue = th.getAttribute(colAtt);
@@ -2331,11 +2339,11 @@
                 colDef.className = attDevice;
             }
             
-            // var type = th.getAttribute("data-field-type") ;
-            // colDef.fieldType = type;
-            // if(!colDef.render && type){
-            //     colDef.render = createGridRenderer(type, colDef.field) ;
-            // }
+            var type = th.getAttribute("data-field-type") ;
+            colDef.fieldType = type;
+            if(!colDef.createdCell && type){
+                colDef.createdCell = createGridRenderer(type, colDef.field) ;
+            }
             gridOptions.columns.push(colDef) ;
         }) ;
 
@@ -2351,6 +2359,7 @@
                 //create only when displayed
 
                 datatable = window.jQuery(table).DataTable( gridOptions );
+
                 for(var i=0; i<toolbars.length; i++){
                     var toolbar = toolbars[i];
         
@@ -2387,6 +2396,9 @@
                     eventListeners[event].forEach(function(listener){
                         if(event === "rowClick"){
                             window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
+                                if(ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
+                                    return; //click on a button on the line, don't consider as a row click
+                                }
                                 var data = datatable.row( this ).data();
                                 ev.rowData = data;
                                 listener.bind(this)(ev) ;
@@ -2473,327 +2485,18 @@
                 return ;
             }
         } ;
-
-        
-        
-
-        return;
-        var listThead = table.getElementsByTagName("THEAD") ;
-        var thead = listThead.length>0?listThead[0]:null ;
-
-        var toolbar = table.querySelector("[data-toolbar]") ;
-        if(toolbar){
-            //remove it to avoid mix toolbar TH element with header column TH elements
-            toolbar.parentElement.removeChild(toolbar) ;
-        }
-
-        var listTh = Array.prototype.slice.call(table.getElementsByTagName("TH")) ;
-        if(listTh.length === 0){
-            throw ("Your data field grid should have at least a TH tag") ;
-        }
-
-        var listTr = Array.prototype.slice.call(table.getElementsByTagName("TR")) ;
-        
-
-
-        var idPath = Array.prototype.slice.call(
-        window.jQuery(element).parents()).map(function(p){ 
-            return p.getAttribute("data-original-id"); 
-        }).filter(function(c){ return !!c;}).reverse().join(".") ;
-
-        var gridOptions = {
-            name: idPath||"grid_"+uuidv4(),
-            textSearch: "contains",
-            columns   : [],
-            show      : {},
-            searches : []
-        } ;
-
-        ["keyboard", "recid", "markSearch", "multiSearch", "multiSelect", "multiSort", 
-            "recordHeight", "reorderColumns", "reorderRows", "selectType"].forEach(function(optionAttribute){
-            var optionValue = table.getAttribute(optionAttribute);
-            if(optionValue){
-                if(optionValue === "false"){ optionValue = false ;}
-                if(optionValue === "true"){ optionValue = true ;}
-                gridOptions[optionAttribute] = optionValue ;
-            }
-        }) ;
-
-        if(thead){
-
-            ["header"         ,
-            "toolbar"        ,
-            "footer"         ,
-            "columnHeaders"  ,
-            "lineNumbers"    ,
-            "expandColumn"   ,
-            "selectColumn"   ,
-            "emptyRecords"   ,
-            "toolbarInput"  ,
-            "toolbarReload"  ,
-            "toolbarColumns" ,
-            "toolbarSearch"  ,
-            "toolbarAdd"     ,
-            "toolbarEdit"    ,
-            "toolbarDelete"  ,
-            "toolbarSave"    ,
-            "selectionBorder",
-            "recordTitles"   ,
-            "skipRecords"].forEach(function(showAttr){
-                var showValue = thead.getAttribute(showAttr);
-                if(showValue){
-                    gridOptions.show[showAttr] = showValue.trim().toLowerCase() === "true" ;
-                }
-            }) ;
-        }
-
-        if(toolbar){
-            gridOptions.toolbar = {
-                items: []
-            };
-            gridOptions.show.toolbar = true ;
-            Array.prototype.slice.apply(toolbar.children).forEach(function(item){
-                var toolbarItem = {
-                    id : item.getAttribute("data-original-id") ,
-                    text: item.innerHTML
-                } ;
-                ["type", "tooltip", "count", "img", "icon", "style", "group"].forEach(function(k){
-                    if(item.hasAttribute("data-"+k)){
-                        toolbarItem[k] = item.getAttribute("data-"+k) ;
-                    }
-                }) ;
-                ["hidden", "hidden", "checked"].forEach(function(k){
-                    if(item.hasAttribute("data-"+k)){
-                        toolbarItem[k] = item.getAttribute("data-"+k) !== "false" ;
-                    }
-                }) ;
-                if(toolbarItem.type === "html"){
-                    toolbarItem.html = toolbarItem.text ;
-                    delete toolbarItem.text ;
-                }
-                gridOptions.toolbar.items.push(toolbarItem) ;
-            }.bind(this)) ;
-        }
-
-
-        if(Object.keys(gridOptions.show).length === 0){
-            delete gridOptions.show;
-        }
-
-        var totalColsWithSizePx  = 0;
-        var totalColsWithSizePercent  = 0;
-        
-        listTh.forEach(function(th, i){
-            var colDef = {
-                field     : th.getAttribute("data-field-name")||"f"+i,
-                size      : th.getAttribute("data-field-size")
-            };
-
-            var scriptRender = th.querySelector("script") ;
-            if(scriptRender){
-                var scriptBody = scriptRender.text ;
-                scriptBody +=  "//# sourceURL=/column/render/"+element.getAttribute("data-original-id")+"/"+colDef.field+".js" ;
-                var functionRender = new Function("record", "index", "column_index", scriptBody) ;
-                colDef.render = functionRender ;
-                th.removeChild(scriptRender) ;
-            }
-
-            var labelEl = th.querySelector("label") ;
-            if(labelEl){
-                    colDef.caption = labelEl.innerHTML ;
-            }else{
-                colDef.caption = th.innerHTML ;
-            }
-
-                        
-                        
-            if(colDef.size){
-                if(colDef.size.indexOf("px") === -1 && colDef.size.indexOf("%") === -1){
-                    //no unit given, assuming px
-                    colDef.size = colDef.size+"px" ;
-                }
-
-                if(colDef.size.indexOf("px") !== -1){
-                    totalColsWithSizePx += parseInt(colDef.size.replace("px", ""), 10) ;
-                }else if(colDef.size.indexOf("%") !== -1){
-                    totalColsWithSizePercent += parseInt(colDef.size.replace("%", ""), 10) ;
-                }
-            }
-            
-
-            ["sortable", "searchable", "hidden"].forEach(function(colAtt){
-                    var colValue = th.getAttribute(colAtt);
-                    if(colValue !== null){
-                        colDef[colAtt] = colValue.trim().toLowerCase() !== "false" ;
-                    }
-            });
-            if(colDef.searchable === undefined){
-                colDef.searchable = true ;
-            }
-            if(colDef.sortable === undefined){
-                colDef.sortable = true ;
-            }
-            var type = th.getAttribute("data-field-type") ;
-            colDef.fieldType = type;
-            if(!colDef.render && type){
-                colDef.render = createGridRenderer(type, colDef.field) ;
-            }
-            gridOptions.columns.push(colDef) ;
-        }) ;
-        var totalColsNoSize = gridOptions.columns.filter(function(c){ return !c.size;}).length ;
-        if(totalColsNoSize > 0){
-            //there is some column with no size, we must compute ideal size
-
-            var totalWidth = element.offsetWidth-3 ;
-            var totalPercent = 100 ;
-            var defaultColSize = "10%" ;
-            if(totalColsWithSizePx === 0){
-                //no size is defined in px, use %
-                var colPercent = (totalPercent - totalColsWithSizePercent)/totalColsNoSize ;
-                if(colPercent>0){
-                    defaultColSize = (colPercent)+"%" ;
-                }
-            }else{
-                //there is pixel column, compute in pixels
-                var percentPixels = (totalColsWithSizePercent/100) * totalWidth ;
-                var remainingWidth = totalWidth - percentPixels - totalColsWithSizePx ;
-                var colPixel = (remainingWidth / totalColsNoSize) ;
-                if(colPixel > 10){
-                    defaultColSize = colPixel + "px" ;
-                }
-            }
-
-            gridOptions.columns.forEach(function(c){ 
-                if(!c.size){
-                    c.size = defaultColSize ;
-                }
-            }) ;
-        }
-
-        var records = [] ;
-        var recid = 1 ;
-        listTr.forEach(function(tr){
-            var listTd = Array.prototype.slice.call(tr.getElementsByTagName("TD")) ;
-            if(listTd.length > 0){
-                var record = {recid: recid++} ;
-                listTd.forEach(function(td, i){
-                    var value = td.innerHTML ;
-                    if(gridOptions.columns[i].fieldType){
-                        if(gridOptions.columns[i].fieldType.indexOf("date") !== -1){
-                            value = new Date(value) ;
-                        }else if(["int", "integer", "double", "decimal", "number"].indexOf(gridOptions.columns[i].fieldType) !== -1){
-                            value = parseFloat(value) ;
-                        }
-                    }
-                    record[gridOptions.columns[i].field] = value ;
-                }) ;
-                records.push(record) ;
-            }
-        }) ;
-        if(records.length>0){
-            gridOptions.records = records ;
-        }
-
-        if(libs.w2ui[gridOptions.name]){
-            //destroy existing grid before recreate
-            libs.w2ui[gridOptions.name].destroy();
-        }
-        element.innerHTML = "" ;
-        var grid = window.jQuery(element).w2grid(gridOptions) ;
-    
-        element.getValue = function(){
-            var records = grid.records.slice() ;
-            records.forEach(function(r){
-                delete r.recid ;
-            }) ;
-            return records;
-        } ;
-        element.setValue = function(value){
-            grid.clear() ;
-            if(value){
-                value.forEach(function(d,i){
-                    if(!d.recid){
-                        if(gridOptions.recid){
-                            d.recid = d[gridOptions.recid] ;
-                        }else{
-                            d.recid = i ;
-                        }
-                    }
-                });
-                grid.add(value) ;
-            }
-        } ;
-        element.setReadOnly = function(readOnly){
-            //FIXME
-            console.log("implement read only on grid ?") ;
-        } ;
-        element.addEventListener = function(event, listener){
-            grid.on(event, function(ev){
-                if(ev.recid){
-                    ev.record = grid.get(ev.recid) ;
-                }
-                listener(ev) ;
-            }); 
-        } ;
-        //copy grid methods to the elements
-        Object.keys(Object.getPrototypeOf(grid)).concat(Object.keys(grid)).forEach(function(k){
-            if(element[k] === undefined){
-                if(typeof(grid[k]) === "function"){
-                    element[k] = function(){
-                        return grid[k].apply(grid, arguments) ;
-                    };
-                }else{
-                    Object.defineProperty(element, k, {
-                        get: function(){
-                            return grid[k] ;
-                        }
-                    }) ;
-                }
-            }
-        }) ;
     }
 
-    function createGridRenderer(type, colName){
-        if(["varchar", "text"].indexOf(type) !== -1){
-            return null;
-        }else if(["int", "integer"].indexOf(type) !== -1){
-            return "int";
-        }else if(["double", "float", "float8", "number", "decimal"].indexOf(type) !== -1){
-            return "number:2" ;
-        }else if(type === "date" || type === "timestamp"){
-            return function(record){
-                var dt = record[colName] ;
-                if(typeof(dt) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(dt)){
-                    //if is a date like "2017-07-24T22:00:00.000Z"
-                    dt = new Date(dt) ;
-                }
-                if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(dt)){
-                    //if is a date like "2017-07-24"
-                    dt = new Date(dt) ;
-                }
-                if(dt instanceof Date){
-                    //try to guess if it is a date or a date time
-                    if(dt.getHours() === 0 && dt.getMinutes() === 0 && dt.getSeconds() === 0 && dt.getMilliseconds() === 0){
-                        //the date is exactly midnight, assume it is date only data
-                        if(dt.toLocaleDateString){
-                            dt = dt.toLocaleDateString() ;
-                        }else{
-                            dt = dt.toDateString() ; //IE10...
-                        }
-                    }else{
-                        //the date has a date with time information, it is probably a data/time
-                        if(dt.toLocaleDateString){
-                            dt = dt.toLocaleDateString()+" "+dt.toLocaleTimeString() ;
-                        }else{
-                            dt = dt.toDateString()+" "+dt.toTimeString() ; //IE10...
-                        }
-                    }
-                }
-                return dt ;
-            } ;
-            //return "date:"+window.w2utils.settings.dateFormat ;
+    function createGridRenderer(type){
+        if(["int", "integer", "double", "float", "float8", "number", "decimal"].indexOf(type) !== -1){
+            return function (td, cellData/*, rowData, row, col*/) {
+                td.style.textAlign = "right" ;
+                td.innerHTML = VeloxWebView.format(cellData, type) ;
+            };
         }
-        return type;
+        return function (td, cellData/*, rowData, row, col*/) {
+            td.innerHTML = VeloxWebView.format(cellData, type) ;
+        };
     }
 
 

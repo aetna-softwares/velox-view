@@ -1,17 +1,19 @@
+/*global define*/
 ; (function (global, factory) {
-        if (typeof exports === 'object' && typeof module !== 'undefined') {
-        var VeloxScriptLoader = require("velox-scriptloader") ;
+    if (typeof exports === 'object' && typeof module !== 'undefined') {
+        var VeloxScriptLoader = require("velox-loader") ;
         module.exports = factory(VeloxScriptLoader) ;
     } else if (typeof define === 'function' && define.amd) {
-        define(['VeloxScriptLoader'], factory);
+        define(['VeloxScriptLoader', 'VeloxWebView'], factory);
     } else {
-        global.VeloxWebView.registerExtension(factory(global.veloxScriptLoader));
+        global.VeloxWebView.registerExtension(factory(global.veloxScriptLoader, global));
     }
 }(this, (function (VeloxScriptLoader) { 'use strict';
 
     var I18NEXT_VERSION = "11.3.1" ;
     var I18NEXT_XHR_VERSION = "1.5.1";
     var I18NEXT_BROWSER_DETECT_VERSION = "2.2.0";
+    var LANG_NUMBERS_VERSION = "1.0.0" ;
 
     var I18NEXT_LIB = [
         {
@@ -40,11 +42,20 @@
         }
     ];
 
+    var LANG_NUMBERS_LIB = {
+        name: "lang-numbers",
+        type: "json",
+        version: LANG_NUMBERS_VERSION,
+        cdn: "https://cdn.rawgit.com/aetna-softwares/velox-view/master/ext/lang/numbers.json",
+        bowerPath: "velox-view/ext/lang/numbers.json",
+        npmPath: "velox-view/ext/lang/numbers.json"
+    };
+
 
     /**
      * object that contains i18next instance, by default try to get the global variable
      */
-    var i18next = window.i18next ;
+    var i18next = typeof(window)!=="undefined"?window.i18next:null ;
 
     /**
      * check if we did the initialization of i18next
@@ -60,6 +71,12 @@
      * i18next extension definition
      */
     var extension = {} ;
+
+    extension.libs = [
+        I18NEXT_LIB,
+        LANG_NUMBERS_LIB,
+    ] ;
+
     extension.name = "i18n" ;
 
     extension.prepare = function(params, cb){
@@ -90,7 +107,131 @@
     extension.extendsProto.tr = function(trKey, params){
         return translate.apply(this, arguments) ;
     } ;
-            
+
+    var currentLocale = null;
+
+    /**
+     * Add extra data to localdata such as thousands and decimal delimiters
+     * 
+     * Try to rely on toLocaleString browser if supported, if not supported, the numbro lib is loaded
+     * 
+     * @param {function(Error)} callback called on finished
+     */
+    function fillLocales(callback){
+        currentLocale = {lang : getLang(), delimiters: {}} ;
+        if((99.99).toLocaleString('fr') === "99,99"){
+            //the browser support locale string
+            var localizedNumber = (1000.99).toLocaleString(currentLocale.lang) ;
+            currentLocale.delimiters.thousands = localizedNumber[1] ;
+            currentLocale.delimiters.decimal = localizedNumber[5] ;
+            callback() ;
+        }else{
+            //the browser does not support locale string, load numbro lib
+            VeloxScriptLoader.load(LANG_NUMBERS_LIB, function(err, result){
+                if(err){ return callback(err); }
+                var numbroLanguages = result[0][0] ;
+                var numbroLangName = currentLocale.lang ;
+                if(!numbroLanguages[numbroLangName]){ //lang code not found
+                    if(numbroLanguages[numbroLangName+"-"+numbroLangName.toUpperCase()]){ //try with same as region code (ex : fr-FR)
+                        numbroLangName = numbroLangName+"-"+numbroLangName.toUpperCase() ;
+                    }else{
+                        //search a lang code starting with our lang code
+                        var foundStartWith = Object.keys(numbroLanguages).some(function(l){
+                            if(l.indexOf(numbroLangName) === 0){
+                                numbroLangName = l;
+                                return true;
+                            }
+                        });
+                        if(!foundStartWith){
+                            //found nothing, fallback to en-US
+                            numbroLangName = "en-US" ;
+                        }
+                    }
+                }
+
+                var langData = numbroLanguages[numbroLangName]; 
+                currentLocale.delimiters.thousands = langData.delimiters.thousands ;
+                currentLocale.delimiters.decimal = langData.delimiters.decimal ;
+                callback() ;
+            }) ;
+        }
+    }
+
+
+    /**
+     * Format a value to display
+     * 
+     * @param {*} value - the value to format
+     * @param {string} [type] - type of value
+     */
+    function format(value, type) {
+        if (value === null || value === undefined) {
+            if(["int", "integer", "number"].indexOf(type) !== -1){
+                return "0";
+            }else if(["double", "float"].indexOf(type) !== -1){
+                return "0"+currentLocale.delimiters.decimal+"00";
+            }else{
+                return "";
+            }
+        }
+
+        if(typeof(value) === "string" && /[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}T[0-2]{1}[0-9]{1}:[0-5]{1}[0-9]{1}:[0-5]{1}[0-9]{1}.[0-9]{3}Z/.test(value)){
+            //if is a date like "2017-07-24T22:00:00.000Z"
+            value = new Date(value) ;
+        }
+        if(/[0-3]{1}[0-9]{3}-[0-1]{1}[0-9]{1}-[0-3]{1}[0-9]{1}/.test(value)){
+            //if is a date like "2017-07-24"
+            value = new Date(value) ;
+        }
+        if(value instanceof Date){
+            if(!type){
+                //try to guess if it is a date or a date time
+                if(value.getHours() === 0 && value.getMinutes() === 0 && value.getSeconds() === 0 && value.getMilliseconds() === 0){
+                    //the date is exactly midnight, assume it is date only data
+                    type = "date";
+                }else{
+                    //the date has a date with time information, it is probably a data/time
+                    type = "datetime";
+                }
+            }
+
+            if(["datetime", "timestamp", "timestamptz"].indexOf(type) !== -1){
+                if(value.toLocaleDateString){
+                    return value.toLocaleDateString(currentLocale.lang)+" "+value.toLocaleTimeString(currentLocale.lang) ;
+                }else{
+                    return value.toDateString()+" "+value.toTimeString() ; //IE10...
+                }
+            }else{
+                if(value.toLocaleDateString){
+                    return value.toLocaleDateString(currentLocale.lang) ;
+                }else{
+                    return value.toDateString() ; //IE10...
+                }
+            }
+        }
+
+        if(typeof(value)==="string" && ["int", "integer", "number", "double", "float"].indexOf(type) !== -1){
+            value = Number(value) ;
+        }
+        
+        if(typeof(value)==="number"){
+            if(["int", "integer", "number"].indexOf(type) !== -1){
+                return Math.round(type).toFixed(0).replace(/,/g, currentLocale.delimiters.thousands);
+            }else if(["double", "float"].indexOf(type) !== -1){
+                var n = value.toFixed(2);
+                n = n.substring(0, n.length-3).replace(/\B(?=(\d{3})+(?!\d))/g, currentLocale.delimiters.thousands)+ 
+                    currentLocale.delimiters.decimal+
+                    n.substring(n.length-2) ;
+                return n;
+            }else{
+                return ""+value;
+            }
+        }
+        return ""+value;
+    }
+
+    extension.extendsProto.format = format ;
+    
     extension.extendsGlobal = {} ;
 
     extension.extendsGlobal.i18n = {} ;
@@ -140,6 +281,8 @@
     extension.extendsGlobal.i18n.tr = extension.extendsProto.tr ;
     
     extension.extendsGlobal.tr = extension.extendsProto.tr ;
+    
+    extension.extendsGlobal.format = extension.extendsProto.format ;
 
     /**
      * init view translation
@@ -236,12 +379,17 @@
                 console.warn("Some translation file are missing", err) ;
             }
 
-            initListeners.forEach(function(l){
-                l() ;
-            }) ;
-            initListeners = [] ;
+            fillLocales(function(err){
+                if(err){ return callback(err) ;}
 
-            callback() ;
+                initListeners.forEach(function(l){
+                    l() ;
+                }) ;
+                initListeners = [] ;
+    
+                callback() ;
+            }) ;
+
         });
     }
 
@@ -298,7 +446,7 @@
      */
     function translate(str, params){
         if(!i18next){
-            return console.error("i18next is not yet initialized")
+            return console.error("i18next is not yet initialized");
         }
         return i18next.t.apply(i18next, arguments) ;
     }
