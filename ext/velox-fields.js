@@ -2174,16 +2174,53 @@
             info = false;
         }
 
+        var responsiveDisplay = window.jQuery.fn.dataTable.Responsive.display.childRowImmediate ;
+        if(table.hasAttribute("data-responsive-display")){
+            switch(table.getAttribute("data-responsive-display")){
+                case 'expanded':
+                    responsiveDisplay = window.jQuery.fn.dataTable.Responsive.display.childRowImmediate ;
+                    break;
+                case 'collapsed':
+                    responsiveDisplay = window.jQuery.fn.dataTable.Responsive.display.childRow ;
+                    break;
+            }
+        }
+
+        var responsiveCellRenders = {} ;
+        function renderResponsiveCells(api, rowIdx){
+            if(!responsiveCellRenders[rowIdx]) { return; }
+            var columsNumbers = Object.keys(responsiveCellRenders[rowIdx]);
+            for(var i=0; i<columsNumbers.length; i++){
+                var colNumber = columsNumbers[i] ;
+                var cellInfos = responsiveCellRenders[rowIdx][colNumber] ;
+                var span = document.getElementById(cellInfos.cellId) ;
+                if(span){
+                    if(!cellInfos.els){
+                        cellInfos.els = [] ;
+                        var cellEl = api.cell(rowIdx, cellInfos.col).node() ;
+                        while(cellEl.firstChild){
+                            var c = cellEl.firstChild ;
+                            span.appendChild(c) ;
+                            cellInfos.els.push(c) ;
+                        }
+                    }else{
+                        for(var y=0; y<cellInfos.els.length; y++){
+                            span.appendChild(cellInfos.els[y]) ;
+                        }
+                    }
+                }
+            }
+        }
+
         var gridOptions = {
             //scroller: true,
             responsive: {
                 details: {
                     type: '',
-                    display: window.jQuery.fn.dataTable.Responsive.display.childRowImmediate,
+                    display: responsiveDisplay,
                     renderer: function ( api, rowIdx, columns ) {
                         var htmlCell = '<ul data-dtr-index="'+rowIdx+'" class="dtr-details">' ;
                         var found = false ;
-                        var cellRenders = {} ;
                         for(var i=0; i<columns.length; i++){
                             var col = columns[i] ;
                             if(col.hidden && !gridOptions.columns[i].className){
@@ -2195,7 +2232,10 @@
                                     '</span> '+
                                     '<span class="dtr-data" id="'+cellId+'" data-row="'+col.rowIndex+'" data-col="'+col.columnIndex+'"></span>'+
                                 '</li>' ;
-                                cellRenders[cellId] = {row : col.rowIndex, col: col.columnIndex};
+                                if(!responsiveCellRenders[rowIdx]){ responsiveCellRenders[rowIdx] = {} ; }
+                                if(!responsiveCellRenders[rowIdx][col.columnIndex]){ responsiveCellRenders[rowIdx][col.columnIndex] = {} ; }
+                                responsiveCellRenders[rowIdx][col.columnIndex].cellId = cellId;
+                                responsiveCellRenders[rowIdx][col.columnIndex].col = col.columnIndex;
                             }
                         }
                         if(found){
@@ -2203,18 +2243,7 @@
                             //so we wait after the HTML change and do proper render in the DOM
                             //to avoid loosing all event listening we done in the cell generation
                             setTimeout(function(){
-                                var cellIds = Object.keys(cellRenders);
-                                for(var i=0; i<cellIds.length; i++){
-                                    var cellId = cellIds[i] ;
-                                    var span = document.getElementById(cellId) ;
-                                    if(span){
-                                        var cellInfos = cellRenders[cellId] ;
-                                        var cellEl = api.cell(cellInfos.row, cellInfos.col).node() ;
-                                        while(cellEl.firstChild){
-                                            span.appendChild(cellEl.firstChild) ;
-                                        }
-                                    }
-                                }
+                                renderResponsiveCells(api, rowIdx) ;
                             }, 1) ;
                             htmlCell += '</ul>' ;
                             return htmlCell;
@@ -2359,6 +2388,10 @@
                 //create only when displayed
 
                 datatable = window.jQuery(table).DataTable( gridOptions );
+
+                datatable.on("responsive-display", function(e, datatable, row, showHide, update){
+                    renderResponsiveCells(datatable, row.index()) ;
+                }) ;
 
                 for(var i=0; i<toolbars.length; i++){
                     var toolbar = toolbars[i];
