@@ -1,4 +1,4 @@
-/*global VeloxWebView */
+/*global VeloxWebView, define */
 
 ; (function (global, factory) {
         if (typeof exports === 'object' && typeof module !== 'undefined') {
@@ -25,6 +25,41 @@
 
     
     extension.extendsProto = {} ;
+
+    extension.prepare = function(params, cb){
+        //var view = this ;
+        loadDatatablesCSS();
+        cb() ;
+    } ;
+
+    var dialogCSSLoaded = false;
+    /**
+     * load the Datatables CSS
+     * 
+     * This CSS make the table take the whole height on container
+     */
+    function loadDatatablesCSS(){
+        if(dialogCSSLoaded){ return ;}
+
+        var css = ".modal-body { max-height: calc(100vh - 120px); overflow: auto; }";
+        css += ".modal-lg .modal-body { height: calc(100vh - 120px); } \n";
+        css += "@media (min-width: 992px) {"+
+            ".modal-md { "+
+            "    max-width:50% "+
+            "}"+
+        "}" ;
+
+        var head = document.getElementsByTagName('head')[0];
+        var s = document.createElement('style');
+        s.setAttribute('type', 'text/css');
+        if (s.styleSheet) {   // IE
+            s.styleSheet.cssText = css;
+        } else {                // the world
+            s.appendChild(document.createTextNode(css));
+        }
+        head.appendChild(s);
+        dialogCSSLoaded = true ;
+    }
 
     function makeDraggable($elModal){
         var $elHeader = $elModal.find(".modal-header") ;
@@ -190,6 +225,8 @@
         var modalSize = "";
         if(options.size==="small"){
             modalSize = "modal-sm";
+        }else if(options.size==="medium"){
+            modalSize = "modal-md";
         }else if(options.size==="large"){
             modalSize = "modal-lg";
         }
@@ -377,6 +414,8 @@
         var modalSize = "";
         if(options.size==="small"){
             modalSize = "modal-sm";
+        }else if(options.size==="medium"){
+            modalSize = "modal-md";
         }else if(options.size==="large"){
             modalSize = "modal-lg";
         }
