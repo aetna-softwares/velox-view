@@ -671,7 +671,7 @@
         }
         
         var parsed = parsedHTMLCache[key] ;
-        if(parsed){
+        if(parsed && parsed.parseFinished){
             return callback(null, parsed) ;
         }else{
             this.getHTML(function (html) {
@@ -744,6 +744,7 @@
 
                             asyncSeries(calls, function(err){
                                 if(err){ throw err; }
+                                parsed.parseFinished = true;
                                 callback(null, parsed) ;
                             }.bind(this)) ;
                         }.bind(this)) ;
