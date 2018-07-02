@@ -160,7 +160,6 @@
     var DECIMALJS_VERSION = "2.2.0" ;
     var FLATPICKR_VERSION = "4.5.0" ;
     var MOMENTJS_VERSION = "2.22.1" ;
-    var SELECTRIC_VERSION = "1.13.0" ;
     
     var PDFOBJECT_VERSION = "2.0.201604172" ;
     var PDFJS_VERSION = "1.9.426" ;
@@ -222,27 +221,6 @@
         }
     ];
 
-    
-    var SELECTRIC_LIB = [
-        JQUERY_LIB,
-        {
-            name: "selectric-css",
-            type: "css",
-            version: SELECTRIC_VERSION,
-            cdn: "https://cdn.rawgit.com/lcdsantos/jQuery-Selectric/$VERSION/public/selectric.css",
-            bowerPath: "selectric/public/selectric.css",
-            npmPath: "selectric/public/selectric.css",
-        },
-        {
-            name: "selectric-js",
-            type: "js",
-            version: SELECTRIC_VERSION,
-            cdn: "https://cdn.rawgit.com/lcdsantos/jQuery-Selectric/$VERSION/public/jquery.selectric.min.js",
-            bowerPath: "selectric/public/jquery.selectric.min.js",
-            npmPath: "selectric/public/jquery.selectric.min.js"
-        }
-    ];
-
     var DATATABLES_LIB = [
         JQUERY_LIB,
         [
@@ -277,7 +255,7 @@
             version: DATATABLES_VERSION,
             cdn: "https://cdn.datatables.net/$VERSION/js/jquery.dataTables.min.js",
             bowerPath: "datatables.net/js/jquery.dataTables.min.js",
-            npmPath: "datatables.net/js/jquery.dataTables.min.js",
+            npmPath: "datatables.net/js/jquery.dataTables.js",
         },
         [
             {
@@ -442,7 +420,6 @@
         INPUT_MASK_LIB,
         DECIMALJS_LIB,
         FLATPICKR_LIB,
-        SELECTRIC_LIB,
         DATATABLES_LIB,
         PDFOBJECT_LIB,
         QUILL_LIB,
@@ -956,9 +933,6 @@
             setLibToLoad("locale", getLocale) ;
             setLibToLoad("localeDate", loadDateLibLocale) ;
         } else if(fieldType === "selection" || fieldType === "select" || fieldType === "multiple"){
-            setLibToLoad("selectric", function(done){
-                loadLib("selectric", SELECTRIC_VERSION, SELECTRIC_LIB, done) ;
-            }) ;
             loadSelectCSS() ;
         } else if(fieldType === "radio" || fieldType === "checkboxes"){
             //no lib
@@ -1649,36 +1623,11 @@
     function loadSelectCSS(){
         if(selectCSSLoaded){ return ;}
 
-        var css = ".chosen-disabled .chosen-single { color: rgb(73, 80, 87); background-color: #e9ecef; border-color: rgb(206, 212, 218);}";
-        css += ".chosen-container-single.chosen-disabled a:not([href]):not([tabindex]).chosen-single:not(.chosen-default) { color: rgb(73, 80, 87) !important;  }";
-        css += ".chosen-disabled .chosen-single>div { display: none; }";
-        css += ".chosen-disabled { opacity: 1 !important; }";
-        //handle open up, see https://github.com/harvesthq/chosen/issues/155#issuecomment-194787230
-        css += " .chosen-container .chosen-drop { display: none; }";
-        css += " .chosen-container.chosen-with-drop .chosen-drop { display: block; }";
-        css += " .chosen-container.chosen-drop-up .chosen-drop {";
-        css += "  border-bottom: 0;";
-        css += "  border-radius: 4px 4px 0 0;";
-        css += "  border-top: 1px solid #aaa;";
-        css += "  bottom: 100%;";
-        css += "  box-shadow: 0 -4px 5px rgba(0, 0, 0, 0.15);";
-        css += "  top: auto; }";
-        
-        css += ".chosen-container-active.chosen-with-drop .chosen-single:not(.chosen-drop-up) {";
-        css += "  border: 1px solid #aaa;";
-        css += "  border-bottom-right-radius: 0;";
-        css += "  border-bottom-left-radius: 0; }";
-        
-        css += ".chosen-container-active.chosen-with-drop.chosen-drop-up .chosen-drop {";
-        css += "  display: flex;";
-        css += "  flex-direction: column-reverse; }";
-        
-        css += ".chosen-container-active.chosen-with-drop.chosen-drop-up .chosen-single {";
-        css += "  border-radius: 0 0 4px 4px;";
-        css += "  border-top: 0;";
-        css += "  box-shadow: 0 1px 0 #FFF inset;";
-        css += "  border-top-right-radius: 0;";
-        css += "  border-top-left-radius: 0; }";
+        var css = ".select-multiple-hidden {position: absolute; top:0; left:0; bottom:0; right:0; opacity: 0;  width: 100%; } ";
+        css += ".select-multiple-container {min-height: 30px; width: 100%; border-width: 1px; position: relative;} ";
+        css += ".select-multiple-values {line-height: 2.4em;} ";
+        css += ".select-multiple-option-selected {font-weight: bold; background-color: #EEE} ";
+        css += ".select-multiple-value-item {background: #EEE; padding: 5px; margin-right: 10px; border-radius: 2px; border: 1px solid #DDD;white-space: nowrap;} ";
         
         var head = document.getElementsByTagName('head')[0];
         var s = document.createElement('style');
@@ -1916,36 +1865,123 @@
             }
         }
 
+        var currentValue = select.value ;
 
-        var currentValue = null;
-        
-        var chosen = new window.jQuery(select).selectric({});
+        var renderValues = function(){} ;
 
-       
+        var isMultiple = select.multiple ;
+        if(isMultiple){
+            currentValue = [] ;
+            var options = select && select.options;
+            for (var i=0; i<options.length; i++) {
+                var opt = options[i];
+                if (opt.selected) {
+                    currentValue.push(opt.value);
+                }
+            }
+            var isMobile = /android|ip(hone|od|ad)/i.test(navigator.userAgent);
+            if(!isMobile){
+                select.multiple = false;
+            }
+            var divMultiple = document.createElement("DIV") ;
 
-        element.getValue = function(){
-            if(select.multiple){
-                var result = [];
-                var options = select && select.options;
-                for (var i=0; i<options.length; i++) {
-                    var opt = options[i];
-                    if (opt.selected) {
-                        result.push(opt.value);
+            var divSelection = document.createElement("DIV") ;
+            divSelection.className = "select-multiple-values" ;
+            if(element.tagName === "SELECT"){
+                var divContainer = document.createElement("DIV") ;
+                element.parentElement.insertBefore(divContainer, element) ;
+                divContainer.appendChild(element) ;
+                element = divContainer;
+            }
+            element.appendChild(divMultiple) ;
+            divMultiple.appendChild(divSelection);
+            divMultiple.appendChild(select);
+            select.className += " select-multiple-hidden" ;
+            divMultiple.className = " select-multiple-container" ;
+            renderValues = function(){
+                divSelection.innerHTML = "" ;
+                var options = select.options ;
+                for (var y=0; y<options.length; y++) {
+                    var opt = options[y];
+                    if(isMobile){
+                        opt.selected = false;
+                    }else{
+                        opt.className = opt.className.replace(" select-multiple-option-selected", "") ;
                     }
                 }
-                return result;
-            }
-            var value = select.value  ;
-            return value||null ;
+                for(var i=0; i<currentValue.length; i++){
+                    var val = currentValue[i] ;
+                    if(val){
+                        for (var y=0; y<options.length; y++) {
+                            var opt = options[y];
+                            if (opt.value === val) {
+                                if(isMobile){
+                                    opt.selected = true;
+                                }else{
+                                    opt.className += " select-multiple-option-selected" ;
+                                }
+                                var spanValue = document.createElement("SPAN") ;
+                                spanValue.setAttribute("data-value", opt.value) ;
+                                spanValue.innerText = opt.innerText ;
+                                spanValue.className = "select-multiple-value-item" ;
+                                divSelection.appendChild(spanValue) ;
+                                divSelection.appendChild(document.createTextNode(" ")) ;
+                                break;
+                            }
+                        }
+                    }
+                }
+            } ;
+            select.addEventListener("change", function(){
+                if(isMobile){
+                    var options = select.options ;
+                    currentValue = [];
+                    for (var y=0; y<options.length; y++) {
+                        if(options[y].selected){
+                            currentValue.push(options[y].value) ;
+                        }
+                    }
+                }else{
+                    var chosenValue = select.value;
+                    if(chosenValue){
+                        var removed = false ;
+                        for(var i=0; i<currentValue.length; i++){
+                            var val = currentValue[i] ;
+                            if(val === chosenValue){
+                                currentValue.splice(i, 1) ;
+                                removed = true;
+                                break;
+                            }
+                        }
+                        if(!removed){
+                           currentValue.push(chosenValue) ;
+                        }
+                        select.value = "" ;
+                    }
+                }
+                renderValues();
+                triggerEvent(element, "change") ;
+            }) ;
+            renderValues();
+        }else{
+            select.addEventListener("change", function(){
+                currentValue = select.value ;
+                triggerEvent(element, "change") ;
+            }) ;
+        }
+
+
+
+        element.getValue = function(){
+            return currentValue||null ;
         } ;
         element.setValue = function(value){
             currentValue = value ;
-            if(select.multiple){
-                var options = select && select.options;
-                for (var i=0; i<options.length; i++) {
-                    var opt = options[i];
-                    opt.selected = value && value.indexOf(opt.value) !== -1 ;
+            if(isMultiple){
+                if(!value){
+                    currentValue = [] ;
                 }
+                renderValues() ;
             }else{
                 if(value === undefined || value === null){
                     select.value = null;
@@ -1953,7 +1989,6 @@
                     select.value = value;
                 }
             }
-            chosen.selectric('refresh');
         } ;
         element.setReadOnly = function(readOnly){
             if(readOnly) {
@@ -1961,7 +1996,6 @@
             }else{
                 select.disabled = false;
             }
-            chosen.selectric('refresh');
             setReadOnly(element, readOnly) ;
         } ;
         element.setRequired = function(readOnly){
@@ -1978,7 +2012,7 @@
             if(!isEnabled){
                 //remove disabled value if already selected
                 var currentValue = element.getValue() ;
-                if(select.multiple){
+                if(isMultiple){
                     var indexVal = currentValue.indexOf(value) ;
                     if(indexVal !== -1){
                         currentValue.splice(indexVal, 1) ;
@@ -1990,16 +2024,16 @@
                     }
                 }
             }
-            chosen.selectric('refresh');
+            renderValues() ;
         } ;
         element.setOptions = function(options){
             select.innerHTML = "";
-            //if(!select.multiple){
+            if(!isMultiple || !isMobile){
                 var emptyOption = document.createElement("OPTION") ;
                 emptyOption.value = "";
                 emptyOption.innerHTML = "&nbsp;" ;
                 select.appendChild(emptyOption) ;
-            // }
+            }
             for(var i=0; i<options.length; i++){
                 var opt = document.createElement("OPTION") ;
                 opt.value = options[i].id;
@@ -2011,7 +2045,7 @@
                 }
                 select.appendChild(opt) ;
             }
-            chosen.selectric('refresh');
+            renderValues() ;
         } ;
         element.getOptions = function(){
             var opts = [] ;
@@ -2036,11 +2070,7 @@
             });
         }
 
-        ["change"].forEach(function(eventName){
-            chosen.on("selectric-"+eventName, function(ev){
-                triggerEvent(element, eventName) ;
-            }) ;
-        }) ;
+        
 
     }
 

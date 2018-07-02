@@ -279,10 +279,14 @@
                 if(colDef.type === "multiple"){
                     select.multiple = true;
                 }
-                var emptyOption = document.createElement("OPTION") ;
-                emptyOption.value = "";
-                emptyOption.innerHTML = "&nbsp;" ;
-                select.appendChild(emptyOption) ;
+                var isMobile = /android|ip(hone|od|ad)/i.test(navigator.userAgent);
+                
+                if(!select.multiple || !isMobile){
+                    var emptyOption = document.createElement("OPTION") ;
+                    emptyOption.value = "";
+                    emptyOption.innerHTML = "&nbsp;" ;
+                    select.appendChild(emptyOption) ;
+                }
             
                 element.appendChild(select) ;
                 if(colDef.values && Array.isArray(colDef.values)){
