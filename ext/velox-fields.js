@@ -239,7 +239,7 @@
             version: SELECTRIC_VERSION,
             cdn: "https://cdn.rawgit.com/lcdsantos/jQuery-Selectric/$VERSION/public/jquery.selectric.min.js",
             bowerPath: "selectric/public/jquery.selectric.min.js",
-            npmPath: "selectric/public/jquery.selectric.js"
+            npmPath: "selectric/public/jquery.selectric.min.js"
         }
     ];
 
@@ -276,8 +276,8 @@
             type: "js",
             version: DATATABLES_VERSION,
             cdn: "https://cdn.datatables.net/$VERSION/js/jquery.dataTables.min.js",
-            bowerPath: "datatables.net/js/jquery.dataTables.js",
-            npmPath: "datatables.net/js/jquery.dataTables.js",
+            bowerPath: "datatables.net/js/jquery.dataTables.min.js",
+            npmPath: "datatables.net/js/jquery.dataTables.min.js",
         },
         [
             {
