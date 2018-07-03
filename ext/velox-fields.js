@@ -992,8 +992,17 @@
      * @param {string} fieldSize the field size
      * @param {object} fieldOptions field options map (from element attributes)
      * @param {function(Error)} callback called when the field is created
-     */
+     */ 
     function _createField(element, fieldType, fieldSize, fieldOptions, view){
+        view.on("render", function(){
+            //after render the element attributes may have changed, we must update the field
+            if(element.setReadOnly){
+                element.setReadOnly(element.hasAttribute("readonly")) ;
+            }
+            if(element.setRequired){
+                element.setRequired(element.hasAttribute("required")) ;
+            }
+        }) ;
         if(fieldType === "varchar" || fieldType==="text" || fieldType === "string" || fieldType === "password"){
             createTextField(element, fieldType, fieldSize, fieldOptions) ;
         } else if(fieldType === "int" || fieldType === "integer" || fieldType==="number" || fieldType==="numeric" || fieldType==="decimal" || 
@@ -1624,7 +1633,8 @@
         if(selectCSSLoaded){ return ;}
 
         var css = ".select-multiple-hidden {position: absolute; top:0; left:0; bottom:0; right:0; opacity: 0;  width: 100%; } ";
-        css += ".select-multiple-container {min-height: 30px; width: 100%; border-width: 1px; position: relative;} ";
+        css += ".select-multiple-container {min-height: 35px; width: 100%; border-width: 1px; position: relative;} ";
+        css += ".readonly .select-multiple-container {background: #e9ecef;} ";
         css += ".select-multiple-values {line-height: 2.4em;} ";
         css += ".select-multiple-option-selected {font-weight: bold; background-color: #EEE} ";
         css += ".select-multiple-value-item {background: #EEE; padding: 5px; margin-right: 10px; border-radius: 2px; border: 1px solid #DDD;white-space: nowrap;} ";
