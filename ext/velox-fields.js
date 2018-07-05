@@ -2226,6 +2226,11 @@
             }
         }
 
+        var responsiveOpeningIndex = 0;
+        if(table.hasAttribute("data-responsive-opening-index")){
+            responsiveOpeningIndex = Number(table.getAttribute("data-responsive-opening-index")) ;
+        }
+
         var responsiveCellRenders = {} ;
         function renderResponsiveCells(api, rowIdx){
             if(!responsiveCellRenders[rowIdx]) { return; }
@@ -2257,6 +2262,7 @@
             responsive: {
                 details: {
                     type: '',
+                    target: responsiveOpeningIndex,
                     display: responsiveDisplay,
                     renderer: function ( api, rowIdx, columns ) {
                         var htmlCell = '<ul data-dtr-index="'+rowIdx+'" class="dtr-details">' ;
@@ -2469,6 +2475,22 @@
                     eventListeners[event].forEach(function(listener){
                         if(event === "rowClick"){
                             window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
+                                if(ev.detail !== 1){ return; }
+                                if(ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
+                                    return; //click on a button on the line, don't consider as a row click
+                                }
+                                var rowTr = ev.currentTarget ;
+                                if(rowTr.className.indexOf("child") !== -1){
+                                    //this is responsive child row
+                                    rowTr = rowTr.previousSibling ;
+                                }
+                                var data = datatable.row( rowTr ).data();
+                                ev.rowData = data;
+                                listener.bind(this)(ev) ;
+                            } );
+                        }
+                        if(event === "rowDblClick"){
+                            window.jQuery(element).find("tbody").on('dblclick', 'tr', function (ev) {
                                 if(ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
                                     return; //click on a button on the line, don't consider as a row click
                                 }
