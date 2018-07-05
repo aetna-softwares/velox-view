@@ -41,7 +41,7 @@
     function loadDatatablesCSS(){
         if(dialogCSSLoaded){ return ;}
 
-        var css = ".modal-body { max-height: calc(100vh - 60@px); overflow: auto; }";
+        var css = ".modal-body { max-height: calc(100vh - 60px); overflow: auto; }";
         css += ".modal-lg .modal-body { height: calc(100vh - 60px); } \n";
         css += "@media (min-width: 992px) {"+
             ".modal-md { "+
@@ -428,12 +428,15 @@
             modalSize = "modal-lg";
         }
 
-        
+        var modalHeaderClass = "bg-light" ;
+        if(options.headerClass){
+            modalHeaderClass = options.headerClass ;
+        }
 
         var modalHtml = '<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
         '  <div class="modal-dialog modal-dialog-centered '+modalSize+'" role="document">'+
         '    <div class="modal-content">'+
-        '      <div class="modal-header bg-secondary">'+
+        '      <div class="modal-header '+modalHeaderClass+'">'+
         '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>';
         if(options.closeable === true || options.closeable === undefined){
             modalHtml += '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
@@ -441,7 +444,7 @@
             '        </button>' ;
         } 
         modalHtml += '      </div>'+
-        '      <div class="modal-body">'+
+        '      <div class="modal-body p-2">'+
         message.replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+
