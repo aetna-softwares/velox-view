@@ -41,8 +41,8 @@
     function loadDatatablesCSS(){
         if(dialogCSSLoaded){ return ;}
 
-        var css = ".modal-body { max-height: calc(100vh - 120px); overflow: auto; }";
-        css += ".modal-lg .modal-body { height: calc(100vh - 120px); } \n";
+        var css = ".modal-body { max-height: calc(100vh - 60@px); overflow: auto; }";
+        css += ".modal-lg .modal-body { height: calc(100vh - 60px); } \n";
         css += "@media (min-width: 992px) {"+
             ".modal-md { "+
             "    max-width:50% "+
@@ -220,6 +220,13 @@
             this.closePopup() ;
         } ;
 
+        this.show = function(){
+            if(this.container){
+                if(this.container.style.display === "none"){
+                    this.container.style.display = ""; 
+                }
+            }
+        } ;
         
 
         var modalSize = "";
@@ -268,6 +275,7 @@
             }
             $modal.on('shown.bs.modal', function () {
                 this.emit("popupOpen") ;
+                this.emit("displayed", {view : this}, this, true);  
                 callback() ;
             }.bind(this)) ;
         }.bind(this)) ;
