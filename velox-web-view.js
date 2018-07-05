@@ -1759,12 +1759,14 @@
                     bindData = this.format(bindData) ;
                     if(el.tagName === "IFRAME"){
                         if(!el.contentWindow){
-                            el.addEventListener("load", function(){
-                                while(el.contentWindow.document.firstChild){
-                                    el.contentWindow.document.removeChild(el.contentWindow.document.firstChild) ;
-                                }
-                                el.contentWindow.document.write(bindData) ;
-                            });
+                            (function(bindData){
+                                el.addEventListener("load", function(){
+                                    while(el.contentWindow.document.firstChild){
+                                        el.contentWindow.document.removeChild(el.contentWindow.document.firstChild) ;
+                                    }
+                                    el.contentWindow.document.write(bindData) ;
+                                });
+                            })(bindData) ;
                         }else{
                             while(el.contentWindow.document.firstChild){
                                 el.contentWindow.document.removeChild(el.contentWindow.document.firstChild) ;
