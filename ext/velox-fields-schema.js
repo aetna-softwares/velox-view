@@ -474,8 +474,12 @@
                 tr.appendChild(th) ;
                 th.setAttribute("data-field-name", colDef.name) ;
 
-                var innerHTML = prepareGridThInnerHTML(tableName, colDef) ;
-                th.innerHTML = innerHTML ;
+                th.appendChild(prepareGridThLabel(tableName, colDef)) ;
+                var scriptEl = prepareGridThRenderScript(tableName, colDef) ;
+                if(scriptEl){
+                    th.appendChild(scriptEl) ;
+                }
+
                 th.setAttribute("data-field-type", colDef.type) ;
                 if(colDef.options){
                     Object.keys(colDef.options).forEach(function(k){
@@ -505,18 +509,21 @@
                         }) ;
                     }
                     if(!th.innerHTML){
-                        var innerHTML = prepareGridThInnerHTML(tableName, colDef);
-                        th.innerHTML = innerHTML ;
+                        th.appendChild(prepareGridThLabel(tableName, colDef)) ;
+                        var scriptEl = prepareGridThRenderScript(tableName, colDef) ;
+                        if(scriptEl){
+                            th.appendChild(scriptEl) ;
+                        }
                     }else{
                         if(th.children.length === 1 && th.children[0].tagName === "SCRIPT"){
                             //only a script renderer but no label
-                            var label = document.createElement("LABEL") ;
-                            if(VeloxWebView.i18n){
-                                label.innerHTML = VeloxWebView.i18n.tr("fields."+tableName+"."+colDef.name) ;
-                            }else{
-                                label.innerHTML = colDef.label || colDef.name ;
+                            th.appendChild(prepareGridThLabel(tableName, colDef)) ;
+                        }else if(th.children.length === 1 && th.children[0].tagName === "LABEL"){
+                            //only a label but no renderer
+                            var scriptEl = prepareGridThRenderScript(tableName, colDef) ;
+                            if(scriptEl){
+                                th.appendChild(scriptEl) ;
                             }
-                            th.appendChild(label) ;
                         }
                     }
                 }
@@ -524,14 +531,18 @@
         }
     }
 
-    function prepareGridThInnerHTML(table, colDef){
-        var innerHTML = "" ;
+    function prepareGridThLabel(table, colDef){
+        var label = document.createElement("LABEL") ;
         if(VeloxWebView.i18n){
-            innerHTML = VeloxWebView.i18n.tr("fields."+table+"."+colDef.name) ;
+            label.innerHTML = VeloxWebView.i18n.tr("fields."+table+"."+colDef.name) ;
         }else{
-            innerHTML = colDef.label || colDef.name ;
+            label.innerHTML = colDef.label || colDef.name ;
         }
-        
+        return label;
+    }
+    
+    function prepareGridThRenderScript(table, colDef){
+        var scriptEl = document.createElement("SCRIPT") ;
         if(colDef.values === "2one"){
             // var values = getPossibleValues(table, colDef.name);
             // if(values){
@@ -546,27 +557,23 @@
             // }
             
         }else if(Array.isArray(colDef.values)){
-            var script = "<script>";
+            var script = "";
             if(VeloxWebView.i18n){
                 script += 'return VeloxWebView.i18n.tr("fields.values.'+table+'.'+colDef.name+'."+data) ;' ;
             }else{
                 script += "return record['"+colDef.name+"'] ;" ;
             }
-            script += "</script>" ;
-            innerHTML = script + innerHTML ;
-            return innerHTML ;
+            scriptEl.innerHTML = script ;
+            return scriptEl ;
         }else if(typeof(colDef.values) === "object" ){
-            var script = "<script>";
+            var script = "";
             script += 'var values = '+JSON.stringify(colDef.values) +" ;" ;
             script += "return values[record['"+colDef.name+"']] ;" ;
-            script += "</script>" ;
-            innerHTML = script + innerHTML ;
-            return innerHTML ;
-        }else{
-            return innerHTML ;
-        }           
+            scriptEl.innerHTML = script ;
+            return scriptEl ;
+        } 
+        return null ;
     }
-
 
     return extension ;
 

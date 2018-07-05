@@ -2472,7 +2472,12 @@
                                 if(ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
                                     return; //click on a button on the line, don't consider as a row click
                                 }
-                                var data = datatable.row( this ).data();
+                                var rowTr = ev.currentTarget ;
+                                if(rowTr.className.indexOf("child") !== -1){
+                                    //this is responsive child row
+                                    rowTr = rowTr.previousSibling ;
+                                }
+                                var data = datatable.row( rowTr ).data();
                                 ev.rowData = data;
                                 listener.bind(this)(ev) ;
                             } );
