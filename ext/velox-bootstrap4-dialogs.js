@@ -101,7 +101,7 @@
         '          <span aria-hidden="true">&times;</span>'+
         '        </button>'+
         '      </div>'+
-        '      <div class="modal-body">'+
+        '      <div class="modal-body p-2">'+
         message.replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+
@@ -150,7 +150,7 @@
         '          <span aria-hidden="true">&times;</span>'+
         '        </button>'+
         '      </div>'+
-        '      <div class="modal-body">'+
+        '      <div class="modal-body p-3">'+
         message.replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+

@@ -2334,6 +2334,179 @@
     };
 
     /**
+     * Check form user input. It check all HTML 5 controls (required, format, etc...)
+     * To add custom validations, add functions in view.validations. It can take a callback or not.
+     * 
+     * example :
+     * view.validations = [];
+     * view.validations.push(function(ctx){
+     *      if(ctx.data.foo === "bar"){
+     *          //return simple error
+     *          return "Foo should not equals to bar" ;
+     *      }
+     * });
+     * 
+     * view.validations.push(function(ctx){
+     *      if(ctx.data.foo === "bar"){
+     *          //return an error linked to an element (will put the field in red with error message)
+     *          return {el: view.EL.foo, msg: "Foo should not equals to bar"} ;
+     *      }
+     * });
+     * 
+     * view.validations.push(function(ctx, callback){
+     *      //if your validation function has a callback, it is expected to be an async control so we wait for callback
+     *      doSomeThingAsync(function(err){
+     *          if(err){
+     *              return callback(err) ;
+     *          }
+     *          callback() ;
+     *      })
+     * });
+     * 
+     * @param {HTMLElement} [form] - the <form> to check (default to the first found form if not given)
+     * @param {function[]} [customValidations] - Array of custom validation (came in addition to the view.validations array)
+     * @param {function} callback
+     */
+    VeloxWebView.prototype.checkForm = function(form, customValidations, callback){
+        if(typeof(form) === "function"){
+            callback = form;
+            customValidations = [];
+            if(this.viewRootEl.tagName === "FORM"){
+                form = this.viewRootEl;
+            }else{
+                form = this.viewRootEl.querySelector("form");
+                if(!form){
+                    throw "Call check form but not form in the view !" ;
+                }
+            }
+        } else if(typeof(customValidations) === "function"){
+            callback = customValidations;
+            customValidations = [];
+        }
+        var dataBeforeModif = JSON.parse(JSON.stringify(this.getBoundObject() || {})) ;
+        var dataAfterModif = JSON.parse(JSON.stringify(dataBeforeModif)) ;
+        var viewData = this.updateData(dataAfterModif) ;
+
+        form.className += " was-validated" ;
+
+        var errors = [] ;
+        var calls = [] ;
+        var validations = (customValidations || []).concat(this.validations || []) ;
+        validations.forEach(function(validation){
+            calls.push(function(cb){
+                if(validation.length === 2){
+                    //with callback
+                    validation({form: form, data: viewData, dataBeforeModif : dataBeforeModif}, function(err, detectedErrors){
+                        if(err){ return cb(err) ;}
+                        if(!detectedErrors){ detectedErrors = [] ;}
+                        if(detectedErrors && !Array.isArray(detectedErrors)){
+                            detectedErrors = [detectedErrors];
+                        }
+                        detectedErrors.forEach(function(e, i){
+                            if(typeof(e) === "string"){
+                                detectedErrors[i]= {msg : e} ;
+                            }
+                        }) ;
+                        errors = errors.concat(detectedErrors||[]) ;
+                        cb() ;
+                    }) ;
+                }else{
+                    var detectedErrors = validation(viewData);
+                    if(!detectedErrors){ detectedErrors = [] ;}
+                    if(detectedErrors && !Array.isArray(detectedErrors)){
+                        detectedErrors = [detectedErrors];
+                    }
+                    detectedErrors.forEach(function(e, i){
+                        if(typeof(e) === "string"){
+                            detectedErrors[i]= {msg : e} ;
+                        }
+                    }) ;
+                    errors = errors.concat(detectedErrors||[]) ;
+                    cb() ;
+                }
+            }.bind(this)) ;
+        }.bind(this)) ;
+
+        VeloxWebView._asyncSeries(calls, function(err){
+            if(err){ return callback(err) ;}
+
+            var invalids = form.querySelectorAll(":invalid") ;
+            for(var i=0; i<invalids.length; i++){
+                var invalidEl = invalids[i] ;
+                if(invalidEl.isManualError){
+                    delete invalidEl.isManualError ;
+                    invalidEl.setCustomValidity("");
+                }
+            }
+
+            var globalErrors = [] ;
+            for(var i=0; i<errors.length; i++){
+                var error = errors[i] ;
+                if(error.field){
+                    var elField = form.querySelector('[data-field-def="'+error.field+'"] input') ;
+                    if(elField){
+                        elField.setCustomValidity(error.msg);
+                        elField.isManualError = true ;
+                    }else{
+                        globalErrors.push(error) ;
+                    }
+                }else{
+                    globalErrors.push(error) ;
+                }
+            }
+
+            var formValidity = form.checkValidity() ;
+
+            var invalids = form.querySelectorAll(":invalid") ;
+            for(var i=0; i<invalids.length; i++){
+                var invalidEl = invalids[i] ;
+                var message = invalidEl.validationMessage ;
+                if(message){
+                    var parentEl = invalidEl.closest("[data-bind]") ;
+                    var feedbackEl = parentEl.querySelector(".invalid-feedback") ;
+                    if(feedbackEl){
+                        feedbackEl.innerHTML = message ;
+                    }
+                    var label = parentEl.getAttribute("data-field-label-error")||parentEl.getAttribute("data-field-label") ;
+                    globalErrors.push({
+                        el: parentEl,
+                        field: parentEl.getAttribute("data-bind"),
+                        fieldDef: parentEl.getAttribute("data-field-def"),
+                        label: label,
+                        msg: (label?label+" : ":"")+message
+                    }) ;
+                }
+            }
+
+            if(globalErrors.length > 0){
+                var msg = globalErrors.map(function(e){ return "<p>"+e.msg+"</p>" ;}).join("") ;
+                this.formError(msg) ;
+            }
+            callback(null, formValidity&&errors.length === 0) ;
+        }.bind(this)) ;
+    } ;
+
+    VeloxWebView.prototype.formError = function(msg){
+        var formError = this.viewRootEl.querySelector("[data-form-error]") ;
+        if(formError){
+            formError.innerHTML = msg ;
+        }else{
+            this.error(msg) ;
+        }
+    } ;
+
+    VeloxWebView.prototype.clearFormError = function(){
+        var errorFields = this.viewRootEl.querySelectorAll(".has-error");
+        for(var i=0; i<errorFields.length; i++){
+            errorFields[i].className = errorFields[i].className.replace(/has-error/g, "") ;
+        }
+        var formError = this.viewRootEl.querySelector("[data-form-error]") ;
+        if(formError){
+            formError.innerHTML = "" ;
+        }
+    } ;
+
+    /**
 	 * Start wait animation
      * 
      * @param {string} [message] the message to display
