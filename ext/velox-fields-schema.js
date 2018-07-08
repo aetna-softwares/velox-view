@@ -403,6 +403,10 @@
                 return schema[otherTable].pk.indexOf(c.name) === -1 ;
             }).map(function(c){ return c.name; }).slice(0,3) ;
         }
+
+        if(!Array.isArray(colDef.labelField)){
+            colDef.labelField = [colDef.labelField] ;
+        }
         
         var orderBy = colDef.orderBy ;
 
