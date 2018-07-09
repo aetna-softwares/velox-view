@@ -353,6 +353,14 @@
                 cdn: "https://cdn.datatables.net/scroller/1.4.4/js/dataTables.scroller.min.js",
                 bowerPath: "datatables.net-scroller/js/dataTables.scroller.min.js",
                 npmPath: "datatables.net-scroller/js/dataTables.scroller.min.js",
+            },
+            {
+                name: "datatables-select-js",
+                type: "js",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/select/1.2.6/js/dataTables.select.min.js",
+                bowerPath: "datatables.net-select/js/dataTables.select.min.js",
+                npmPath: "datatables.net-select/js/dataTables.select.min.js",
             }
         ],
         {
@@ -2161,7 +2169,7 @@
         }
         var table = subTables[0];
 
-        var listThead = table.getElementsByTagName("THEAD") ;
+        //var listThead = table.getElementsByTagName("THEAD") ;
         //var thead = listThead.length>0?listThead[0]:null ;
 
         var toolbars = table.querySelectorAll("[data-toolbar]") ;
@@ -2202,16 +2210,21 @@
                 title: title,
             },
         ] ;
-        if(table.hasAttribute("no-toolbar")){
+        if(table.hasAttribute("no-toolbar") || table.hasAttribute("data-no-toolbar")){
             buttons = [];
         }
         var searching = true;
-        if(table.hasAttribute("no-search")){
+        if(table.hasAttribute("no-search") || table.hasAttribute("data-no-search")){
             searching = false;
         }
         var info = true;
-        if(table.hasAttribute("no-footer")){
+        if(table.hasAttribute("no-footer") || table.hasAttribute("data-no-footer")){
             info = false;
+        }
+
+        var checkBoxSelection = false;
+        if(table.hasAttribute("data-select-checkbox")){
+            checkBoxSelection = true;
         }
 
         var responsiveDisplay = window.jQuery.fn.dataTable.Responsive.display.childRowImmediate ;
@@ -2312,6 +2325,95 @@
             columns: [],
             order: []
         } ;
+
+
+        var isCheckboxMouseDown = false;
+        var isCheckboxMouseCheck = false;
+        if(checkBoxSelection){
+            window.jQuery("body").on("mouseup", function(){
+                isCheckboxMouseDown = false;
+            });
+            gridOptions.select = {
+                style: 'multi'
+            } ;
+            gridOptions.columns.push({
+                title: '<input type="checkbox" class="dt-col-checkbox-select-all">',
+                searchable: false,
+                orderable: false,
+                width: "12px",
+                data: null,
+                createdCell : function (td, cellData, rowData, row, col) {
+                    var inputCheckBox = document.createElement("INPUT") ;
+                    inputCheckBox.type = "checkbox" ;
+                    inputCheckBox.className = "dt-col-checkbox" ;
+                    inputCheckBox.setAttribute("row", row) ;
+                    
+                    function inputCheckboxClick(checkbox){
+                        var row = Number(checkbox.getAttribute("row")) ;
+                        if(!checkbox.checked){
+                            datatable.row( row ).select();
+                        }else{
+                            datatable.row( row ).deselect();
+                        }
+                        var rows = datatable.rows({ 'search': 'applied' }).nodes();
+                        var allUnchecked = true ;
+                        var allChecked = true ;
+                        for(var z=0; z<rows.length; z++){
+                            var checkboxRow = rows[z].querySelector('input[type="checkbox"].dt-col-checkbox') ;
+                            if(checkboxRow.checked){
+                                allUnchecked = false;
+                            }else{
+                                allChecked = false ;
+                            }
+                            if(!allChecked && !allUnchecked){
+                                break;
+                            }
+                        }
+                        var selectAll = element.querySelector(".dataTables_scrollHeadInner .dt-col-checkbox-select-all");
+                        if(allChecked){
+                            selectAll.checked = true ;
+                            selectAll.indeterminate = false;
+                        }else if(allUnchecked){
+                            selectAll.checked = false ;
+                            selectAll.indeterminate = false;
+                        }else{
+                            selectAll.checked = true ;
+                            selectAll.indeterminate = true;
+                        }
+                    }
+
+                    inputCheckBox.addEventListener("click", function(){
+                        inputCheckboxClick(this) ;
+                    }) ;
+
+                    inputCheckBox.addEventListener("mousedown", function(){
+                        isCheckboxMouseDown = true; 
+                        isCheckboxMouseCheck = !this.checked;
+                    }) ;
+                    td.addEventListener("mouseover", function(){
+                        var checkbox = td.querySelector("input") ;
+                        if(isCheckboxMouseDown && checkbox.checked !== isCheckboxMouseCheck){ 
+                            inputCheckboxClick(checkbox) ;
+                            checkbox.checked = isCheckboxMouseCheck; 
+                        }
+                    }) ;
+                    inputCheckBox.addEventListener("mouseout", function(){
+                        if(isCheckboxMouseDown && this.checked !== isCheckboxMouseCheck){ 
+                            inputCheckboxClick(this) ;
+                            this.checked = isCheckboxMouseCheck;
+                        }
+                    }) ;
+                    td.innerHTML = "";
+                    var div = document.createElement("DIV");
+                    div.style.width = "10px" ;
+                    div.appendChild(inputCheckBox) ;
+                    td.appendChild(div) ;
+                }
+            });
+
+            var thCheckbox = document.createElement("TH") ;
+            listTh[0].parentElement.insertBefore(thCheckbox, listTh[0]) ;
+        }
 
 
     //     $($.fn.dataTable.tables()[0]).DataTable()
@@ -2439,6 +2541,25 @@
                     renderResponsiveCells(datatable, row.index()) ;
                 }) ;
 
+                if(checkBoxSelection){
+                    datatable.on( 'draw.dt', function () {
+                        element.querySelector(".dataTables_scrollHeadInner .dt-col-checkbox-select-all").addEventListener("click", function(){
+                            // Get all rows with search applied
+                            var rows = datatable.rows({ 'search': 'applied' }).nodes();
+                            // Check/uncheck checkboxes for all rows in the table
+                            window.jQuery('input[type="checkbox"].dt-col-checkbox', rows).prop('checked', this.checked);
+
+                            if(this.checked){
+                                datatable.rows({ 'search': 'applied' }).select();
+                            }else{
+                                datatable.rows({ 'search': 'applied' }).deselect();
+                            }
+
+                        }) ;
+                    } );
+                    
+                }
+
                 for(var i=0; i<toolbars.length; i++){
                     var toolbar = toolbars[i];
         
@@ -2476,7 +2597,7 @@
                         if(event === "rowClick"){
                             window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
                                 if(ev.detail !== 1){ return; }
-                                if(ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
+                                if(ev.target.tagName === "INPUT" || ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
                                     return; //click on a button on the line, don't consider as a row click
                                 }
                                 var rowTr = ev.currentTarget ;
@@ -2491,7 +2612,7 @@
                         }
                         if(event === "rowDblClick"){
                             window.jQuery(element).find("tbody").on('dblclick', 'tr', function (ev) {
-                                if(ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
+                                if(ev.target.tagName === "INPUT" || ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
                                     return; //click on a button on the line, don't consider as a row click
                                 }
                                 var rowTr = ev.currentTarget ;
@@ -2550,6 +2671,7 @@
                 var row = value[i] ;
                 for(var y=0; y<gridOptions.columns.length; y++){
                     var fieldName = gridOptions.columns[y].data ;
+                    if(!fieldName){ continue; }
                     var path = fieldName.split(".") ;
                     var obj = row ;
                     while(path.length>0){
@@ -2584,6 +2706,13 @@
             if(!datatable){
                 return ;
             }
+        } ;
+        element.getSelection = function(){
+            var selection = [] ;
+            if(datatable){
+                selection = Array.prototype.slice.apply(datatable.rows( { selected: true } ).data()) ;
+            }
+            return selection ;
         } ;
     }
 
