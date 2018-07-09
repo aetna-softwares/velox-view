@@ -357,6 +357,9 @@
     function initI18Next(options, callback){
         var opts = {
             fallbackLng: 'en',
+            detection: {
+                order: ['querystring', 'navigator', 'htmlTag', 'path', 'subdomain'],
+            },
             backend: {
                 loadPath: 'locales/{{lng}}.json',
             }
