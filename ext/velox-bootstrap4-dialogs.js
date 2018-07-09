@@ -47,6 +47,7 @@
             ".modal-md { "+
             "    max-width:50% "+
             "}"+
+            ".modal-lg .modal-body { height: calc(100vh - 120px); }"+
         "}" ;
 
         var head = document.getElementsByTagName('head')[0];
