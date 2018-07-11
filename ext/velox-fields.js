@@ -841,7 +841,7 @@
         loadLibs(function(err){
             if(err){ return callback(err) ;}
 
-            var elements = params.doc.querySelectorAll("[data-cell-view]");
+            var elements = Array.prototype.slice.apply(params.doc.querySelectorAll("[data-cell-view]"));
             var compiles = [] ;
             this.cellViews = {} ;
             elements.forEach(function(el, i){
