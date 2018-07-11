@@ -1078,6 +1078,7 @@
         this.elements = null;
         this.initDone = false;
         this.boundElements = null;
+        this.listeners = {};
     } ;
 
     /**
