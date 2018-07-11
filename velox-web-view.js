@@ -1761,17 +1761,11 @@
                         if(!el.contentWindow){
                             (function(bindData){
                                 el.addEventListener("load", function(){
-                                    while(el.contentWindow.document.firstChild){
-                                        el.contentWindow.document.removeChild(el.contentWindow.document.firstChild) ;
-                                    }
-                                    el.contentWindow.document.write(bindData) ;
+                                    el.contentWindow.document.body.innerHTML = bindData ;
                                 });
                             })(bindData) ;
                         }else{
-                            while(el.contentWindow.document.firstChild){
-                                el.contentWindow.document.removeChild(el.contentWindow.document.firstChild) ;
-                            }
-                            el.contentWindow.document.write(bindData) ;
+                            el.contentWindow.document.body.innerHTML = bindData ;
                         }
                     }else{
                         if(boundEl.isHTML){
