@@ -250,7 +250,7 @@
             '        </button>' ;
         } 
         modalHtml += '      </div>'+
-        '      <div class="modal-body">'+
+        '      <div class="modal-body p-2">'+
         '      </div>'+
         '    </div>'+
         '  </div>'+
