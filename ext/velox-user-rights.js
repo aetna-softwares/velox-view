@@ -1,3 +1,4 @@
+/*global define*/
 ; (function (global, factory) {
         if (typeof exports === 'object' && typeof module !== 'undefined') {
         var VeloxScriptLoader = require("velox-scriptloader") ;
@@ -7,7 +8,7 @@
     } else {
         global.VeloxWebView.registerExtension(factory(global.veloxScriptLoader));
     }
-}(this, (function (VeloxScriptLoader) { 'use strict';
+}(this, (function (/*VeloxScriptLoader*/) { 'use strict';
 
     /**
      * This extension aims to run with VeloxUserManagment system
@@ -49,19 +50,20 @@
                 user = JSON.parse(strUser) ;
                 var userHighestLevel = Number.MIN_VALUE ;
                 var userLowestLevel = Number.MAX_VALUE ;
+                if(user.profile){
+                    userLowestLevel = user.profile.level ;
+                    userHighestLevel = user.profile.level ;
+                }
                 if(user.realms && user.realms.length > 0){
                     for(var i=0; i<user.realms.length; i++){
                         var r = user.realms[i] ;
-                        if(r.profile.level < userLowestLevel){
+                        if(r.profile && r.profile.level < userLowestLevel){
                             userLowestLevel = r.profile.level ;
                         }
-                        if(r.profile.level > userHighestLevel){
+                        if(r.profile && r.profile.level > userHighestLevel){
                             userHighestLevel = r.profile.level ;
                         }
                     }
-                }else if(user.profile){
-                    userLowestLevel = user.profile.level ;
-                    userHighestLevel = user.profile.level ;
                 }
                 view.user = user ;
                 view.userHighestLevel = userHighestLevel ;
