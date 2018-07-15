@@ -472,6 +472,10 @@
             return lang ;
         }
 
+        if(availableLocales.indexOf(lang.substring(0,2)) !== -1){
+            return lang.substring(0,2) ;
+        }
+
         return "" ;
     }
 
@@ -488,6 +492,10 @@
 
         if(availableLocales.indexOf(lang) !== -1){
             return lang ;
+        }
+
+        if(availableLocales.indexOf(lang.substring(0,2)) !== -1){
+            return lang.substring(0,2) ;
         }
 
         return "en-us" ;

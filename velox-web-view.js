@@ -79,7 +79,9 @@
         if (!this.listeners[type]) {
             this.listeners[type] = [];
         }
-        this.listeners[type].push(listener);
+        if(this.listeners[type].indexOf(listener) === -1){
+            this.listeners[type].push(listener);
+        }
         return this;
     };
 
