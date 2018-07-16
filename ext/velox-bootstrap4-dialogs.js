@@ -115,7 +115,7 @@
         $modal.modal() ;
         makeDraggable($modal) ;
         $modal.on('hidden.bs.modal', function () {
-            callback() ;
+            if(callback) {callback() ;}
         });
     } ;
 
