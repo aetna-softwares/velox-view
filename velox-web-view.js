@@ -1757,7 +1757,8 @@
                             el.value = bindData;
                         }
                     }
-                    
+                }else if (el.tagName === "IMG") {  
+                    el.src = bindData ;
                 } else {
                     bindData = this.format(bindData) ;
                     if(el.tagName === "IFRAME"){
