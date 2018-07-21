@@ -195,90 +195,105 @@
 
         if(!callback){ callback = function(){} ;}
 
-        options.keyboard = options.closeWithEsc ;
-        if(options.keyboard === undefined){
-            options.keyboard = true ;
+        if(this.$modal && !document.documentElement.contains(this.options.container)){
+            //already init but container remove from dom
+            this.$modal = null ;
         }
-        if(options.closeWithEsc === false && options.closeByClickOutside === undefined){
-            options.closeByClickOutside = false ;
-        }
-        if(options.closeByClickOutside === false){
-            options.backdrop = "static" ;
-        }
-        
 
-        var $modal = null;
-        this.closePopup = function(){
-            if($modal){
-                $modal.on('hidden.bs.modal', function () {
-                    window.jQuery(this).data('bs.modal', null);
-                });
-                $modal.modal('hide') ;
+        var $modal = this.$modal;
+        var popupAlreadyOpen = !!this.$modal ;
+        if(!this.$modal){
+            options.keyboard = options.closeWithEsc ;
+            if(options.keyboard === undefined){
+                options.keyboard = true ;
             }
-        } ;
-        this.close = function(){
-            VeloxWebView.prototype.close.apply(this) ;
-            this.closePopup() ;
-        } ;
-
-        this.show = function(){
-            if(this.container){
-                if(this.container.style.display === "none"){
-                    this.container.style.display = ""; 
+            if(options.closeWithEsc === false && options.closeByClickOutside === undefined){
+                options.closeByClickOutside = false ;
+            }
+            if(options.closeByClickOutside === false){
+                options.backdrop = "static" ;
+            }
+            
+            this.closePopup = function(){
+                if($modal){
+                    $modal.on('hidden.bs.modal', function () {
+                        window.jQuery(this).data('bs.modal', null);
+                    });
+                    $modal.modal('hide') ;
                 }
+            } ;
+            this.close = function(){
+                VeloxWebView.prototype.close.apply(this) ;
+                this.closePopup() ;
+            } ;
+    
+            this.show = function(){
+                if(this.container){
+                    if(this.container.style.display === "none"){
+                        this.container.style.display = ""; 
+                    }
+                }
+            } ;
+            
+    
+            var modalSize = "";
+            if(options.size==="small"){
+                modalSize = "modal-sm";
+            }else if(options.size==="medium"){
+                modalSize = "modal-md";
+            }else if(options.size==="large"){
+                modalSize = "modal-lg";
             }
-        } ;
-        
-
-        var modalSize = "";
-        if(options.size==="small"){
-            modalSize = "modal-sm";
-        }else if(options.size==="medium"){
-            modalSize = "modal-md";
-        }else if(options.size==="large"){
-            modalSize = "modal-lg";
+    
+            var modalHtml = '<div class="modal fade" data-focus="false" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
+            '  <div class="modal-dialog modal-dialog-centered '+modalSize+'" role="document">'+
+            '    <div class="modal-content">'+
+            '      <div class="modal-header">'+
+            '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>' ;
+            if(options.closeable === true || options.closeable === undefined){
+                modalHtml += '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
+                '          <span aria-hidden="true">&times;</span>'+
+                '        </button>' ;
+            } 
+            modalHtml += '      </div>'+
+            '      <div class="modal-body p-2">'+
+            '      </div>'+
+            '    </div>'+
+            '  </div>'+
+            '</div>' ;
+            $modal = window.jQuery(modalHtml);
+            if(options.zIndex){
+                $modal[0].style.zIndex = options.zIndex ; 
+            }
+    
+            var view = this ;
+            $modal.on('hidden.bs.modal', function () {
+                if(window.jQuery(this).data('bs.modal')){
+                    view.close() ;
+                }
+            });
+    
+            this.options.container = $modal.find(".modal-body")[0];
+            this.$modal = $modal ;
         }
 
-        var modalHtml = '<div class="modal fade" data-focus="false" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
-        '  <div class="modal-dialog modal-dialog-centered '+modalSize+'" role="document">'+
-        '    <div class="modal-content">'+
-        '      <div class="modal-header">'+
-        '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>' ;
-        if(options.closeable === true || options.closeable === undefined){
-            modalHtml += '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
-            '          <span aria-hidden="true">&times;</span>'+
-            '        </button>' ;
-        } 
-        modalHtml += '      </div>'+
-        '      <div class="modal-body p-2">'+
-        '      </div>'+
-        '    </div>'+
-        '  </div>'+
-        '</div>' ;
-        $modal = window.jQuery(modalHtml);
-        if(options.zIndex){
-            $modal[0].style.zIndex = options.zIndex ; 
-        }
-
-        var view = this ;
-        $modal.on('hidden.bs.modal', function () {
-            if(window.jQuery(this).data('bs.modal')){
-                view.close() ;
-            }
-        });
-
-        this.options.container = $modal.find(".modal-body")[0];
         this.open(function(err){
             if(err){ return callback(err) ;}
             $modal.modal(options) ;
             if(options.draggable){
                 makeDraggable($modal) ;
             }
-            $modal.on('shown.bs.modal', function () {
+            if(popupAlreadyOpen){
                 this.emit("popupOpen") ;
                 this.emit("displayed", {view : this}, this, true);  
                 callback() ;
-            }.bind(this)) ;
+            }else{
+                $modal.on('shown.bs.modal', function () {
+                    this.emit("popupOpen") ;
+                    this.emit("displayed", {view : this}, this, true);  
+                    callback() ;
+                }.bind(this)) ;
+            }
         }.bind(this)) ;
     } ;
 
