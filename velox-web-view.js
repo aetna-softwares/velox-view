@@ -993,7 +993,13 @@
         var elImg = bodyNode.querySelectorAll("img") ;
         for(var i=0; i<elImg.length; i++){
             var el = elImg[i] ;
-            el.setAttribute("src", this.directory+"/"+el.getAttribute("src"));
+            var srcValue = el.getAttribute("src") ;
+            if(!srcValue){
+                //no src value, force empty image
+                el.setAttribute("src", "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=");
+            }else if(srcValue && srcValue.indexOf("data:") !== 0){
+                el.setAttribute("src", this.directory+"/"+srcValue);
+            }
         }
     };
 
@@ -1758,7 +1764,11 @@
                         }
                     }
                 }else if (el.tagName === "IMG") {  
-                    el.src = bindData ;
+                    if(bindData){
+                        el.src = bindData ;
+                    }else{
+                        el.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+                    }
                 } else {
                     bindData = this.format(bindData) ;
                     if(el.tagName === "IFRAME"){
