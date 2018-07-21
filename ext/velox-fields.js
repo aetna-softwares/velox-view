@@ -2945,6 +2945,16 @@
             theme: fieldOptions.theme||'snow'
         });
     
+        //trigger change on format actions
+        var buttons = element.querySelectorAll('button');
+        for(var i=0; i<buttons.length; i++){
+            buttons[i].addEventListener("click", function(ev){
+                setTimeout(function(){
+                    triggerEvent(element, "change") ;
+                },1) ;
+            }) ;
+        }
+
         element.setValue = function(val){
             if(val){
                 editorDiv.querySelector('.ql-editor').innerHTML = val ;
