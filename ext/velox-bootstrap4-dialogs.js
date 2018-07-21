@@ -96,7 +96,7 @@
     extension.extendsProto.info = function (message, callback) {
         var modalHtml = '<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
         '  <div class="modal-dialog modal-dialog-centered" role="document">'+
-        '    <div class="modal-content">'+
+        '    <div class="modal-content shadow">'+
         '      <div class="modal-header bg-info">'+
         '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
         '          <span aria-hidden="true">&times;</span>'+
@@ -145,7 +145,7 @@
         
         var modalHtml = '<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
         '  <div class="modal-dialog modal-dialog-centered" role="document">'+
-        '    <div class="modal-content">'+
+        '    <div class="modal-content shadow">'+
         '      <div class="modal-header bg-danger">'+
         '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
         '          <span aria-hidden="true">&times;</span>'+
@@ -218,6 +218,7 @@
                 if($modal){
                     $modal.on('hidden.bs.modal', function () {
                         window.jQuery(this).data('bs.modal', null);
+                        $modal.remove();
                     });
                     $modal.modal('hide') ;
                 }
@@ -247,7 +248,7 @@
     
             var modalHtml = '<div class="modal fade" data-focus="false" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
             '  <div class="modal-dialog modal-dialog-centered '+modalSize+'" role="document">'+
-            '    <div class="modal-content">'+
+            '    <div class="modal-content shadow">'+
             '      <div class="modal-header">'+
             '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>' ;
             if(options.closeable === true || options.closeable === undefined){
@@ -269,6 +270,8 @@
             var view = this ;
             $modal.on('hidden.bs.modal', function () {
                 if(window.jQuery(this).data('bs.modal')){
+                    window.jQuery(this).data('bs.modal', null);
+                    $modal.remove();
                     view.close() ;
                 }
             });
@@ -317,7 +320,7 @@
         
         var modalHtml = '<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
         '  <div class="modal-dialog modal-dialog-centered" role="document">'+
-        '    <div class="modal-content">'+
+        '    <div class="modal-content shadow">'+
         '      <div class="modal-header">'+
         '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>'+
         '        <button type="button" class="close" data-dismiss="modal" aria-label="Close">'+
@@ -451,7 +454,7 @@
 
         var modalHtml = '<div class="modal fade" id="exampleModalCenter" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
         '  <div class="modal-dialog modal-dialog-centered '+modalSize+'" role="document">'+
-        '    <div class="modal-content">'+
+        '    <div class="modal-content shadow">'+
         '      <div class="modal-header '+modalHeaderClass+'">'+
         '        <h5 class="modal-title">'+(options.title||'&nbsp;')+'</h5>';
         if(options.closeable === true || options.closeable === undefined){
