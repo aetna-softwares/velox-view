@@ -112,19 +112,6 @@
             decorators.push(decorator) ;
         },
 
-        /**
-         * Create the field
-         * 
-         * @param {HTMLElement} element the HTML element to transform to field
-         * @param {string} fieldType the field type
-         * @param {string} fieldSize the field size
-         * @param {object} fieldOptions field options map (from element attributes)
-         * @param {function(Error)} callback called when the field is created
-         */
-        createField: function(element, fieldType, fieldSize, fieldOptions, callback){
-            createField(this, element, fieldType, fieldSize, fieldOptions, callback) ;
-        },
-
         resetLocale: function(){
             currentLocale=null;
         },
@@ -152,6 +139,25 @@
                 }
             }
         }
+    } ;
+
+
+    /**
+     * Create the field
+     * 
+     * @param {HTMLElement} element the HTML element to transform to field
+     * @param {string} fieldType the field type
+     * @param {string} fieldSize the field size
+     * @param {object} fieldOptions field options map (from element attributes)
+     * @param {function(Error)} callback called when the field is created
+     */
+    extension.extendsProto.createField = function(element, fieldType, fieldSize, fieldOptions, callback){
+        setNeededLib(fieldType, fieldOptions) ;
+        loadLibs(function(err){
+            if(err){ return callback(err) ;}
+            createField(this, element, fieldType, fieldSize, fieldOptions) ;
+            callback() ;
+        }.bind(this)) ;
     } ;
 
     ///// DEPENDENCIES LIBRARIES LOADING ////////
