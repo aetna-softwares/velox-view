@@ -2136,7 +2136,7 @@
         css += ".dt-table {flex-grow: 1; display: flex; flex-direction: column;flex-shrink: 1;flex-basis: 10px;} ";
         css += ".dataTables_scroll {display: flex; flex-direction: column;flex-grow: 1;}";
         css += ".dataTables_scrollHead { flex-basis: 50px; }";
-        css += ".dataTables_scrollBody { flex-grow: 1;flex-basis: 50px; flex-shrink: 1; overflow-x: hidden !important; }";
+        css += ".dataTables_scrollBody { flex-grow: 1;flex-basis: 50px; flex-shrink: 1 }";
         css += '@media screen and (max-width: 767px) {';
         css += 'div.dataTables_wrapper div.dataTables_length, div.dataTables_wrapper div.dataTables_filter, div.dataTables_wrapper div.dataTables_info, div.dataTables_wrapper div.dataTables_paginate {';
         css += '    text-align: right;';
@@ -2334,6 +2334,8 @@
             scrollX = true ; //no responsive, active scrollX
         }
 
+        var datatable = null;
+
         var gridOptions = {
             responsive: responsiveOpt,
             autoWidth: false,
@@ -2349,6 +2351,21 @@
             columns: [],
             order: []
         } ;
+
+        var tfoot = element.querySelector("tfoot") ;
+        if(tfoot){
+            var scriptFooter = tfoot.querySelector("script") ;
+            if(scriptFooter){
+                var scriptBody = scriptFooter.text ;
+                scriptBody +=  "//# sourceURL=/footer/render/"+element.getAttribute("data-original-id")+"/footer-callback.js" ;
+                var functionCallback = new Function("row", "data", "start", "end", "display", "datatable", "view", scriptBody) ;
+                gridOptions.footerCallback = function ( row, data, start, end, display ) {
+                    var datatable = this.api() ;
+                    functionCallback(row, data, start, end, display, datatable, view) ;
+                } ;
+                scriptFooter.parentElement.removeChild(scriptFooter) ;
+            }
+        }
 
 
         var isCheckboxMouseDown = false;
@@ -2545,7 +2562,7 @@
         }) ;
 
 
-        var datatable = null;//window.jQuery(table).DataTable( gridOptions );
+        
         
 
         var tableData = [] ;
