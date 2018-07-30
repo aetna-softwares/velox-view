@@ -2153,6 +2153,9 @@
         css += 'div.dataTables_wrapper div.dataTables_filter label input {';
         css += 'flex-grow: 1';
         css += '}';
+        css += '.table.dataTable td, .table.dataTable th {';
+        css += '    padding: 5px; white-space: nowrap';
+        css += '  }';
 
         var head = document.getElementsByTagName('head')[0];
         var s = document.createElement('style');
@@ -2183,8 +2186,8 @@
         }
         var table = subTables[0];
 
-        //var listThead = table.getElementsByTagName("THEAD") ;
-        //var thead = listThead.length>0?listThead[0]:null ;
+        var listThead = table.getElementsByTagName("THEAD") ;
+        var thead = listThead.length>0?listThead[0]:null ;
 
         var toolbars = table.querySelectorAll("[data-toolbar]") ;
         for(var i=0; i<toolbars.length; i++){
@@ -2194,7 +2197,7 @@
        
 
 
-        var listTh = Array.prototype.slice.call(table.getElementsByTagName("TH")) ;
+        var listTh = Array.prototype.slice.call((thead||table).getElementsByTagName("TH")) ;
         if(listTh.length === 0){
             throw ("Your data field grid should have at least a TH tag") ;
         }
@@ -2284,53 +2287,60 @@
             }
         }
 
-        var gridOptions = {
-            //scroller: true,
-            responsive: {
-                details: {
-                    type: '',
-                    target: responsiveOpeningIndex,
-                    display: responsiveDisplay,
-                    renderer: function ( api, rowIdx, columns ) {
-                        var htmlCell = '<ul data-dtr-index="'+rowIdx+'" class="dtr-details">' ;
-                        var found = false ;
-                        for(var i=0; i<columns.length; i++){
-                            var col = columns[i] ;
-                            if(col.hidden && !gridOptions.columns[i].className){
-                                found = true ;
-                                var cellId = uuidv4();
-                                htmlCell += '<li data-dtr-index="'+col.columnIndex+'" data-dt-row="'+col.rowIndex+'" data-dt-column="'+col.columnIndex+'">'+
-                                    '<span class="dtr-title">'+
-                                        col.title+
-                                    '</span> '+
-                                    '<span class="dtr-data" id="'+cellId+'" data-row="'+col.rowIndex+'" data-col="'+col.columnIndex+'"></span>'+
-                                '</li>' ;
-                                if(!responsiveCellRenders[rowIdx]){ responsiveCellRenders[rowIdx] = {} ; }
-                                if(!responsiveCellRenders[rowIdx][col.columnIndex]){ responsiveCellRenders[rowIdx][col.columnIndex] = {} ; }
-                                responsiveCellRenders[rowIdx][col.columnIndex].cellId = cellId;
-                                responsiveCellRenders[rowIdx][col.columnIndex].col = col.columnIndex;
-                            }
-                        }
-                        if(found){
-                            //datatable add the HTML as innerHTML = ...
-                            //so we wait after the HTML change and do proper render in the DOM
-                            //to avoid loosing all event listening we done in the cell generation
-                            setTimeout(function(){
-                                renderResponsiveCells(api, rowIdx) ;
-                            }, 1) ;
-                            htmlCell += '</ul>' ;
-                            return htmlCell;
-                        }else{
-                            return false;
+        var responsiveOpt = {
+            details: {
+                type: '',
+                target: responsiveOpeningIndex,
+                display: responsiveDisplay,
+                renderer: function ( api, rowIdx, columns ) {
+                    var htmlCell = '<ul data-dtr-index="'+rowIdx+'" class="dtr-details">' ;
+                    var found = false ;
+                    for(var i=0; i<columns.length; i++){
+                        var col = columns[i] ;
+                        if(col.hidden && !gridOptions.columns[i].className){
+                            found = true ;
+                            var cellId = uuidv4();
+                            htmlCell += '<li data-dtr-index="'+col.columnIndex+'" data-dt-row="'+col.rowIndex+'" data-dt-column="'+col.columnIndex+'">'+
+                                '<span class="dtr-title">'+
+                                    col.title+
+                                '</span> '+
+                                '<span class="dtr-data" id="'+cellId+'" data-row="'+col.rowIndex+'" data-col="'+col.columnIndex+'"></span>'+
+                            '</li>' ;
+                            if(!responsiveCellRenders[rowIdx]){ responsiveCellRenders[rowIdx] = {} ; }
+                            if(!responsiveCellRenders[rowIdx][col.columnIndex]){ responsiveCellRenders[rowIdx][col.columnIndex] = {} ; }
+                            responsiveCellRenders[rowIdx][col.columnIndex].cellId = cellId;
+                            responsiveCellRenders[rowIdx][col.columnIndex].col = col.columnIndex;
                         }
                     }
+                    if(found){
+                        //datatable add the HTML as innerHTML = ...
+                        //so we wait after the HTML change and do proper render in the DOM
+                        //to avoid loosing all event listening we done in the cell generation
+                        setTimeout(function(){
+                            renderResponsiveCells(api, rowIdx) ;
+                        }, 1) ;
+                        htmlCell += '</ul>' ;
+                        return htmlCell;
+                    }else{
+                        return false;
+                    }
                 }
-            },
+            }
+        } ;
+
+        var scrollX = false ; //by default responsive is active, no scrollX 
+        if(table.hasAttribute("data-responsive") && table.getAttribute("data-responsive") === "false"){
+            responsiveOpt = false ;
+            scrollX = true ; //no responsive, active scrollX
+        }
+
+        var gridOptions = {
+            responsive: responsiveOpt,
             autoWidth: false,
 
             scrollY: "auto",
             scrollCollapse: false,
-
+            scrollX: scrollX,
             info: info,
 
             paging: false,
@@ -2429,10 +2439,6 @@
             listTh[0].parentElement.insertBefore(thCheckbox, listTh[0]) ;
         }
 
-
-    //     $($.fn.dataTable.tables()[0]).DataTable()
-    // .columns.adjust()
-    // .responsive.recalc();
 
         listTh.forEach(function(th, i){
             var colDef = {
@@ -2545,7 +2551,93 @@
         var tableData = [] ;
         var eventListeners = {} ;
 
-        view.on("displayed", function(){
+        
+
+        function ensureDatatable(callback){
+            if(datatable){ return callback() ;}
+            var cb = function(){
+                HTMLElement.prototype.removeEventListener.call(element,"tableinit", cb) ;
+                callback() ;    
+            } ;
+            HTMLElement.prototype.addEventListener.call(element,"tableinit", cb) ;
+        }
+
+        element.render = function(){
+            if(datatable){
+                if(responsiveOpt){
+                    datatable.columns.adjust().responsive.recalc().draw();
+                }else{
+                    datatable.columns.adjust().draw();
+                }
+            }
+        } ;
+        element.search = function(value){
+            ensureDatatable(function(){
+                datatable.search( value||"" ).draw();
+            }) ;
+        } ;
+        
+        element.getValue = function(){
+            return tableData;
+        } ;
+        element.setValue = function(value){
+            if(!value){
+                value = [] ;
+            }
+            //sanitize values to avoid this error : https://datatables.net/manual/tech-notes/4
+            for(var i=0; i<value.length; i++){
+                var row = value[i] ;
+                for(var y=0; y<gridOptions.columns.length; y++){
+                    var fieldName = gridOptions.columns[y].data ;
+                    if(!fieldName){ continue; }
+                    var path = fieldName.split(".") ;
+                    var obj = row ;
+                    while(path.length>0){
+                        var p = path.shift() ;
+                        if(!obj[p]){
+                            if(path.length===0){
+                                obj[p] = null;
+                            }else{
+                                obj[p] = {};
+                                obj = obj[p] ;
+                            }
+                        }
+                    }
+                }
+            }
+            tableData = value;
+            if(datatable){
+                datatable.clear();
+                datatable.rows.add(value);
+                if(responsiveOpt){
+                    datatable.columns.adjust().responsive.recalc().draw();
+                }else{
+                    datatable.columns.adjust().draw();
+                }
+            }
+        } ;
+        element.setReadOnly = function(readOnly){
+            //FIXME
+            console.log("implement read only on grid ?") ;
+        } ;
+        element.addEventListener = function(event, listener){
+            if(!eventListeners[event]){
+                eventListeners[event] = [] ;
+            }
+            eventListeners[event].push(listener) ;
+            if(!datatable){
+                return ;
+            }
+        } ;
+        element.getSelection = function(){
+            var selection = [] ;
+            if(datatable){
+                selection = Array.prototype.slice.apply(datatable.rows( { selected: true } ).data()) ;
+            }
+            return selection ;
+        } ;
+
+        view.ensureDisplayed(function(){
             if(!datatable){
                 //create only when displayed
 
@@ -2645,89 +2737,13 @@
                 triggerEvent(element, "tableinit") ;
             }else{
                 //already exists, redraw
-                datatable
-                    .columns.adjust()
-                    .responsive.recalc().draw();
-            }
-        }) ;
-
-        function ensureDatatable(callback){
-            if(datatable){ return callback() ;}
-            var cb = function(){
-                HTMLElement.prototype.removeEventListener.call(element,"tableinit", cb) ;
-                callback() ;    
-            } ;
-            HTMLElement.prototype.addEventListener.call(element,"tableinit", cb) ;
-        }
-
-        element.render = function(){
-            if(datatable){
-                datatable
-                    .columns.adjust()
-                    .responsive.recalc().draw();
-            }
-        } ;
-        element.search = function(value){
-            ensureDatatable(function(){
-                datatable.search( value||"" ).draw();
-            }) ;
-        } ;
-        
-        element.getValue = function(){
-            return tableData;
-        } ;
-        element.setValue = function(value){
-            if(!value){
-                value = [] ;
-            }
-            //sanitize values to avoid this error : https://datatables.net/manual/tech-notes/4
-            for(var i=0; i<value.length; i++){
-                var row = value[i] ;
-                for(var y=0; y<gridOptions.columns.length; y++){
-                    var fieldName = gridOptions.columns[y].data ;
-                    if(!fieldName){ continue; }
-                    var path = fieldName.split(".") ;
-                    var obj = row ;
-                    while(path.length>0){
-                        var p = path.shift() ;
-                        if(!obj[p]){
-                            if(path.length===0){
-                                obj[p] = null;
-                            }else{
-                                obj[p] = {};
-                                obj = obj[p] ;
-                            }
-                        }
-                    }
+                if(responsiveOpt){
+                    datatable.columns.adjust().responsive.recalc().draw();
+                }else{
+                    datatable.columns.adjust().draw();
                 }
             }
-            tableData = value;
-            if(datatable){
-                datatable.clear();
-                datatable.rows.add(value);
-                datatable.columns.adjust().responsive.recalc().draw();
-            }
-        } ;
-        element.setReadOnly = function(readOnly){
-            //FIXME
-            console.log("implement read only on grid ?") ;
-        } ;
-        element.addEventListener = function(event, listener){
-            if(!eventListeners[event]){
-                eventListeners[event] = [] ;
-            }
-            eventListeners[event].push(listener) ;
-            if(!datatable){
-                return ;
-            }
-        } ;
-        element.getSelection = function(){
-            var selection = [] ;
-            if(datatable){
-                selection = Array.prototype.slice.apply(datatable.rows( { selected: true } ).data()) ;
-            }
-            return selection ;
-        } ;
+        }) ;
     }
 
     function createGridRenderer(type){
