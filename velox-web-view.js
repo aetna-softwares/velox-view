@@ -1038,6 +1038,17 @@
     } ;
 
     /**
+     * Ensure the view is displayed
+     * 
+     */
+    VeloxWebView.prototype.ensureDisplayed = function(callback){
+        if(this.isDisplayed()){
+            return callback() ;
+        }
+        this.on("displayed", callback) ;
+    } ;
+
+    /**
      * Get all elements of the view having an attribute
      * This will also return the container if it has the attribute
      * 
@@ -2401,8 +2412,8 @@
         var calls = [] ;
         var validations = (customValidations || []).concat(this.validations || []) ;
         validations.forEach(function(validation){
-            calls.push(function(cb){
-                if(validation.length === 2){
+            if(validation.length === 2){
+                calls.push(function(cb){
                     //with callback
                     validation({form: form, data: viewData, dataBeforeModif : dataBeforeModif}, function(err, detectedErrors){
                         if(err){ return cb(err) ;}
@@ -2417,22 +2428,22 @@
                         }) ;
                         errors = errors.concat(detectedErrors||[]) ;
                         cb() ;
-                    }) ;
-                }else{
-                    var detectedErrors = validation(viewData);
-                    if(!detectedErrors){ detectedErrors = [] ;}
-                    if(detectedErrors && !Array.isArray(detectedErrors)){
-                        detectedErrors = [detectedErrors];
-                    }
-                    detectedErrors.forEach(function(e, i){
-                        if(typeof(e) === "string"){
-                            detectedErrors[i]= {msg : e} ;
-                        }
-                    }) ;
-                    errors = errors.concat(detectedErrors||[]) ;
-                    cb() ;
+                    }.bind(this)) ;
+                }.bind(this)) ;
+            }else{
+                var detectedErrors = validation({form: form, data: viewData, dataBeforeModif : dataBeforeModif});
+                if(!detectedErrors){ detectedErrors = [] ;}
+                if(detectedErrors && !Array.isArray(detectedErrors)){
+                    detectedErrors = [detectedErrors];
                 }
-            }.bind(this)) ;
+                detectedErrors.forEach(function(e, i){
+                    if(typeof(e) === "string"){
+                        detectedErrors[i]= {msg : e} ;
+                    }
+                }) ;
+                errors = errors.concat(detectedErrors||[]) ;
+            }
+            
         }.bind(this)) ;
 
         VeloxWebView._asyncSeries(calls, function(err){
@@ -2721,6 +2732,7 @@
     
     VeloxWebView.prototype._asyncSeries = asyncSeries ;
     VeloxWebView._asyncSeries = asyncSeries ;
+    VeloxWebView.pathSetValue = pathSetValue ;
 
     /**
      * Clear compilation cache
