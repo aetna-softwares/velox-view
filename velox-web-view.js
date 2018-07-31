@@ -12,8 +12,9 @@
 
     var HTMLELEMENT_PROTO_KEYS = [] ;
     if(typeof(Element)!=="undefined"){
-        [Element.prototype, HTMLElement.prototype].forEach(function(proto){
+        [Element.prototype, HTMLElement.prototype, HTMLInputElement.prototype].forEach(function(proto){
             Object.keys(proto).forEach(function(k){
+                if(HTMLELEMENT_PROTO_KEYS.some(function(p){return p.prop === k ;})){ return ; }
                 try{
                     if(typeof(proto[k]) === "function"){
                         HTMLELEMENT_PROTO_KEYS.push({prop : k, type: "function"}) ;
