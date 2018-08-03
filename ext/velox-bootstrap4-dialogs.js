@@ -235,8 +235,13 @@
                     }
                 }
             } ;
-            
-    
+
+            var displayed = false ;
+
+            this.isDisplayed = function(){
+                return displayed ;
+            } ;
+
             var modalSize = "";
             if(options.size==="small"){
                 modalSize = "modal-sm";
@@ -280,6 +285,7 @@
             this.$modal = $modal ;
         }
 
+
         this.open(function(err){
             if(err){ return callback(err) ;}
             $modal.modal(options) ;
@@ -288,11 +294,13 @@
             }
             if(popupAlreadyOpen){
                 this.emit("popupOpen") ;
+                displayed = true ;
                 this.emit("displayed", {view : this}, this, true);  
                 callback() ;
             }else{
                 $modal.on('shown.bs.modal', function () {
                     this.emit("popupOpen") ;
+                    displayed = true ;
                     this.emit("displayed", {view : this}, this, true);  
                     callback() ;
                 }.bind(this)) ;
