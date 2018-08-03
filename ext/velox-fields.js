@@ -359,14 +359,6 @@
                 cdn: "https://cdn.datatables.net/scroller/1.4.4/js/dataTables.scroller.min.js",
                 bowerPath: "datatables.net-scroller/js/dataTables.scroller.min.js",
                 npmPath: "datatables.net-scroller/js/dataTables.scroller.min.js",
-            },
-            {
-                name: "datatables-select-js",
-                type: "js",
-                version: DATATABLES_VERSION,
-                cdn: "https://cdn.datatables.net/select/1.2.6/js/dataTables.select.min.js",
-                bowerPath: "datatables.net-select/js/dataTables.select.min.js",
-                npmPath: "datatables.net-select/js/dataTables.select.min.js",
             }
         ],
         {
@@ -2715,14 +2707,15 @@
                 decorators.forEach(function(deco){
                     deco(element, fieldType, fieldSize, fieldOptions) ;
                 }) ;
-                Object.keys(eventListeners).forEach(function(event){
-                    eventListeners[event].forEach(function(listener){
-                        if(event === "rowClick"){
-                            window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
-                                if(ev.detail !== 1){ return; }
-                                if(ev.target.tagName === "INPUT" || ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
-                                    return; //click on a button on the line, don't consider as a row click
-                                }
+
+                window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
+                    if(ev.detail !== 1){ return; }
+                    if(ev.target.tagName === "INPUT" || ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
+                        return; //click on a button on the line, don't consider as a row click
+                    }
+                    Object.keys(eventListeners).forEach(function(event){
+                        eventListeners[event].forEach(function(listener){
+                            if(event === "rowClick"){
                                 var rowTr = ev.currentTarget ;
                                 if(rowTr.className.indexOf("child") !== -1){
                                     //this is responsive child row
@@ -2731,25 +2724,29 @@
                                 var data = datatable.row( rowTr ).data();
                                 ev.rowData = data;
                                 listener.bind(this)(ev) ;
-                            } );
-                        }
-                        if(event === "rowDblClick"){
-                            window.jQuery(element).find("tbody").on('dblclick', 'tr', function (ev) {
-                                if(ev.target.tagName === "INPUT" || ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
-                                    return; //click on a button on the line, don't consider as a row click
-                                }
-                                var rowTr = ev.currentTarget ;
-                                if(rowTr.className.indexOf("child") !== -1){
-                                    //this is responsive child row
-                                    rowTr = rowTr.previousSibling ;
-                                }
-                                var data = datatable.row( rowTr ).data();
-                                ev.rowData = data;
-                                listener.bind(this)(ev) ;
-                            } );
-                        }
+                            }
+                        });
                     });
-                });
+                } );
+                window.jQuery(element).find("tbody").on('dblclick', 'tr', function (ev) {
+                    if(ev.target.tagName === "INPUT" || ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
+                        return; //click on a button on the line, don't consider as a row click
+                    }
+                    Object.keys(eventListeners).forEach(function(event){
+                        eventListeners[event].forEach(function(listener){
+                            if(event === "rowDblClick"){
+                                var rowTr = ev.currentTarget ;
+                                if(rowTr.className.indexOf("child") !== -1){
+                                    //this is responsive child row
+                                    rowTr = rowTr.previousSibling ;
+                                }
+                                var data = datatable.row( rowTr ).data();
+                                ev.rowData = data;
+                                listener.bind(this)(ev) ;
+                            }
+                        });
+                    });
+                } );
                 element.setValue(tableData) ;
                 triggerEvent(element, "tableinit") ;
             }else{

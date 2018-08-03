@@ -748,6 +748,7 @@
                             asyncSeries(calls, function(err){
                                 if(err){ throw err; }
                                 parsed.parseFinished = true;
+                                this.emit("compiled", parsed) ;
                                 callback(null, parsed) ;
                             }.bind(this)) ;
                         }.bind(this)) ;
