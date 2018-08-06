@@ -3029,6 +3029,10 @@
     function createPdfField(element, fieldType, fieldSize, fieldOptions){
         var pdfEl = null;
         var currentValue = null;
+        var baseUrl = "" ;
+        if(element.hasAttribute("data-base-url")){
+            baseUrl = element.getAttribute("data-base-url") ;
+        }
         element.getValue = function(){
             return currentValue ;
         } ;
@@ -3050,7 +3054,7 @@
                 }
             }
             
-            var embedEl = libs.PDFObject.embed(value, pdfEl, options);
+            /*var embedEl = */libs.PDFObject.embed(baseUrl+value, pdfEl, options);
         } ;
         element.showPDF = element.setValue ;
             
