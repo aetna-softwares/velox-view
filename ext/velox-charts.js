@@ -250,9 +250,9 @@
      */ 
     function _createChart(element, chartType, chartOptions, view){
         if(chartType === "pie" || chartType === "donut"){
-            createPie(element, chartType, chartOptions) ;
+            createPie(element, chartType, chartOptions, view) ;
         } else if(chartType === "bar" || chartType === "barv" || chartType === "barh"){
-            createBar(element, chartType, chartOptions) ;
+            createBar(element, chartType, chartOptions, view) ;
         } else {
             throw "Unknow chart type "+chartType ; 
         }
@@ -299,9 +299,7 @@
      * @param {object} fieldOptions field option (from attributes)
      * @param {function(Error)} callback called when finished
      */
-    function createPie(element, chartType, fieldOptions){
-        // based on prepared DOM, initialize echarts instance
-
+    function createPie(element, chartType, fieldOptions, view){
         var option = {} ;
 
         var serieName = "";
@@ -399,6 +397,10 @@
         element.getValue = function(){
             return currentValue;
         } ;
+
+        view.ensureDisplayed(function(){
+            myChart.resize() ;
+        });
     }
     
     /**
@@ -409,8 +411,101 @@
      * @param {object} fieldOptions field option (from attributes)
      * @param {function(Error)} callback called when finished
      */
-    function createBar(element, chartType, fieldOptions){
+    function createBar(element, chartType, fieldOptions, view){
+        var option = {} ;
+
+        var serieName = "";
+        var elLabel = element.querySelector("label") ;
+        if(elLabel){
+            option.title = { text: elLabel.innerHTML, x:'center' } ;
+            serieName = elLabel.innerHTML;
+        }
+
+        option.tooltip = {
+            trigger: 'item',
+            formatter: "{a} <br/>{b} : {c}"
+        };
+
+        var data = {xAxisData : [], selected: {}, seriesData: []};
         
+        var colors = [] ;
+        var elTable = element.querySelector("table") ;
+        if(elTable){
+            var ths = elTable.querySelectorAll("th") ;
+            for(var i=0; i<ths.length; i++){
+                var th = ths[i];
+                data.xAxisData.push(th.innerHTML) ;
+                if(th.hasAttribute("data-color")){
+                    colors.push(th.getAttribute("data-color")) ;
+                }
+            }
+            var tds = elTable.querySelectorAll("td") ;
+            for(var i=0; i<tds.length; i++){
+                var td = tds[i];
+                var label = data.xAxisData[i];
+                var value = Number(td.innerHTML) ;
+                data.seriesData.push({
+                    name: label,
+                    value: value
+                }) ;
+            }
+            var caption = elTable.querySelector("caption") ;
+            if(caption){
+                serieName = caption.innerHTML ;
+            }
+        }
+
+        if(colors.length>0){
+            option.color = colors ;
+        }
+
+        option.yAxis = {
+            type: 'value'
+        };
+        option.xAxis = {
+            type: 'category',
+            data: data.xAxisData
+        } ;
+        option.series = [
+            {
+                name: serieName,
+                type: 'bar',
+                data: data.seriesData.map(function(v){ return v.value ;}),
+                itemStyle: {
+                    emphasis: {
+                        shadowBlur: 10,
+                        shadowOffsetX: 0,
+                        shadowColor: 'rgba(0, 0, 0, 0.5)'
+                    }
+                }
+            }
+        ] ;
+
+        var myChart = echarts.init(element);
+
+        
+        myChart.setOption(option);
+        
+        var currentValue = data.seriesData ;
+
+        /**
+         * 
+         * @param {Array} value array [{name: "", value: 123}]
+         */
+        element.setValue = function(value){
+            currentValue = value;
+            option.series[0].data = value.map(function(v){ return v.value ;});
+            option.xAxis.data = value.map(function(v){ return v.name ;});
+            myChart.setOption(option);
+        } ;
+
+        element.getValue = function(){
+            return currentValue;
+        } ;
+
+        view.ensureDisplayed(function(){
+            myChart.resize() ;
+        });
     }
     
     /**
