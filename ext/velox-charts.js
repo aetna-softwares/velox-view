@@ -545,6 +545,10 @@
             commonChartInit(element, option) ;
             myChart.setOption(option);
         }) ;
+
+        element.getDataURL = function(opts){
+            return myChart.getDataURL(opts) ;
+        };
     }
     
     /**
@@ -656,6 +660,10 @@
             commonChartInit(element, option) ;
             myChart.setOption(option);
         }) ;
+
+        element.getDataURL = function(opts){
+            return myChart.getDataURL(opts) ;
+        };
     }
     
     /**
