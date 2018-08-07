@@ -2610,6 +2610,8 @@
                                 obj[p] = {};
                                 obj = obj[p] ;
                             }
+                        }else{
+                            obj = obj[p] ;
                         }
                     }
                 }
