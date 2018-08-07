@@ -2127,7 +2127,7 @@
         css += ".dataTables_wrapper { display: flex; flex-direction: column; }";
         css += ".dt-table {flex-grow: 1; display: flex; flex-direction: column;flex-shrink: 1;flex-basis: 10px;} ";
         css += ".dataTables_scroll {display: flex; flex-direction: column;flex-grow: 1;}";
-        css += ".dataTables_scrollHead { flex-basis: 50px; }";
+        //css += ".dataTables_scrollHead { flex-basis: 50px; }";
         css += ".dataTables_scrollBody { flex-grow: 1;flex-basis: 50px; flex-shrink: 1 }";
         css += '@media screen and (max-width: 767px) {';
         css += 'div.dataTables_wrapper div.dataTables_length, div.dataTables_wrapper div.dataTables_filter, div.dataTables_wrapper div.dataTables_info, div.dataTables_wrapper div.dataTables_paginate {';
@@ -2148,6 +2148,7 @@
         css += '.table.dataTable td, .table.dataTable th {';
         css += '    padding: 5px; white-space: nowrap';
         css += '  }';
+        css += '.datatable-header-search {font-size: 8pt; color: #999; float: right; margin-top: 6px; margin-right: -20px; display: none}';
 
         var head = document.getElementsByTagName('head')[0];
         var s = document.createElement('style');
@@ -2450,10 +2451,13 @@
 
 
         listTh.forEach(function(th, i){
+            if(th.hasAttribute("colspan")){ return ; }
             var colDef = {
                 data     : th.getAttribute("data-field-name")||"f"+i,
                 //width    : th.getAttribute("data-field-size")
             };
+
+            
 
             if(th.hasAttribute("data-cell-view-id")){
                 var elView = view.cellViews[th.getAttribute("data-cell-view-id")] ;
@@ -2506,6 +2510,9 @@
                 colDef.title = th.innerHTML ;
             }
 
+
+            colDef.title += ' <span class="datatable-header-search">&#x1f50d;</span>' ;
+
             // if(colDef.width){
             //     if(colDef.size.indexOf("px") === -1 && colDef.size.indexOf("%") === -1){
             //         //no unit given, assuming px
@@ -2550,6 +2557,10 @@
             if(!colDef.createdCell && type){
                 colDef.createdCell = createGridRenderer(type, colDef.field) ;
             }
+
+            
+
+
             gridOptions.columns.push(colDef) ;
         }) ;
 
