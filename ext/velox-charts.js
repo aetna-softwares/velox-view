@@ -291,6 +291,144 @@
         }
     }
 
+    function sanitizeValue(val){
+        val = val.trim() ;
+        if(val[0]==="'" && val[val.length-1]==="'"){
+            val = val.substring(1, val.length-1) ;
+        }
+        if(val[0]==='"' && val[val.length-1]==='"'){
+            val = val.substring(1, val.length-1) ;
+        }
+        return val;
+    }
+    function parseCssStyle(str){
+        var obj = {} ;
+        var currentProp = "";
+        var currentValue = "";
+        var inProp = true;
+        var inComplexValue = false;
+        for(var i=0; i<str.length; i++){
+            var c = str[i] ;
+            if(inProp && c === ":"){
+                inProp = false;
+                currentValue = "";
+            }else{
+                if(inProp){
+                    if(/[^\s]/.test(c)){
+                        currentProp += c ;
+                    }
+                }else{
+                    if(!currentValue && c === "{"){
+                        inComplexValue = true ;
+                    }else{
+                        if(inComplexValue && c === "}"){
+                            inComplexValue = false;
+                            obj[currentProp] = parseCssStyle(currentValue.trim()) ;
+                            currentValue = "";
+                        }else if(!inComplexValue && c === ","){
+                            inProp = true;
+                            if(currentValue){
+                                obj[currentProp] = sanitizeValue(currentValue) ;
+                            }
+                            currentProp = "";
+                            currentValue = "";
+                        }else{
+                            if(/[^\s]/.test(c) || currentValue){
+                                currentValue += c ;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        if(currentProp){
+            obj[currentProp] = sanitizeValue(currentValue) ;
+        }
+        return obj ;
+    }
+
+    function commonChartInit(element, option){
+        if(element.hasAttribute("data-title")){
+            var customTitle = parseCssStyle(element.getAttribute("data-title")) ;
+            if(!option.title){ 
+                option.title = customTitle ;
+            }else{
+                Object.keys(customTitle).forEach(function(k){
+                    option.title[k] = customTitle[k] ;
+                }) ;
+            }
+        }
+        if(element.hasAttribute("data-tooltip")){
+            var customTooltip = parseCssStyle(element.getAttribute("data-tooltip")) ;
+            if(!option.tooltip){ 
+                option.tooltip = customTooltip ;
+            }else{
+                Object.keys(customTooltip).forEach(function(k){
+                    option.tooltip[k] = customTooltip[k] ;
+                }) ;
+            }
+        }
+
+        if(element.hasAttribute("data-label")){
+            if(option.series[0]){
+                var customLabel = parseCssStyle(element.getAttribute("data-label")) ;
+                if(!option.series[0].label){ 
+                    option.series[0].label = customLabel ;
+                }else{
+                    Object.keys(customLabel).forEach(function(k){
+                        option.series[0].label[k] = customLabel[k] ;
+                    }) ;
+                }
+            }
+        }
+
+        if(element.hasAttribute("data-legend")){
+            var customLegend = parseCssStyle(element.getAttribute("data-legend")) ;
+            if(!option.legend){ 
+                option.legend = customLegend ;
+            }else{
+                Object.keys(customLegend).forEach(function(k){
+                    option.legend[k] = customLegend[k] ;
+                }) ;
+            }
+        }
+
+
+        if(element.hasAttribute("data-label-inside")){
+            if(option.series[0]){
+                option.series[0].label = {
+                    show: true,
+                    position: "inside",
+                    formatter: "{c}",
+                    fontSize: 48,
+                } ;
+            }
+        }
+
+        if(element.hasAttribute("data-no-label")){
+            if(option.series[0]){
+                option.series[0].label = {
+                    show: false
+                } ;
+            } 
+        }
+
+        if(element.hasAttribute("data-no-legend")){
+            if(option.legend){
+                option.legend.show = false;
+            }else{
+                option.legend = { show : false} ;
+            }
+        }
+        if(element.hasAttribute("data-no-tooltip")){
+            if(option.tooltip){
+                option.tooltip.show = false;
+            }else{
+                option.tooltip = { show : false} ;
+            }
+        }
+    }
+
     /**
      * Create a pie chart
      * 
@@ -351,10 +489,8 @@
 
         option.legend = {
             type: 'scroll',
-            orient: 'vertical',
-            right: 10,
+            orient: 'horizontal',
             top: 20,
-            bottom: 20,
             data: data.legendData,
             selected: data.selected
         };
@@ -364,7 +500,7 @@
                 name: serieName,
                 type: 'pie',
                 radius : chartType==="donut"?['50%', '70%']:'50%',
-                center: ['40%', '50%'],
+                //center: ['40%', '50%'],
                 data: data.seriesData,
                 itemStyle: {
                     emphasis: {
@@ -375,6 +511,9 @@
                 }
             }
         ] ;
+
+        commonChartInit(element, option) ;
+
 
         var myChart = echarts.init(element);
 
@@ -401,6 +540,11 @@
         view.ensureDisplayed(function(){
             myChart.resize() ;
         });
+
+        view.on("render", function(){
+            commonChartInit(element, option) ;
+            myChart.setOption(option);
+        }) ;
     }
     
     /**
@@ -483,6 +627,7 @@
 
         var myChart = echarts.init(element);
 
+        commonChartInit(element, option) ;
         
         myChart.setOption(option);
         
@@ -506,6 +651,11 @@
         view.ensureDisplayed(function(){
             myChart.resize() ;
         });
+
+        view.on("render", function(){
+            commonChartInit(element, option) ;
+            myChart.setOption(option);
+        }) ;
     }
     
     /**
