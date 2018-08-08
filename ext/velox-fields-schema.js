@@ -37,6 +37,7 @@
     var schema; 
     // var schemaExtend; 
     var apiClient; 
+    var cacheValues2one = {} ;
 
     //must run before fields extension
     extension.mustRunBefore = ["fields"] ;
@@ -50,6 +51,7 @@
             }
         }
         var calls = [] ;
+        var values2oneToLoad = {} ;
         for(var i=0; i<elements.length; i++){
             (function (element){
                 var schemaId = element.getAttribute("data-field-def").split(".") ;
@@ -61,10 +63,10 @@
                 if(!tableDef){
                     throw ("Unknow table : "+schemaId[0].trim()) ;
                 }
-    
+
                 if(schemaId[1] === "grid"){
                     element.setAttribute("data-field", "grid") ;
-                    prepareGrid(element, schemaId[0], tableDef, schema) ;
+                    prepareGrid(element, schemaId[0], tableDef, schema, values2oneToLoad) ;
                     calls.push(function(cb){
                         VeloxWebView.fields.loadFieldLib("grid", null, cb) ;
                     }) ;
@@ -84,7 +86,7 @@
                         element.setAttribute("data-bind", colDef.name) ;
                     }
     
-                    prepareElement(element, schemaId[0], tableDef, colDef) ;
+                    prepareElement(element, schemaId[0], tableDef, colDef, values2oneToLoad) ;
     
                    
                     calls.push(function(cb){
@@ -93,8 +95,16 @@
                 }
             })(elements[i]) ;
         }
+        if(Object.keys(values2oneToLoad).length>0){
+            params.context.values2one = Object.keys(values2oneToLoad) ;
+            calls.push(function(cb){
+                _refreshValues(params.context.values2one, cb) ;
+            }) ;
+        }
         VeloxWebView._asyncSeries(calls, cb) ;
     } ;
+
+    
     
     // extension.init = function(){
     //     var view = this ;
@@ -253,14 +263,9 @@
      * @param {string} table the table name
      * @param {object} colDef the column configuration to apply
      */
-    function prepareElement(element, table, tableDef, colDef){
-        if(!colDef.values && tableDef.fk){
-            tableDef.fk.some(function(fk){
-                if(fk.thisColumn === colDef.name){
-                    colDef.type = "select" ;
-                    colDef.values = "2one" ;
-                }
-            });
+    function prepareElement(element, table, tableDef, colDef, values2oneToLoad){
+        if(colDef.values === "2one"){
+            values2oneToLoad[table+"."+colDef.name] = "true" ;
         }
 
         element.setAttribute("data-field", colDef.type) ;
@@ -439,7 +444,7 @@
         };
     }
 
-    function prepareGrid(element, tableName,tableDef, schema){
+    function prepareGrid(element, tableName,tableDef, schema, values2oneToLoad){
         var listTables = element.getElementsByTagName("TABLE") ;
         var table = null;
         if(listTables.length === 0){
@@ -473,12 +478,15 @@
 
             tableDef.columns.forEach(function(colDef){
                 if(colDef.name.indexOf("velox_") === 0) { return ; }
-                
+
                 var th = document.createElement("TH") ;
                 tr.appendChild(th) ;
                 th.setAttribute("data-field-name", colDef.name) ;
 
                 th.appendChild(prepareGridThLabel(tableName, colDef)) ;
+                if(colDef.values === "2one"){
+                    values2oneToLoad[tableName+"."+colDef.name] = "true" ;
+                }
                 // var scriptEl = prepareGridThRenderScript(tableName, colDef) ;
                 // if(scriptEl){
                 //     th.appendChild(scriptEl) ;
@@ -486,7 +494,7 @@
 
                 var searchField = th.querySelector("[data-search-field]") ;
                 if(!searchField){
-                    th.appendChild(prepareGridThSearchField(tableDef, tableName, colDef)) ;
+                    th.appendChild(prepareGridThSearchField(tableDef, tableName, colDef, values2oneToLoad)) ;
                 }
 
                 th.setAttribute("data-field-type", colDef.type) ;
@@ -527,6 +535,9 @@
                     }
                 }) ;
                 if(colDef){
+                    if(colDef.values === "2one"){
+                        values2oneToLoad[tableName+"."+colDef.name] = "true" ;
+                    }
                     if(!th.getAttribute("data-field-type")){
                         th.setAttribute("data-field-type", colDef.type) ;
                     }
@@ -557,7 +568,7 @@
                     }
                     var searchField = th.querySelector("[data-search-field]") ;
                     if(!searchField && thName){
-                        th.appendChild(prepareGridThSearchField(thisTableDef, thisTableName, colDef)) ;
+                        th.appendChild(prepareGridThSearchField(thisTableDef, thisTableName, colDef, values2oneToLoad)) ;
                     }
                 }
             }) ;
@@ -574,11 +585,11 @@
         return label;
     }
     
-    function prepareGridThSearchField(tableDef, tableName, colDef){
+    function prepareGridThSearchField(tableDef, tableName, colDef, values2oneToLoad){
         var div = document.createElement("DIV") ;
         div.setAttribute("data-search-field", "true") ;
 
-        prepareElement(div, tableName, tableDef, colDef) ;
+        prepareElement(div, tableName, tableDef, colDef, values2oneToLoad) ;
         return div;
     }
     
@@ -625,6 +636,12 @@
                     }
                 }else if(typeof(colDef.values) === "object" ){
                     return colDef.values[value] ;
+                }else if(colDef.values === "2one" ){
+                    var values = cacheValues2one[tableName+"."+colDef.name] ;
+                    if(values){
+                        return values[value]||value;
+                    }
+                    return value ;
                 }else{
                     return this.format(value, colDef.type) ;
                 }
@@ -637,6 +654,58 @@
 
     extension.extendsProto.formatField = formatField ;
     extension.extendsGlobal.formatField = formatField ;
+
+    function _refreshValues(values2one, callback){
+        if(!values2one){ return callback() ;}
+        if(!apiClient){
+            return callback("You must give the VeloxServiceClient VeloxWebView.fieldsSchema.configure options to use the selection 2one fields") ;
+        }
+        if(!schema) {
+            console.error("You must set the schema with VeloxWebView.fieldsSchema.setSchema before instanciate your views") ;
+            return callback("You must set the schema with VeloxWebView.fieldsSchema.setSchema before instanciate your views") ;
+        }
+
+        var search = {} ;
+        var options = {} ;
+        values2one.forEach(function(v){
+            var splitted = v.split(".") ;
+            var tableName = splitted[0];
+            var colName = splitted[1];
+            var tableDef = schema[tableName];
+            if(tableDef){
+                if(!tableDef.colsByNames){
+                    tableDef.colsByNames = {} ;
+                    tableDef.columns.forEach(function(col){
+                        tableDef.colsByNames[col.name] = col ;
+                    }) ;
+                }
+                var readOptions = getReadTableOptions(tableName, tableDef.colsByNames[colName]) ;
+                options[v] = readOptions ;
+                search[v] = { table: readOptions.readFromTable, search: {}, orderBy: readOptions.orderByFromTable} ;
+            }
+        }) ;
+        
+        apiClient.__velox_database.multiread(search, function(err, reads){
+            if(err){ return callback(err); }
+
+            values2one.forEach(function(v){
+                var results = reads[v] ;
+                var optionRead = options[v] ;
+                cacheValues2one[v] = {};
+                results.forEach(function(r){
+                    var label = optionRead.readFieldLabel; 
+                    Object.keys(r).forEach(function(k){ label = label.replace(new RegExp(k,"g"), r[k]); }); 
+                    cacheValues2one[v][r[optionRead.readFieldId]] = label ;
+                }) ;
+            });
+            callback() ;
+        });
+    }
+
+    extension.extendsProto.refreshValues = function(callback){
+        var values2one = this.context?this.context.values2one:null ;
+        _refreshValues(values2one, callback) ;
+    } ;
 
     return extension ;
 
