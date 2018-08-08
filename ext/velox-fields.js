@@ -1843,17 +1843,23 @@
             return opts ;
         } ;
 
+        element.refresh = function(){
+            if(fieldOptions.readfromtable){
+                getPossibleValues(fieldOptions, function(err, values){
+                    if(err){
+                        throw err ;
+                    }
+                    element.setOptions(values) ;
+                    if(_currentValue){
+                        element.setValue(_currentValue) ;
+                    }
+                });
+            } ;
+        } ;
+
         if(fieldOptions.readfromtable){
-            
-            getPossibleValues(fieldOptions, function(err, values){
-                if(err){
-                    throw err ;
-                }
-                element.setOptions(values) ;
-                if(_currentValue){
-                    element.setValue(_currentValue) ;
-                }
-            });
+            element.refresh() ;
+            element.setAttribute("data-field-refreshable", "true") ;
         }
 
         
@@ -2082,19 +2088,26 @@
             return opts ;
         } ;
 
+        
+        element.refresh = function(){
+            if(fieldOptions.readfromtable){
+                getPossibleValues(fieldOptions, function(err, values){
+                    if(err){
+                        throw err ;
+                    }
+                    element.setOptions(values) ;
+                    if(currentValue){
+                        element.setValue(currentValue) ;
+                    }
+                });
+            } ;
+        } ;
+
         if(fieldOptions.readfromtable){
-            getPossibleValues(fieldOptions, function(err, values){
-                if(err){
-                    throw err ;
-                }
-                element.setOptions(values) ;
-                if(currentValue){
-                    element.setValue(currentValue) ;
-                }
-            });
+            element.refresh() ;
+            element.setAttribute("data-field-refreshable", "true") ;
         }
 
-        
 
     }
 
