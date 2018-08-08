@@ -627,6 +627,8 @@
 
         if(!parsed){ throw "try open compiled view but it is not compiled" ; }
 
+        this.context = parsed.context ;
+
         this.container = this.options.container;
         this.bindObject = data || this.options.bindObject;
 
@@ -682,6 +684,7 @@
                     if(err){ throw err; }
 
                     parsedHTMLCache[key] = parsed;
+                    parsed.context = {} ;
 
                     this._loadCSS(parsed.cssStatics, parsed.cssFiles, function(){
                         var calls = [];
@@ -692,14 +695,14 @@
                                     if (extension.prepare.length === 0) {
                                         //no callback
                                         try{
-                                            extension.prepare.bind(this)({doc : parsed.xmlDoc});
+                                            extension.prepare.bind(this)({doc : parsed.xmlDoc, context: parsed.context});
                                             cb() ;
                                         }catch(err){
                                             cb(err) ;
                                         }
                                     } else {
                                         setTimeout(function(){
-                                            extension.prepare.bind(this)({doc: parsed.xmlDoc}, function(err){
+                                            extension.prepare.bind(this)({doc: parsed.xmlDoc, context: parsed.context}, function(err){
                                                 cb(err) ;
                                             }.bind(this));
                                         }.bind(this), 0) ;
