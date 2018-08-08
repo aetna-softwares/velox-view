@@ -1,3 +1,4 @@
+/*global define*/
 ; (function (global, factory) {
     if (typeof exports === 'object' && typeof module !== 'undefined') {
         var VeloxScriptLoader = require("velox-scriptloader") ;
@@ -63,7 +64,7 @@
     
                 if(schemaId[1] === "grid"){
                     element.setAttribute("data-field", "grid") ;
-                    prepareGrid(element, schemaId[0], tableDef) ;
+                    prepareGrid(element, schemaId[0], tableDef, schema) ;
                     calls.push(function(cb){
                         VeloxWebView.fields.loadFieldLib("grid", null, cb) ;
                     }) ;
@@ -79,31 +80,11 @@
                         throw ("Unknown column "+schemaId[1]+" in table "+schemaId[0]) ;
                     }
 
-                    if(!colDef.values && tableDef.fk){
-                        tableDef.fk.some(function(fk){
-                            if(fk.thisColumn === schemaId[1]){
-                                colDef.type = "select" ;
-                                colDef.values = "2one" ;
-                            }
-                        });
-                    }
-    
-    
                     if(!element.hasAttribute("data-bind")){
                         element.setAttribute("data-bind", colDef.name) ;
                     }
     
-                    element.setAttribute("data-field", colDef.type) ;
-                    if(colDef.size){
-                        element.setAttribute("data-field-size", colDef.size) ;
-                    }
-                    if(colDef.options){
-                        Object.keys(colDef.options).forEach(function(k){
-                            element.setAttribute("data-field-"+k, colDef.options[k]) ;
-                        }) ;
-                    }
-    
-                    prepareElement(element,schemaId[0], colDef) ;
+                    prepareElement(element, schemaId[0], tableDef, colDef) ;
     
                    
                     calls.push(function(cb){
@@ -272,7 +253,26 @@
      * @param {string} table the table name
      * @param {object} colDef the column configuration to apply
      */
-    function prepareElement(element, table, colDef){
+    function prepareElement(element, table, tableDef, colDef){
+        if(!colDef.values && tableDef.fk){
+            tableDef.fk.some(function(fk){
+                if(fk.thisColumn === colDef.name){
+                    colDef.type = "select" ;
+                    colDef.values = "2one" ;
+                }
+            });
+        }
+
+        element.setAttribute("data-field", colDef.type) ;
+        if(colDef.size){
+            element.setAttribute("data-field-size", colDef.size) ;
+        }
+        if(colDef.options){
+            Object.keys(colDef.options).forEach(function(k){
+                element.setAttribute("data-field-"+k, colDef.options[k]) ;
+            }) ;
+        }
+
         if(colDef.type === "selection" || colDef.type === "select" || colDef.type === "multiple"){
             if(element.tagName !== "SELECT" && element.getElementsByTagName("select").length === 0){
                 var select = document.createElement("SELECT") ;
@@ -439,7 +439,7 @@
         };
     }
 
-    function prepareGrid(element, tableName,tableDef){
+    function prepareGrid(element, tableName,tableDef, schema){
         var listTables = element.getElementsByTagName("TABLE") ;
         var table = null;
         if(listTables.length === 0){
@@ -479,9 +479,14 @@
                 th.setAttribute("data-field-name", colDef.name) ;
 
                 th.appendChild(prepareGridThLabel(tableName, colDef)) ;
-                var scriptEl = prepareGridThRenderScript(tableName, colDef) ;
-                if(scriptEl){
-                    th.appendChild(scriptEl) ;
+                // var scriptEl = prepareGridThRenderScript(tableName, colDef) ;
+                // if(scriptEl){
+                //     th.appendChild(scriptEl) ;
+                // }
+
+                var searchField = th.querySelector("[data-search-field]") ;
+                if(!searchField){
+                    th.appendChild(prepareGridThSearchField(tableDef, tableName, colDef)) ;
                 }
 
                 th.setAttribute("data-field-type", colDef.type) ;
@@ -490,12 +495,32 @@
                         th.setAttribute("data-field-"+k, colDef.options[k]) ;
                     }) ;
                 }
+
+                th.setAttribute("data-field-defname", tableName+"."+colDef.name) ;
+
             }) ;
         }else{
             listTH.forEach(function(th){
                 var thName = th.getAttribute("data-field-name") ;
                 var colDef = null;
-                tableDef.columns.some(function(c){
+                var thisTableDef = tableDef ;
+                var thisTableName = tableName;
+                if(th.hasAttribute("data-field-defname")){
+                    var splittedName = th.getAttribute("data-field-defname").split(".") ;
+                    thisTableName = splittedName[0];
+                    thisTableDef = schema[thisTableName];
+                    thName = splittedName[1];
+                }else if(thName && thName.indexOf(".") !== -1){
+                    var splittedName = thName.split(".") ;
+                    thisTableName = splittedName[0];
+                    thisTableDef = schema[splittedName[0]];
+                    thName = splittedName[1];
+                }
+                if(thName){
+                    th.setAttribute("data-field-defname", thisTableName+"."+thName) ;
+                }
+
+                thisTableDef.columns.some(function(c){
                     if(c.name === thName){
                         colDef = c ;
                         return true ;
@@ -513,22 +538,26 @@
                         }) ;
                     }
                     if(!th.innerHTML){
-                        th.appendChild(prepareGridThLabel(tableName, colDef)) ;
-                        var scriptEl = prepareGridThRenderScript(tableName, colDef) ;
-                        if(scriptEl){
-                            th.appendChild(scriptEl) ;
-                        }
+                        th.appendChild(prepareGridThLabel(thisTableName, colDef)) ;
+                        // var scriptEl = prepareGridThRenderScript(thisTableName, colDef) ;
+                        // if(scriptEl){
+                        //     th.appendChild(scriptEl) ;
+                        // }
                     }else{
                         if(th.children.length === 1 && th.children[0].tagName === "SCRIPT"){
                             //only a script renderer but no label
-                            th.appendChild(prepareGridThLabel(tableName, colDef)) ;
+                            th.appendChild(prepareGridThLabel(thisTableName, colDef)) ;
                         }else if(th.children.length === 1 && th.children[0].tagName === "LABEL"){
                             //only a label but no renderer
-                            var scriptEl = prepareGridThRenderScript(tableName, colDef) ;
-                            if(scriptEl){
-                                th.appendChild(scriptEl) ;
-                            }
+                            // var scriptEl = prepareGridThRenderScript(thisTableName, colDef) ;
+                            // if(scriptEl){
+                            //     th.appendChild(scriptEl) ;
+                            // }
                         }
+                    }
+                    var searchField = th.querySelector("[data-search-field]") ;
+                    if(!searchField && thName){
+                        th.appendChild(prepareGridThSearchField(thisTableDef, thisTableName, colDef)) ;
                     }
                 }
             }) ;
@@ -545,39 +574,69 @@
         return label;
     }
     
-    function prepareGridThRenderScript(table, colDef){
-        var scriptEl = document.createElement("SCRIPT") ;
-        if(colDef.values === "2one"){
-            // var values = getPossibleValues(table, colDef.name);
-            // if(values){
-            //     var script = "<script>";
-            //     script += "var values = "+JSON.stringify(values)+";";
-            //     script += "return values[record['"+colDef.name+"']] || '';" ;
-            //     script += "</script>" ;
-            //     innerHTML = script + innerHTML ;
-            //     return innerHTML ;
-            // }else{
-            //     throw "no known values for "+table+"/"+colDef.name ;
-            // }
-            
-        }else if(Array.isArray(colDef.values)){
-            var script = "";
-            if(VeloxWebView.i18n){
-                script += 'return VeloxWebView.i18n.tr("fields.values.'+table+'.'+colDef.name+'."+data) ;' ;
-            }else{
-                script += "return record['"+colDef.name+"'] ;" ;
-            }
-            scriptEl.innerHTML = script ;
-            return scriptEl ;
-        }else if(typeof(colDef.values) === "object" ){
-            var script = "";
-            script += 'var values = '+JSON.stringify(colDef.values) +" ;" ;
-            script += "return values[record['"+colDef.name+"']] ;" ;
-            scriptEl.innerHTML = script ;
-            return scriptEl ;
-        } 
-        return null ;
+    function prepareGridThSearchField(tableDef, tableName, colDef){
+        var div = document.createElement("DIV") ;
+        div.setAttribute("data-search-field", "true") ;
+
+        prepareElement(div, tableName, tableDef, colDef) ;
+        return div;
     }
+    
+
+
+    /**
+     * Format a value to display
+     * 
+     * @param {*} value - the value to format
+     * @param {string} tableName - table name
+     * @param {string} colName - column name
+     */
+    function formatField(value, tableName, colName) {
+        if(tableName && !colName){
+            var splitted = tableName.split(".") ;
+            tableName = splitted[0];
+            colName = splitted[1];
+        }
+        var tableDef = schema[tableName];
+        if(tableDef){
+            if(!tableDef.colsByNames){
+                tableDef.colsByNames = {} ;
+                tableDef.columns.forEach(function(col){
+                    tableDef.colsByNames[col.name] = col ;
+                }) ;
+            }
+            var colDef = tableDef.colsByNames[colName];
+            if(colDef){
+                if(Array.isArray(colDef.values)){
+                    if(VeloxWebView.i18n){
+                        if(value){;
+                            if(colDef.type === "multiple"){
+                                if(!Array.isArray(value)){ value = [value] ; }
+                                return value.map(function(d){ 
+                                    return d?VeloxWebView.i18n.tr('fields.values.'+tableName+'.'+colDef.name+'.'+d):""; 
+                                }).join(", ") ;
+                            }else{
+                                return VeloxWebView.i18n.tr('fields.values.'+tableName+'.'+colDef.name+'.'+value) ;
+                            }
+                        }
+                        return "";
+                    }else{
+                        return value ;
+                    }
+                }else if(typeof(colDef.values) === "object" ){
+                    return colDef.values[value] ;
+                }else{
+                    return this.format(value, colDef.type) ;
+                }
+            }
+        }
+        return this.format(value) ;
+    }
+
+    extension.extendsProto = {} ;
+
+    extension.extendsProto.formatField = formatField ;
+    extension.extendsGlobal.formatField = formatField ;
 
     return extension ;
 

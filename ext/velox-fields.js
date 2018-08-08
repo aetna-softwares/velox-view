@@ -2148,7 +2148,15 @@
         css += '.table.dataTable td, .table.dataTable th {';
         css += '    padding: 5px; white-space: nowrap';
         css += '  }';
-        css += '.datatable-header-search {font-size: 8pt; color: #999; float: right; margin-top: 6px; margin-right: -20px; display: none}';
+        css += '.datatable-header-search {font-size: 8pt; color: #999; float: right; margin-top: 6px; margin-right: -20px;}';
+        css += '.data-table-header-filtered .datatable-header-search { color: red }';
+        css += '.datatable-search-info:before {display: inline-block; content: "\\1F50D"; margin-right: 5px;}';
+        css += '.datatable-search-info {float: right; position: absolute; right: 20px; top: -20px;}';
+        css += '.datatable-search-info strong {color: red;}';
+        css += '.datatable-search-popup { display: flex; height: 35px;}';
+        css += '.datatable-search-popup>* { margin-left: 5px; margin-right: 5px }';
+        css += '.datatable-search-popup>[data-search-field] { flex-grow: 1; margin-bottom: 0 }';
+        css += '.datatable-search-popup .datatable-search-popup-ok { margin-left: auto }';
 
         var head = document.getElementsByTagName('head')[0];
         var s = document.createElement('style');
@@ -2161,6 +2169,19 @@
         head.appendChild(s);
         datatableCSSLoaded = true ;
     }
+
+
+    var gridFilters = {} ;
+    var gridFilterInitialized = false ;
+    var GRID_FILTERS = {
+        equal : { typeValue: "single", filter: function(filterValue, value){ return (""+value).toLowerCase() == (""+filterValue).toLowerCase() ; }},
+        startWith : { typeValue: "single", filter: function(filterValue, value){ return (""+value).toLowerCase().indexOf((""+filterValue).toLowerCase()) === 0 ; }},
+        contains : { typeValue: "single", filter: function(filterValue, value){ return (""+value).toLowerCase().indexOf((""+filterValue).toLowerCase()) !== -1 ; }},
+        //in : { typeValue: "single", filter: function(filterValue, value){ return filterValue.indexOf(value) !== -1 ; }},
+        between : { typeValue: "double", filter: function(filterValue, value){ return value >= filterValue[0] && value <= filterValue[1] ; }},
+        lowerThan : { typeValue: "single", filter: function(filterValue, value){ return value < filterValue ; }},
+        greaterThan : { typeValue: "single", filter: function(filterValue, value){ return value > filterValue ; }}
+     } ;
 
     /**
      * Create the grid field
@@ -2178,6 +2199,10 @@
             throw ("Your data field grid should contain a TABLE tag") ;
         }
         var table = subTables[0];
+        if(!table.id){
+            table.id = uuidv4() ;
+        }
+        var thisGridId = table.id ;
 
         var listThead = table.getElementsByTagName("THEAD") ;
         var thead = listThead.length>0?listThead[0]:null ;
@@ -2450,14 +2475,14 @@
         }
 
 
+        var titleHeaderSearchHtml = '<span class="datatable-header-search">&#x1f50d;</span>' ;
+
         listTh.forEach(function(th, i){
             if(th.hasAttribute("colspan")){ return ; }
             var colDef = {
                 data     : th.getAttribute("data-field-name")||"f"+i,
                 //width    : th.getAttribute("data-field-size")
             };
-
-            
 
             if(th.hasAttribute("data-cell-view-id")){
                 var elView = view.cellViews[th.getAttribute("data-cell-view-id")] ;
@@ -2511,20 +2536,7 @@
             }
 
 
-            colDef.title += ' <span class="datatable-header-search">&#x1f50d;</span>' ;
-
-            // if(colDef.width){
-            //     if(colDef.size.indexOf("px") === -1 && colDef.size.indexOf("%") === -1){
-            //         //no unit given, assuming px
-            //         colDef.size = colDef.size+"px" ;
-            //     }
-
-            //     if(colDef.size.indexOf("px") !== -1){
-            //         totalColsWithSizePx += parseInt(colDef.size.replace("px", ""), 10) ;
-            //     }else if(colDef.size.indexOf("%") !== -1){
-            //         totalColsWithSizePercent += parseInt(colDef.size.replace("%", ""), 10) ;
-            //     }
-            // }
+            colDef.title += ' '+titleHeaderSearchHtml ;
 
             if(th.hasAttribute("data-sort")){
                 gridOptions.order.push([i, th.getAttribute("data-sort")]) ;
@@ -2555,18 +2567,46 @@
             var type = th.getAttribute("data-field-type") ;
             colDef.fieldType = type;
             if(!colDef.createdCell && type){
-                colDef.createdCell = createGridRenderer(type, colDef.field) ;
+                colDef.createdCell = createGridRenderer(th.getAttribute("data-field-defname"), type) ;
             }
 
-            
+            var searchElement = th.querySelector("[data-search-field]") ;
+            if(searchElement){
+                colDef.searchElement = searchElement;
+                th.removeChild(searchElement) ;
+            }
 
 
             gridOptions.columns.push(colDef) ;
         }) ;
 
+        
 
+        if(!gridFilterInitialized){
+            window.jQuery.fn.dataTable.ext.search.push(
+                function( settings, data, dataIndex ) {
+                    if(gridFilters[settings.nTable.id]){
+                        for(var i=0; i<settings.aoColumns.length; i++){
+                            var colDef = settings.aoColumns[i] ;
+                            var fieldName = colDef.data ;
+                            var filter = gridFilters[settings.nTable.id][fieldName] ;
+                            if(filter){
+                                var value =data[i] ;
+                                if(GRID_FILTERS[filter.ope] && !GRID_FILTERS[filter.ope].filter(filter.value, value)){
+                                    return false;
+                                }
+                            }
+                        }
+                        return true;
+                    }else{
+                        return true ;
+                    }
+                }
+            );
+            gridFilterInitialized = true ;
+        }
         
-        
+
 
         var tableData = [] ;
         var eventListeners = {} ;
@@ -2639,8 +2679,6 @@
             }
         } ;
         element.setReadOnly = function(readOnly){
-            //FIXME
-            console.log("implement read only on grid ?") ;
         } ;
         element.addEventListener = function(event, listener){
             if(!eventListeners[event]){
@@ -2658,6 +2696,64 @@
             }
             return selection ;
         } ;
+
+        function getColumnDef(fieldName){
+            var colDef = null;
+            gridOptions.columns.some(function(col){
+                if(col.data === fieldName){
+                    colDef = col ;
+                    return true;
+                }
+            }) ;
+            return colDef;
+        }
+
+        function getColumnLabel(fieldName){
+            var colDef = getColumnDef(fieldName) ;
+            if(colDef){
+                 return colDef.title.replace(titleHeaderSearchHtml, "") ;
+            }
+            return "";
+        }
+        
+        function showFilters(){
+            var filters = gridFilters[thisGridId] ;
+            var allTh = element.querySelectorAll('th[data-field-name]') ;
+            for(var i=0; i<allTh.length; i++){
+                allTh[i].className = allTh[i].className.replace("data-table-header-filtered", "") ;
+            }
+            if(Object.keys(filters).length >0){
+                var filterDiv = element.querySelector(".dataTables_filter") ;
+                var searchInfoDiv = filterDiv.querySelector(".datatable-search-info") ;
+                if(!searchInfoDiv){
+                    searchInfoDiv = document.createElement("DIV") ;
+                    searchInfoDiv.className = "datatable-search-info" ;
+                    filterDiv.appendChild(searchInfoDiv) ;
+                }
+                searchInfoDiv.innerHTML = Object.keys(filters).map(function(fieldName){
+                    var th = element.querySelector('th[data-field-name="'+fieldName+'"]') ;
+                    var tableAndColName = null;
+                    if(th){
+                        tableAndColName = th.getAttribute("data-field-defname") ;
+                        th.className += " data-table-header-filtered" ;
+                    }
+                    var filter = filters[fieldName] ;
+                    var value = filter.value;
+                    if(tableAndColName){
+                        value = VeloxWebView.formatField(value, tableAndColName) ;
+                    }else{
+                        value = VeloxWebView.format(value, fieldType) ;
+                    }
+                        
+                    return "<strong>"+getColumnLabel(fieldName) + "</strong> " + VeloxWebView.tr('grid.search.'+filter.ope)+" <strong>"+value+"</strong>" ;
+                }).join(" + ") ;
+            }else{
+                var searchInfoDiv = element.querySelector(".datatable-search-info") ;
+                if(searchInfoDiv){
+                    searchInfoDiv.parentElement.removeChild(searchInfoDiv) ;
+                }
+            }
+        }
 
         view.ensureDisplayed(function(){
             if(!datatable){
@@ -2721,6 +2817,82 @@
                     deco(element, fieldType, fieldSize, fieldOptions) ;
                 }) ;
 
+                window.jQuery(element).find("thead th").on('click', '.datatable-header-search', function (ev) {
+                    var fieldName = ev.target.parentElement.getAttribute("data-field-name") ;
+                    var colDef = getColumnDef(fieldName);
+                    if(!colDef){
+                        throw "Configuration of column "+fieldName+" not found" ;
+                    }
+                    var select = '<select data-bind="ope" id="ope" data-emit>' ;
+                    select += '<option value="nofilter" data-i18n="grid.search.nofilter"></option>' ;
+                    Object.keys(GRID_FILTERS).forEach(function(ope){
+                        select += '<option value="'+ope+'" data-i18n="grid.search.'+ope+'"></option>' ;
+                    }) ;
+                    select += '</select>' ;
+                    var v = new VeloxWebView({html: '<div class="datatable-search-popup">'+select+
+                        colDef.searchElement.outerHTML.replace(">", ' id="value1" data-bind="value1">')+
+                        colDef.searchElement.outerHTML.replace(">", ' id="value2" data-bind="value2" style="display:none">')+
+                        '<button class="datatable-search-popup-ok" id="ok" data-emit data-i18n="global.ok">OK</button></div>'}) ;
+                    v.openInPopup(function(){
+                        var data= {
+                            ope : "nofilter"
+                        } ;
+                        var filters = gridFilters[thisGridId] ;
+                        if(filters && filters[fieldName]){
+                            data = JSON.parse(JSON.stringify(filters[fieldName])) ;
+                            if(GRID_FILTERS[data.ope].typeValue === "double"){
+                                data.value1 = data.value[0] ;
+                                data.value2 = data.value[1] ;
+                            }else{
+                                data.value1 = data.value ;
+                            }
+                        }
+                        v.render(data) ;
+                    });
+                    v.on("render", function(){
+                        var data = v.getBoundObject();
+                        if(data.ope === "nofilter"){
+                            v.EL.value1.style.display = "none" ;
+                            v.EL.value2.style.display = "none" ;
+                        }else{
+                            v.EL.value1.style.display = "block" ;
+                            if(GRID_FILTERS[data.ope] && GRID_FILTERS[data.ope].typeValue === "double"){
+                                v.EL.value2.style.display = "block" ;
+                            }else{
+                                v.EL.value2.style.display = "none" ;
+                            }
+                        }
+                    }) ;
+                    v.on("ope", function(){
+                        v.updateData() ;
+                        v.render() ;
+                    }) ;
+                    v.on("ok", function(){
+                        v.updateData() ;
+                        var data = v.getBoundObject();
+                        if(!gridFilters[thisGridId]){
+                            gridFilters[thisGridId] = {} ;
+                        }
+                        var filters = gridFilters[thisGridId] ;
+                        if(data.ope === "nofilter"){
+                            delete filters[fieldName] ;
+                        }else{
+                            data.value = data.value1 ;
+                            if(GRID_FILTERS[data.ope].typeValue === "double"){
+                                data.value = [data.value1, data.value2] ;
+                            }
+                            delete data.value1;
+                            delete data.value2;
+                            filters[fieldName] = data ;
+                        }
+                        v.close() ;
+                        showFilters() ;
+                        datatable.draw() ;
+                    }) ;
+                    //openPopupSearchColumn(ev.target.parentElement.getAttribute("data-field-defname")) ;
+                    ev.preventDefault() ;
+                    ev.stopPropagation() ;
+                } );
                 window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
                     if(ev.detail !== 1){ return; }
                     if(ev.target.tagName === "INPUT" || ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
@@ -2773,15 +2945,23 @@
         }) ;
     }
 
-    function createGridRenderer(type){
+    function createGridRenderer(tableAndColName, type){
         if(["int", "integer", "double", "float", "float8", "number", "decimal"].indexOf(type) !== -1){
             return function (td, cellData/*, rowData, row, col*/) {
                 td.style.textAlign = "right" ;
-                td.innerHTML = VeloxWebView.format(cellData, type) ;
+                if(VeloxWebView.formatField && tableAndColName){
+                    td.innerHTML = VeloxWebView.formatField(cellData, tableAndColName) ;
+                }else{
+                    td.innerHTML = VeloxWebView.format(cellData, type) ;
+                }
             };
         }
         return function (td, cellData/*, rowData, row, col*/) {
-            td.innerHTML = VeloxWebView.format(cellData, type) ;
+            if(VeloxWebView.formatField && tableAndColName){
+                td.innerHTML = VeloxWebView.formatField(cellData, tableAndColName) ;
+            }else{
+                td.innerHTML = VeloxWebView.format(cellData, type) ;
+            }
         };
     }
 

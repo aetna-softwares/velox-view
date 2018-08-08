@@ -2138,7 +2138,7 @@
         if (value === null || value === undefined) {
             if(["int", "integer", "number"].indexOf(type) !== -1){
                 return "0";
-            }else if(["double", "float"].indexOf(type) !== -1){
+            }else if(["double", "float", "float8"].indexOf(type) !== -1){
                 return "0.00";
             }else{
                 return "";
@@ -2172,14 +2172,14 @@
             }
         }
 
-        if(typeof(value)==="string" && ["int", "integer", "number", "double", "float"].indexOf(type) !== -1){
+        if(typeof(value)==="string" && ["int", "integer", "number", "double", "float", "float8"].indexOf(type) !== -1){
             value = Number(value) ;
         }
         
         if(typeof(value)==="number"){
             if(["int", "integer", "number"].indexOf(type) !== -1){
-                return Math.round(type);
-            }else if(["double", "float"].indexOf(type) !== -1){
+                return Math.round(value);
+            }else if(["double", "float", "float8"].indexOf(type) !== -1){
                 return value.toFixed(2);
             }else{
                 return ""+value;
