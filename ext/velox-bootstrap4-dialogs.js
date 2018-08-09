@@ -103,7 +103,7 @@
         '        </button>'+
         '      </div>'+
         '      <div class="modal-body p-2">'+
-        message.replace(/\n/g, "<br />")+
+        (""+message).replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+
         '        <button type="button" class="btn btn-primary" data-dismiss="modal">'+okLabel()+'</button>'+
@@ -152,7 +152,7 @@
         '        </button>'+
         '      </div>'+
         '      <div class="modal-body p-3">'+
-        message.replace(/\n/g, "<br />")+
+        (""+message).replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+
         '        <button type="button" class="btn btn-primary" data-dismiss="modal">'+okLabel()+'</button>'+
@@ -472,7 +472,7 @@
         } 
         modalHtml += '      </div>'+
         '      <div class="modal-body p-2">'+
-        message.replace(/\n/g, "<br />")+
+        (""+message).replace(/\n/g, "<br />")+
         '      </div>'+
         '      <div class="modal-footer">'+
         buttons.map(function(button){
