@@ -175,12 +175,13 @@
                 if(fieldType === "grid"){ return ;}//ignore grids
 
                 
-
+                var label = document.createElement("LABEL") ;
                 var fieldDef = element.getAttribute("data-field-def") ;
                 if(!fieldDef){ return ; }
                 var strLabel = "" ;
                 if(!element.hasAttribute("data-field-label")){
                     strLabel = VeloxWebView.tr("fields."+fieldDef);
+                    label.setAttribute("data-i18n", "fields."+fieldDef) ;
                     element.setAttribute("data-field-label", strLabel) ;
                 }else{
                     strLabel = element.getAttribute("data-field-label") ;
@@ -205,7 +206,7 @@
                     forId = inputEl.id ;
                 }
                 
-                var label = document.createElement("LABEL") ;
+                
                 label.setAttribute("for", forId) ;
                 var text = document.createTextNode(strLabel);
                 if(fieldType === "boolean" || fieldType === "bool" || fieldType === "checkbox"){
@@ -300,6 +301,7 @@
                         var option = document.createElement("OPTION") ;
                         option.value = val;
                         if(VeloxWebView.i18n){
+                            option.setAttribute("data-i18n", "fields.values."+table+"."+colDef.name+"."+val) ;
                             option.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+colDef.name+"."+val) ;
                         }else{
                             option.innerHTML = val ;
@@ -339,6 +341,7 @@
                         
                         var label = document.createElement("LABEL") ;
                         if(VeloxWebView.i18n){
+                            label.setAttribute("data-i18n", "fields.values."+table+"."+colDef.name+"."+val) ;
                             label.innerHTML = VeloxWebView.i18n.tr("fields.values."+table+"."+colDef.name+"."+val) ;
                         }else{
                             label.innerHTML = val ;
@@ -578,6 +581,7 @@
     function prepareGridThLabel(table, colDef){
         var label = document.createElement("LABEL") ;
         if(VeloxWebView.i18n){
+            label.setAttribute("data-i18n", "fields."+table+"."+colDef.name) ;
             label.innerHTML = VeloxWebView.i18n.tr("fields."+table+"."+colDef.name) ;
         }else{
             label.innerHTML = colDef.label || colDef.name ;

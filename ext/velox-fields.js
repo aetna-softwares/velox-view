@@ -2543,9 +2543,17 @@
 
             var labelEl = th.querySelector("label") ;
             if(labelEl){
-                colDef.title = labelEl.innerHTML ;
+                if(labelEl.hasAttribute("data-i18n")){
+                    colDef.title = '<span data-i18n="'+labelEl.getAttribute("data-i18n")+'">'+labelEl.innerHTML+'</span>' ;
+                }else{
+                    colDef.title = labelEl.innerHTML ;
+                }
             }else{
-                colDef.title = th.innerHTML ;
+                if(th.hasAttribute("data-i18n")){
+                    colDef.title = '<span data-i18n="'+th.getAttribute("data-i18n")+'">'+th.innerHTML+'</span>' ;
+                }else{
+                    colDef.title = th.innerHTML ;
+                }
             }
 
 
@@ -2758,7 +2766,7 @@
                         value = VeloxWebView.format(value, fieldType) ;
                     }
                         
-                    return "<strong>"+getColumnLabel(fieldName) + "</strong> " + VeloxWebView.tr('grid.search.'+filter.ope)+" <strong>"+value+"</strong>" ;
+                    return "<strong>"+getColumnLabel(fieldName) + '</strong> <span data-i18n="'+'grid.search.'+filter.ope+'">' + VeloxWebView.tr('grid.search.'+filter.ope)+"</span> <strong>"+value+"</strong>" ;
                 }).join(" + ") ;
             }else{
                 var searchInfoDiv = element.querySelector(".datatable-search-info") ;
