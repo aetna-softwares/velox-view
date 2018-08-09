@@ -1748,6 +1748,38 @@
         for(var i=0; i<this.boundElements.length; i++){
             var boundEl = this.boundElements[i] ;
             var el = boundEl.el;
+
+            if(boundEl.boundAttributes){
+                var boundAttributesKeys = Object.keys(boundEl.boundAttributes) ;
+                for(var y=0; y<boundAttributesKeys.length; y++){
+                    var name = boundAttributesKeys[y] ;
+                    var originalValue = boundEl.boundAttributes[name] ;
+                    var value = originalValue ;
+                    while(value.indexOf("${") !== -1){
+                        var indexStart = value.indexOf("${") ;
+                        var indexEnd = value.indexOf("}") ;
+                        if(indexEnd < indexStart){ 
+                            console.error("Wrong syntax in "+originalValue) ;
+                            break;
+                        }
+                        var expr = value.substring(indexStart+2, indexEnd) ;
+                        var exprValue = runEvalExpr(exprNameValues, expr) ;
+                        value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
+                    }
+                    if(name.indexOf("attr-") === 0){
+                        name = name.substring(name.indexOf("-")+1) ;
+                    }
+                    if(value === "$removeAttr"){
+                        boundEl.el.removeAttribute(name) ;
+                    }else{
+                        if(boundEl.el.getAttribute(name) != value){
+                            boundEl.el.setAttribute(name, value) ;
+                        }
+                    }
+                } ;
+            }
+
+
             var bindPath = boundEl.bindPath;
             if(bindPath){
                 var fullBindPath = (this.bindPath||["$this"]).concat(bindPath) ;
@@ -1781,7 +1813,11 @@
                     }
                 }else if (el.tagName === "IMG") {  
                     if(bindData){
-                        el.src = bindData ;
+                        var src = bindData ;
+                        if(el.hasAttribute("data-src-pattern")){
+                            src = el.getAttribute("data-src-pattern").replace("__data__", bindData) ;
+                        }
+                        el.src = src ;
                     }else{
                         el.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
                     }
@@ -1811,35 +1847,7 @@
                 }
             }
 
-            if(boundEl.boundAttributes){
-                var boundAttributesKeys = Object.keys(boundEl.boundAttributes) ;
-                for(var y=0; y<boundAttributesKeys.length; y++){
-                    var name = boundAttributesKeys[y] ;
-                    var originalValue = boundEl.boundAttributes[name] ;
-                    var value = originalValue ;
-                    while(value.indexOf("${") !== -1){
-                        var indexStart = value.indexOf("${") ;
-                        var indexEnd = value.indexOf("}") ;
-                        if(indexEnd < indexStart){ 
-                            console.error("Wrong syntax in "+originalValue) ;
-                            break;
-                        }
-                        var expr = value.substring(indexStart+2, indexEnd) ;
-                        var exprValue = runEvalExpr(exprNameValues, expr) ;
-                        value = value.substring(0, indexStart)+exprValue+value.substring(indexEnd+1) ;
-                    }
-                    if(name.indexOf("attr-") === 0){
-                        name = name.substring(name.indexOf("-")+1) ;
-                    }
-                    if(value === "$removeAttr"){
-                        boundEl.el.removeAttribute(name) ;
-                    }else{
-                        if(boundEl.el.getAttribute(name) != value){
-                            boundEl.el.setAttribute(name, value) ;
-                        }
-                    }
-                } ;
-            }
+            
 
             if(boundEl.boundTextNodes){
                 var textNodes = [];
