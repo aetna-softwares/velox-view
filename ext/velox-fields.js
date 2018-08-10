@@ -2271,8 +2271,12 @@
         }
 
         var checkBoxSelection = false;
+        var checkBoxMultiple = true;
         if(table.hasAttribute("data-select-checkbox")){
             checkBoxSelection = true;
+            if(table.hasAttribute("data-select-single")){
+                checkBoxMultiple = false;
+            }
         }
 
         var responsiveDisplay = window.jQuery.fn.dataTable.Responsive.display.childRowImmediate ;
@@ -2414,7 +2418,7 @@
                 isCheckboxMouseDown = false;
             });
             gridOptions.select = {
-                style: 'multi'
+                style: checkBoxMultiple?'multi':'single'
             } ;
             function refreshHeaderCheckbox(){
                 var rows = datatable.rows({ 'search': 'applied' }).nodes();
