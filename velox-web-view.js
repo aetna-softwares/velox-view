@@ -1794,7 +1794,7 @@
                     currentValue = currentValue !== null && currentValue !== undefined?currentValue.valueOf():null;
                     var newValue = bindData;
                     newValue = newValue !== null && newValue !== undefined?newValue.valueOf():null;
-                    if(currentValue != newValue){
+                    if(currentValue != newValue || Array.isArray(newValue)){
                         el.setValue(bindData) ;
                     }
                 }else if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") {
