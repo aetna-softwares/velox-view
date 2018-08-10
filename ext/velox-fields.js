@@ -2398,6 +2398,14 @@
             }
         }
 
+        function ensureDatatable(callback){
+            if(datatable){ return callback() ;}
+            var cb = function(){
+                HTMLElement.prototype.removeEventListener.call(element,"tableinit", cb) ;
+                callback() ;    
+            } ;
+            HTMLElement.prototype.addEventListener.call(element,"tableinit", cb) ;
+        }
 
         var isCheckboxMouseDown = false;
         var isCheckboxMouseCheck = false;
@@ -2408,6 +2416,67 @@
             gridOptions.select = {
                 style: 'multi'
             } ;
+            function refreshHeaderCheckbox(){
+                var rows = datatable.rows({ 'search': 'applied' }).nodes();
+                var allUnchecked = true ;
+                var allChecked = true ;
+                for(var z=0; z<rows.length; z++){
+                    var checkboxRow = rows[z].querySelector('input[type="checkbox"].dt-col-checkbox') ;
+                    if(checkboxRow.checked){
+                        allUnchecked = false;
+                    }else{
+                        allChecked = false ;
+                    }
+                    if(!allChecked && !allUnchecked){
+                        break;
+                    }
+                }
+                var selectAll = element.querySelector(".dataTables_scrollHeadInner .dt-col-checkbox-select-all");
+                if(allChecked){
+                    selectAll.checked = true ;
+                    selectAll.indeterminate = false;
+                }else if(allUnchecked){
+                    selectAll.checked = false ;
+                    selectAll.indeterminate = false;
+                }else{
+                    selectAll.checked = true ;
+                    selectAll.indeterminate = true;
+                }
+            }
+            ensureDatatable(function(){
+                datatable.on( 'select', function ( e, dt, type, indexes ) {
+                    if ( type === 'row' ) {
+                        var changed = false;
+                        for(var i=0; i<indexes.length; i++){
+                            var row = indexes[i] ;
+                            var checkbox = element.querySelector('input[row="'+row+'"]') ;
+                            if(checkbox && !checkbox.checked){
+                                checkbox.checked = true ;
+                                changed = true;
+                            }
+                        }
+                        if(changed){
+                            refreshHeaderCheckbox() ;
+                        }
+                    }
+                } );
+                datatable.on( 'deselect', function ( e, dt, type, indexes ) {
+                    if ( type === 'row' ) {
+                        var changed = false;
+                        for(var i=0; i<indexes.length; i++){
+                            var row = indexes[i] ;
+                            var checkbox = element.querySelector('input[row="'+row+'"]') ;
+                            if(checkbox && checkbox.checked){
+                                checkbox.checked = false ;
+                                changed = true;
+                            }
+                        }
+                        if(changed){
+                            refreshHeaderCheckbox() ;
+                        }
+                    }
+                } );
+            });
             gridOptions.columns.push({
                 title: '<input type="checkbox" class="dt-col-checkbox-select-all">',
                 searchable: false,
@@ -2427,31 +2496,7 @@
                         }else{
                             datatable.row( row ).deselect();
                         }
-                        var rows = datatable.rows({ 'search': 'applied' }).nodes();
-                        var allUnchecked = true ;
-                        var allChecked = true ;
-                        for(var z=0; z<rows.length; z++){
-                            var checkboxRow = rows[z].querySelector('input[type="checkbox"].dt-col-checkbox') ;
-                            if(checkboxRow.checked){
-                                allUnchecked = false;
-                            }else{
-                                allChecked = false ;
-                            }
-                            if(!allChecked && !allUnchecked){
-                                break;
-                            }
-                        }
-                        var selectAll = element.querySelector(".dataTables_scrollHeadInner .dt-col-checkbox-select-all");
-                        if(allChecked){
-                            selectAll.checked = true ;
-                            selectAll.indeterminate = false;
-                        }else if(allUnchecked){
-                            selectAll.checked = false ;
-                            selectAll.indeterminate = false;
-                        }else{
-                            selectAll.checked = true ;
-                            selectAll.indeterminate = true;
-                        }
+                        
                     }
 
                     inputCheckBox.addEventListener("click", function(){
@@ -2631,17 +2676,6 @@
 
         var tableData = [] ;
         var eventListeners = {} ;
-
-        
-
-        function ensureDatatable(callback){
-            if(datatable){ return callback() ;}
-            var cb = function(){
-                HTMLElement.prototype.removeEventListener.call(element,"tableinit", cb) ;
-                callback() ;    
-            } ;
-            HTMLElement.prototype.addEventListener.call(element,"tableinit", cb) ;
-        }
 
         element.render = function(){
             if(datatable){
