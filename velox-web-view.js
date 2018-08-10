@@ -1039,7 +1039,11 @@
      * @returns {boolean} true if the view is displayed
      */
     VeloxWebView.prototype.isDisplayed = function(){
-        return this.container && this.container.style && this.container.style.display !== "none" ;
+        var isDisplayed = this.container && this.container.style && this.container.style.display !== "none" ;
+        if(this.parentView){
+            return isDisplayed && this.parentView.isDisplayed() ;
+        }
+        return isDisplayed ;
     } ;
 
     /**
@@ -1050,7 +1054,12 @@
         if(this.isDisplayed()){
             return callback() ;
         }
-        this.on("displayed", callback) ;
+        this.on("displayed", function(){
+            if(this.parentView){
+                return this.parentView.ensureDisplayed(callback) ;
+            }
+            callback() ;
+        }.bind(this)) ;
     } ;
 
     /**
@@ -1820,6 +1829,16 @@
                         el.src = src ;
                     }else{
                         el.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+                    }
+                }else if (el.tagName === "OBJECT") {  
+                    if(bindData){
+                        var src = bindData ;
+                        if(el.hasAttribute("data-src-pattern")){
+                            src = el.getAttribute("data-src-pattern").replace("__data__", bindData) ;
+                        }
+                        el.data = src ;
+                    }else{
+                        el.data = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
                     }
                 } else {
                     bindData = this.format(bindData) ;
