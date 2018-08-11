@@ -139,6 +139,7 @@
                 }
             }
         }
+        this.emit("readOnly", readOnly) ;
     } ;
 
 
