@@ -1291,7 +1291,7 @@
                                 var jsUrl = this.directory + "/" + jsPath;
                                 this.getXHR(jsUrl, function(contents){
                                     var scriptBody = contents ;
-                                    scriptBody +=  "//# sourceURL=/"+this.directory+"/"+jsPath ;
+                                    scriptBody +=  "\n//# sourceURL=/"+this.directory+"/"+jsPath ;
                                     functionInView = new Function("view", scriptBody) ;
                                     scriptIndex++;
                                     cb() ;
@@ -1301,7 +1301,7 @@
                     }else{
                         var scriptBody = child.innerHTML ;
                         
-                        scriptBody +=  "//# sourceURL=/"+this.directory+"/"+this.name+(scriptIndex>0?"_"+scriptIndex:"")+".js" ;
+                        scriptBody +=  "\n//# sourceURL=/"+this.directory+"/"+this.name+(scriptIndex>0?"_"+scriptIndex:"")+".js" ;
         
                         functionInView = new Function("view", scriptBody) ;
                         scriptIndex++;
@@ -1645,6 +1645,7 @@
                     }
                     this.listeners[event].push(listener) ;
                 },
+                realEls: [],
                 isFake: true
             } ;
             //create decorator around element properties and function
@@ -1653,18 +1654,35 @@
                 if(fakeElKeys.indexOf(k.prop) === -1){
                     if(k.type === "function"){
                         fakeEl[k.prop] = function(){
-                            if(fakeEl.realEl){
-                                return fakeEl.realEl[k.prop].apply(fakeEl.realEl, arguments) ;
+                            var results = [] ;
+                            for(var e=0; e<fakeEl.realEls.length; e++){
+                                results.push(fakeEl.realEls[e][k.prop].apply(fakeEl.realEls[e], arguments)) ;
                             }
+                            if(results.length === 0){
+                                return null;
+                            }else if(results.length === 1){
+                                return results[0] ;
+                            }
+                            return results ;
                         } ;
                     }else{
                         Object.defineProperty(fakeEl, k.prop, {
                             get: function(){
-                                if(fakeEl.realEl){ return fakeEl.realEl[k.prop] ;}
-                                return null;
+                                var results = [] ;
+                                for(var e=0; e<fakeEl.realEls.length; e++){
+                                    results.push(fakeEl.realEls[e][k.prop]) ;
+                                }
+                                if(results.length === 0){
+                                    return null;
+                                }else if(results.length === 1){
+                                    return results[0] ;
+                                }
+                                return results ;
                             },
                             set : function(value){
-                                if(fakeEl.realEl){ fakeEl.realEl[k.prop] = value ;}
+                                for(var e=0; e<fakeEl.realEls.length; e++){
+                                    fakeEl.realEls[e][k.prop] = value ;
+                                }
                             }
                         }) ;
                     }
@@ -1675,6 +1693,10 @@
         }.bind(this));
     } ;
     
+    VeloxWebView.prototype.getElement = function(el){
+        if(el.realEls.length>0){ return el.realEls[0] ;}
+        return el ;
+    } ;
 
     /**
      * Get the subview instance
@@ -2126,7 +2148,7 @@
             for(var y=0; y<parent.innerViewIds.length; y++){
                 var innerViewId = parent.innerViewIds[y] ;
                 if(v.ids[innerViewId.id] && v.EL[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
-                    innerViewId.realEl = v.EL[innerViewId.id] ;
+                    innerViewId.realEls.push(v.EL[innerViewId.id]) ;
                     var listenerKeys = Object.keys(innerViewId.listeners) ;
                     for(var z=0; z<listenerKeys.length; z++){
                         var event = listenerKeys[z] ;
