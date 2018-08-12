@@ -1750,6 +1750,8 @@
         if (!this.bindObject) { return callback(); }
 
 
+
+
         var baseData = this.bindObject;
         var parentData = null;
         if (this.bindPath && this.bindPath.length > 0) {
@@ -2148,7 +2150,7 @@
             for(var y=0; y<parent.innerViewIds.length; y++){
                 var innerViewId = parent.innerViewIds[y] ;
                 if(v.ids[innerViewId.id] && v.EL[innerViewId.id] && !v.EL[innerViewId.id].isFake){ //the ids belong to this view
-                    innerViewId.realEls.push(v.EL[innerViewId.id]) ;
+                    innerViewId.realEls[v.indexMultiple] = v.EL[innerViewId.id] ;
                     var listenerKeys = Object.keys(innerViewId.listeners) ;
                     for(var z=0; z<listenerKeys.length; z++){
                         var event = listenerKeys[z] ;
