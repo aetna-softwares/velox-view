@@ -2204,12 +2204,26 @@
         css += '.table.dataTable td, .table.dataTable th {';
         css += '    padding: 5px; white-space: nowrap';
         css += '  }';
+        css += '.datatable-header-search:before {content: "\\1F50D"; }';
         css += '.datatable-header-search {font-size: 8pt; color: #999; float: right; margin-top: 6px; margin-right: -20px;}';
         css += '.dtr-details .datatable-header-search {display: none}';
+        css += '@media print { .datatable-header-search  {display: none;} }';
+
         css += '.data-table-header-filtered .datatable-header-search { color: red }';
         css += '.datatable-search-info:before {display: inline-block; content: "\\1F50D"; margin-right: 5px;}';
         css += '.datatable-search-info {float: right; position: absolute; right: 20px; top: -20px;}';
         css += '.datatable-search-info strong {color: red;}';
+        css += '.datatable-search-save-bt:before {display: inline-block; content: "\\1F4BE"; margin-left: 5px;}';
+        css += '.datatable-search-save-bt {color: #11516b;cursor: pointer;}';
+        css += '.datatable-search-clear-bt:before {display: inline-block; content: "\\00D7"; margin-left: 5px;}';
+        css += '.datatable-search-clear-bt {color: #11516b;cursor: pointer;}';
+        css += '.datatable-search-history-bt:before {display: inline-block; content: "\\1F4D6";}';
+        css += '.datatable-search-history-bt {color: #11516b;cursor: pointer;position: absolute; right: 10px;}';
+        css += '.datatable-search-history-name {cursor: pointer; border: 1px solid #d2d2d2; border-width: 1px 1px 0px 1px; padding: 10px; }';
+        css += '.datatable-search-history-name:first-child {border-width: 1px 1px 0 1px; ; border-radius: 5px 5px 0 0;}';
+        css += '.datatable-search-history-name:last-child {border-width: 1px; border-radius: 0 0 5px 5px;}';
+        css += '.datatable-search-history-remove { float:right; cursor: pointer; }';
+        css += '.datatable-search-save-name {flex-grow:1;}';
         css += '.datatable-search-popup { display: flex; height: 35px;}';
         css += '.datatable-search-popup>* { margin-left: 5px; margin-right: 5px }';
         css += '.datatable-search-popup>[data-search-field] { flex-grow: 1; margin-bottom: 0 }';
@@ -2581,7 +2595,7 @@
         }
 
 
-        var titleHeaderSearchHtml = '<span class="datatable-header-search">&#x1f50d;</span>' ;
+        var titleHeaderSearchHtml = '<span class="datatable-header-search"></span>' ;
 
         listTh.forEach(function(th, i){
             if(th.hasAttribute("colspan")){ return ; }
@@ -2825,7 +2839,7 @@
             for(var i=0; i<allTh.length; i++){
                 allTh[i].className = allTh[i].className.replace("data-table-header-filtered", "") ;
             }
-            if(Object.keys(filters).length >0){
+            if(filters && Object.keys(filters).length >0){
                 var filterDiv = element.querySelector(".dataTables_filter") ;
                 var searchInfoDiv = filterDiv.querySelector(".datatable-search-info") ;
                 if(!searchInfoDiv){
@@ -2833,7 +2847,7 @@
                     searchInfoDiv.className = "datatable-search-info" ;
                     filterDiv.appendChild(searchInfoDiv) ;
                 }
-                searchInfoDiv.innerHTML = Object.keys(filters).map(function(fieldName){
+                var currentFilters = Object.keys(filters).map(function(fieldName){
                     var th = element.querySelector('th[data-field-name="'+fieldName+'"]') ;
                     var tableAndColName = null;
                     if(th){
@@ -2848,8 +2862,66 @@
                         value = VeloxWebView.format(value, fieldType) ;
                     }
                         
-                    return "<strong>"+getColumnLabel(fieldName) + '</strong> <span data-i18n="'+'grid.search.'+filter.ope+'">' + VeloxWebView.tr('grid.search.'+filter.ope)+"</span> <strong>"+value+"</strong>" ;
+                    return { fieldName: fieldName, ope: filter.ope, value: value } ;
+                }) ;
+                searchInfoDiv.innerHTML = currentFilters.map(function(f){
+                    return "<strong>"+getColumnLabel(f.fieldName) + '</strong> <span data-i18n="'+'grid.search.'+f.ope+'">' + VeloxWebView.tr('grid.search.'+f.ope)+"</span> <strong>"+f.value+"</strong>" ;
                 }).join(" + ") ;
+
+                var btClear = document.createElement("SPAN") ;
+                btClear.className = "datatable-search-clear-bt" ;
+                searchInfoDiv.appendChild(btClear) ;
+                btClear.addEventListener("click", function(){
+                    delete gridFilters[thisGridId] ;
+                    showFilters();
+                    datatable.draw() ;
+                }) ;
+                var btSave = document.createElement("SPAN") ;
+                btSave.className = "datatable-search-save-bt" ;
+                searchInfoDiv.appendChild(btSave) ;
+                btSave.addEventListener("click", function(){
+                    var v = new VeloxWebView({html: '<div class="datatable-search-popup">'+
+                    '<input type="text" class="datatable-search-save-name" data-bind="name" maxlength="128"/>'+
+                    '<button class="datatable-search-popup-ok" id="ok" data-emit data-i18n="global.ok">OK</button></div>'}) ;
+                    v.openInPopup(function(){
+                        var data= {
+                            name : currentFilters.map(function(f){
+                                var htmlLabel = getColumnLabel(f.fieldName);
+                                return htmlLabel.substring(htmlLabel.indexOf(">")+1, htmlLabel.lastIndexOf("<")) +" "+ VeloxWebView.tr('grid.search.'+f.ope)+" "+f.value ;
+                            }).join(" + ")
+                        } ;
+                        v.render(data) ;
+                    });
+                    v.on("ok", function(){
+                        v.updateData() ;
+                        v.close() ;
+                        var data = v.getBoundObject();
+                        if(apiClient && apiClient.__velox_database && apiClient.__velox_database.velox_map){
+                            v.longTask(function(done){
+                                apiClient.__velox_database.velox_map.insert({
+                                    code: "velox_grid_search_saved",
+                                    key: data.name.substring(0,128),
+                                    value: filters
+                                }, function(err){
+                                    if(err){ return done(err) ;}
+                                    VeloxWebView.info(VeloxWebView.tr?VeloxWebView.tr("global.saveOk"):"Save OK") ;
+                                    done() ;
+                                }) ;
+                            }) ;
+                        }else{
+                            //no server map storage, save in local storage only
+                            var localSaved = localStorage.getItem("velox_grid_search_saved") ;
+                            if(localSaved){
+                                localSaved = JSON.parse(localSaved) ;
+                            }else{
+                                localSaved = {} ;
+                            }
+                            localSaved[data.name] = filters ;
+                            localStorage.setItem("velox_grid_search_saved", JSON.stringify(localSaved)) ;
+                            VeloxWebView.info(VeloxWebView.tr?VeloxWebView.tr("global.saveOk"):"Save OK") ;
+                        }
+                    }) ;
+                }) ;
             }else{
                 var searchInfoDiv = element.querySelector(".datatable-search-info") ;
                 if(searchInfoDiv){
@@ -2857,6 +2929,89 @@
                 }
             }
         }
+
+
+       function showSearchHistory(){
+            var inputSearch = element.querySelector('[type="search"]') ;
+            if(inputSearch){
+                var elHistory = document.createElement("SPAN") ;
+                elHistory.className = "datatable-search-history-bt" ;
+                inputSearch.parentElement.style.position = "relative" ;
+                inputSearch.parentElement.appendChild(elHistory) ;
+                elHistory.addEventListener("click", function(){
+                    if(apiClient && apiClient.__velox_database && apiClient.__velox_database.velox_map){
+                        view.longTask(function(done){
+                            apiClient.__velox_database.velox_map.search({code: "velox_grid_search_saved"}, function(err, searches){
+                                if(err){ return console.log("Error while get grid searches", err) ;}
+                                searches = searches.map(function(s){
+                                    return { name : s.key, filters: s.value } ;
+                                }) ;
+                                openPopup(searches) ;
+                                done() ;
+                            });
+                        }) ;
+                    }else{
+                        var localSaved = localStorage.getItem("velox_grid_search_saved") ;
+                        if(localSaved){
+                            localSaved = JSON.parse(localSaved) ;
+                        }else{
+                            localSaved = {} ;
+                        }
+                        var searches = [] ;
+                        Object.keys(localSaved).forEach(function(name){
+                            searches.push({ name : name, filters: localSaved[name]}) ;
+                        });
+                    }
+                }) ;
+                var openPopup = function(searches){
+                    var v = new VeloxWebView({html: '<div class="datatable-search-history">'+
+                    '<div data-hide-if="searches" data-i18n="grid.noSavedSearch"></div>'+
+                    '<div class="datatable-search-history-name" data-bind="searches[]" id="searchItem" data-emit><span data-bind="name"></span> <button id="remove" data-emit class="datatable-search-history-remove">&times;</button></div>'+
+                    '</div>'}) ;
+                    v.openInPopup(function(){
+                        var data= {
+                            searches : searches
+                        } ;
+                        v.render(data) ;
+                    });
+                    v.on("searchItem", function(ev){
+                        var filters = ev.data.data.filters ;
+                        v.close() ;
+                        gridFilters[thisGridId] = filters ;
+                        showFilters() ;
+                        datatable.draw() ;
+                    }) ;
+                    v.on("remove", function(ev){
+                        var item = ev.data.data ;
+                        searches.some(function(s, i){
+                            if(s.name === item.name){
+                                searches.splice(i, 1) ;
+                                return true;
+                            }
+                        }) ;
+                        if(apiClient && apiClient.__velox_database && apiClient.__velox_database.velox_map){
+                            view.longTask(function(done){
+                                apiClient.__velox_database.transactionalChanges([{table: "velox_map", action: "removeWhere", record: {code: "velox_grid_search_saved", key: item.name}}], function(err){
+                                    if(err){ return console.log("Error while get grid searches", err) ;}
+                                    v.render() ;
+                                    done() ;
+                                });
+                            }) ;
+                        }else{
+                            var localSaved = localStorage.getItem("velox_grid_search_saved") ;
+                            if(localSaved){
+                                localSaved = JSON.parse(localSaved) ;
+                            }else{
+                                localSaved = {} ;
+                            }
+                            delete localSaved[item.name] ;
+                            localStorage.setItem("velox_grid_search_saved", JSON.stringify(localSaved)) ;
+                            v.render() ;
+                        }
+                    }) ;
+                } ;
+            }
+        };
 
         view.ensureDisplayed(function(){
             if(!datatable){
@@ -3036,6 +3191,7 @@
                     });
                 } );
                 element.setValue(tableData) ;
+                showSearchHistory() ;
                 triggerEvent(element, "tableinit") ;
             }else{
                 //already exists, redraw
