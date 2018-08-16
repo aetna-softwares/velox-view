@@ -1323,12 +1323,12 @@
         if(!currentLocale){
             currentLocale = {
                 lang: navigator.language || navigator.userLanguage,
-                delimiters : {}
+                delimiters : {thousands: ",", decimale: "."}
             } ;
             if(VeloxWebView.i18n){
-                currentLocale.lang = VeloxWebView.i18n.getLang() ;
-                VeloxWebView.i18n.onLanguageChanged(function(newLang){
-                    currentLocale.lang = newLang ;
+                currentLocale = VeloxWebView.i18n.getLocale() ;
+                VeloxWebView.i18n.onLanguageChanged(function(){
+                    currentLocale = VeloxWebView.i18n.getLocale() ;
                 });
                 callback() ;
             }else{
@@ -1351,29 +1351,57 @@
      * @param {function(Error)} callback called when field is created
      */
     function createNumberField(element, fieldType, fieldSize, fieldOptions){
-        loadNumberCSS() ;
+        //loadNumberCSS() ;
         var input = appendInputHtml(element) ;
-        input.type = "number" ;
-        if(fieldType==="decimal" || fieldType==="numeric" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
-            input.step="0.01" ;
-        }else{
-            input.addEventListener("keydown", function(ev){
-                if([188,110,190].indexOf(ev.keyCode) !== -1){
-                    ev.preventDefault() ;
-                }
-            }) ;
+        input.type = "tel" ;
+
+        var maskField = null;
+        var maskOptions = { 
+            radixPoint: currentLocale.delimiters.decimal , 
+            groupSeparator : currentLocale.delimiters.thousands , 
+            prefix : "", suffix : "", positionCaretOnTab: false
+        };
+
+        if(fieldOptions.decimaldigits){
+            var digits = parseInt(fieldOptions.decimaldigits, 10) ;
+            if(isNaN(digits)){
+                throw "Invalid value for option decimaldigits, number expected" ;		
+            }
+            maskOptions.digits = digits ;
         }
 
-        //prevent modify value with wheel
-        input.addEventListener("mousewheel", function(){ this.blur(); }) ;
-
-
         element.getValue = function(){
+            if(maskField){
+                var value = maskField._valueGet() ;
+                if(maskOptions){
+                    value = replaceAll(value, maskOptions.radixPoint, ".");
+                    value = replaceAll(value, maskOptions.groupSeparator, "");
+                    value = replaceAll(value, maskOptions.prefix, "");
+                    value = replaceAll(value, maskOptions.suffix, "");
+                }
+                value = value === "" ? new libs.Decimal(0) : new libs.Decimal(value);
+                if(fieldType === "percent"){
+                    value = value.div(100) ;
+                }
+                return value.toNumber() ;
+            }
             return Number(input.value) ;
         } ;
         element.setValue = function(value){
+            if(!value){ value = 0; }
+            var decimalValue = new libs.Decimal(value) ;
+            if(fieldType === "percent"){
+                decimalValue = decimalValue.mul(100) ;
+            }
+            value = decimalValue.toNumber() ;
+            if(fieldType==="numeric" || fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
+                value = decimalValue.toFixed(maskOptions.digits || 2) .replace(".", currentLocale.delimiters.decimal); 
+            }
+            input.value = (value?""+value:"") ;
+            if(maskField){
+                maskField._valueSet(value) ;
+            }
             input.value = value ;
-            triggerEvent(element, "change") ;
         } ;
         element.setReadOnly = function(readOnly){
             setReadOnly(element, readOnly) ;
@@ -1382,15 +1410,29 @@
             setRequired(element, readOnly) ;
         } ;
 
-        element.focus = function(){
-            input.focus() ;
-        };
-        
-        ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
-            input.addEventListener(eventName, function(ev){
-                triggerEvent(element, ev) ;
+        if(element !== input){
+            element.focus = function(){
+                input.focus() ;
+            };
+            
+            ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+                input.addEventListener(eventName, function(ev){
+                    triggerEvent(element, ev) ;
+                }) ;
             }) ;
-        }) ;
+        }
+
+        if(fieldType === "int" || fieldType === "integer" || fieldType==="number") {
+            maskOptions.digits = 0 ;
+            var im = new libs.Inputmask("currency", maskOptions);
+            maskField = im.mask(input) ;
+        }else if(fieldType==="numeric" || fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
+            if(fieldType === "percent"){
+                maskOptions.suffix = " %";
+            }
+            var im = new libs.Inputmask("currency", maskOptions);
+            maskField = im.mask(input) ;
+        }
 
     }
 
@@ -2163,6 +2205,7 @@
         css += '    padding: 5px; white-space: nowrap';
         css += '  }';
         css += '.datatable-header-search {font-size: 8pt; color: #999; float: right; margin-top: 6px; margin-right: -20px;}';
+        css += '.dtr-details .datatable-header-search {display: none}';
         css += '.data-table-header-filtered .datatable-header-search { color: red }';
         css += '.datatable-search-info:before {display: inline-block; content: "\\1F50D"; margin-right: 5px;}';
         css += '.datatable-search-info {float: right; position: absolute; right: 20px; top: -20px;}';
@@ -3358,6 +3401,9 @@
      * @param {HTMLElement} element the HTML element in which add input field
      */
     function appendInputHtml(element){
+        if(element.tagName === "INPUT"){
+            return element;
+        }
         var input = document.createElement("INPUT") ;
         input.type = "text" ;
         element.innerHTML = "" ;
