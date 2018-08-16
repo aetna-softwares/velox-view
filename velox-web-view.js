@@ -972,20 +972,27 @@
             this.ids[id] = modifiedId;
             el.id = modifiedId ;
             el.setAttribute("data-original-id", id) ;
+            this.updateIds(id, modifiedId, bodyNode);
+        }
+    } ;
 
-            //modify references
-            var elTarget = bodyNode.querySelectorAll('[data-target="#'+id+'"]') ;
-            for(var y=0; y<elTarget.length; y++){
-                elTarget[y].setAttribute("data-target", "#"+modifiedId) ;
-            }
-            var elHref = bodyNode.querySelectorAll('[href="#'+id+'"]') ;
-            for(var y=0; y<elHref.length; y++){
-                elHref[y].setAttribute("href", "#"+modifiedId) ;
-            }
-            var elFor = bodyNode.querySelectorAll('[for="'+id+'"]') ;
-            for(var y=0; y<elFor.length; y++){
-                elFor[y].setAttribute("for", modifiedId) ;
-            }
+    VeloxWebView.prototype.updateIds = function(id, modifiedId, bodyNode){
+        //modify references
+        var elTarget = bodyNode.querySelectorAll('[data-target="#'+id+'"]') ;
+        for(var y=0; y<elTarget.length; y++){
+            elTarget[y].setAttribute("data-target", "#"+modifiedId) ;
+        }
+        var elHref = bodyNode.querySelectorAll('[href="#'+id+'"]') ;
+        for(var y=0; y<elHref.length; y++){
+            elHref[y].setAttribute("href", "#"+modifiedId) ;
+        }
+        var elFor = bodyNode.querySelectorAll('[for="'+id+'"]') ;
+        for(var y=0; y<elFor.length; y++){
+            elFor[y].setAttribute("for", modifiedId) ;
+        }
+        var elFor = bodyNode.querySelectorAll('[data-keyboard-container="'+id+'"]') ;
+        for(var y=0; y<elFor.length; y++){
+            elFor[y].setAttribute("data-keyboard-container", modifiedId) ;
         }
     } ;
 
@@ -2162,11 +2169,18 @@
                     }
                 }
             }
+
+            Object.keys(parent.ids).forEach(function(id){
+                var modifiedId = parent.ids[id] ;
+                parent.updateIds(id, modifiedId, v.container) ;
+            }) ;
         }
 
         //render after propagate event to be sure bound listener are called
         v.bindObject = this.bindObject ;
         v.render() ;
+        
+        
         this.emit("viewInstanceAdded", {view:v, viewId: viewId, index : view.instances.length-1}, this, false) ;
         return v;
     } ;
