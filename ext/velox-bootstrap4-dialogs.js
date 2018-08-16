@@ -550,6 +550,7 @@
     extension.extendsGlobal.info = extension.extendsProto.info ;
     extension.extendsGlobal.error = extension.extendsProto.error ;
     extension.extendsGlobal.confirm = extension.extendsProto.confirm ;
+    extension.extendsGlobal.question = extension.extendsProto.question ;
     extension.extendsGlobal.popup = extension.extendsProto.popup ;
 
    
