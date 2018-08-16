@@ -214,9 +214,14 @@
             value = Number(value) ;
         }
         
+        if(typeof(value)==="object" && value.toNumber){
+            value = value.toNumber() ;
+        }
         if(typeof(value)==="number"){
             if(["int", "integer", "number"].indexOf(type) !== -1){
-                return Math.round(value).toFixed(0).replace(/,/g, currentLocale.delimiters.thousands);
+                var n =  Math.round(value).toFixed(0).replace(/,/g, currentLocale.delimiters.thousands);
+                n = n.replace(/\B(?=(\d{3})+(?!\d))/g, currentLocale.delimiters.thousands) ;
+                return n;
             }else if(["double", "float", "float8"].indexOf(type) !== -1){
                 var n = value.toFixed(2);
                 n = n.substring(0, n.length-3).replace(/\B(?=(\d{3})+(?!\d))/g, currentLocale.delimiters.thousands)+ 
@@ -269,6 +274,13 @@
      */
     extension.extendsGlobal.i18n.getLang = function(){
         return getLang() ;
+    } ;
+    
+    /**
+     * get the current lang 
+     */
+    extension.extendsGlobal.i18n.getLocale = function(){
+        return currentLocale ;
     } ;
 
     /**
