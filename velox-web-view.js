@@ -2407,7 +2407,7 @@
                 if (!event) {
                     event = "click";
                 }
-                el.addEventListener(event, (function () {
+                el.addEventListener(event, (function (ev) {
                     var id = el.getAttribute("data-original-id");
                     
                     this.emit(id, {
@@ -2417,6 +2417,8 @@
                         index: this.indexMultiple,
                         view: this
                     });
+                    ev.preventDefault() ; 
+                    ev.stopPropagation() ;
                 }).bind(this));
             }).bind(this)(i);
         }
