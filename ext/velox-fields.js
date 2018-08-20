@@ -108,6 +108,10 @@
             }
         },
 
+        setPhoneCountry: function(phoneCountryP){
+            phoneCountry = phoneCountryP ;
+        },
+
         addDecorator: function(decorator){
             decorators.push(decorator) ;
         },
