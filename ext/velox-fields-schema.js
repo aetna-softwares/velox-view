@@ -518,14 +518,22 @@
                 var thisTableName = tableName;
                 if(th.hasAttribute("data-field-defname")){
                     var splittedName = th.getAttribute("data-field-defname").split(".") ;
-                    thisTableName = splittedName[0];
-                    thisTableDef = schema[thisTableName];
-                    thName = splittedName[1];
+                    var otherTableName = splittedName[0];
+                    var otherTableDef = schema[otherTableName];
+                    if(otherTableDef){
+                        thisTableName = otherTableName ;
+                        thisTableDef = otherTableDef ;
+                        thName = splittedName[1];
+                    }
                 }else if(thName && thName.indexOf(".") !== -1){
                     var splittedName = thName.split(".") ;
-                    thisTableName = splittedName[0];
-                    thisTableDef = schema[splittedName[0]];
-                    thName = splittedName[1];
+                    var otherTableName = splittedName[0];
+                    var otherTableDef = schema[otherTableName];
+                    if(otherTableDef){
+                        thisTableName = otherTableName ;
+                        thisTableDef = otherTableDef ;
+                        thName = splittedName[1];
+                    }
                 }
                 if(thName){
                     th.setAttribute("data-field-defname", thisTableName+"."+thName) ;
