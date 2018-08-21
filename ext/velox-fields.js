@@ -2600,7 +2600,9 @@
 
 
         var titleHeaderSearchHtml = '<span class="datatable-header-search"></span>' ;
-
+        if(!searching){
+            titleHeaderSearchHtml = "" ;
+        }
         listTh.forEach(function(th, i){
             if(th.hasAttribute("colspan")){ return ; }
             var colDef = {
