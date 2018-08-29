@@ -517,9 +517,6 @@
 
         var myChart = echarts.init(element);
 
-        
-        myChart.setOption(option);
-        
         var currentValue = data.seriesData ;
 
         /**
@@ -530,7 +527,9 @@
             currentValue = value;
             option.legend.data = value.map(function(v){ return v.name ;});
             option.series[0].data = value;
-            myChart.setOption(option);
+            view.ensureDisplayed(function(){
+                myChart.setOption(option);
+            });
         } ;
 
         element.getValue = function(){
@@ -538,12 +537,15 @@
         } ;
 
         view.ensureDisplayed(function(){
+            myChart.setOption(option);
             myChart.resize() ;
         });
 
         view.on("render", function(){
             commonChartInit(element, option) ;
-            myChart.setOption(option);
+            view.ensureDisplayed(function(){
+                myChart.setOption(option);
+            }) ;
         }) ;
 
         element.getDataURL = function(opts){
@@ -633,10 +635,9 @@
 
         commonChartInit(element, option) ;
         
-        myChart.setOption(option);
         
         var currentValue = data.seriesData ;
-
+        
         /**
          * 
          * @param {Array} value array [{name: "", value: 123}]
@@ -645,20 +646,25 @@
             currentValue = value;
             option.series[0].data = value.map(function(v){ return v.value ;});
             option.xAxis.data = value.map(function(v){ return v.name ;});
-            myChart.setOption(option);
+            view.ensureDisplayed(function(){
+                myChart.setOption(option);
+            });
         } ;
-
+        
         element.getValue = function(){
             return currentValue;
         } ;
-
+        
         view.ensureDisplayed(function(){
+            myChart.setOption(option);
             myChart.resize() ;
         });
 
         view.on("render", function(){
             commonChartInit(element, option) ;
-            myChart.setOption(option);
+            view.ensureDisplayed(function(){
+                myChart.setOption(option);
+            }) ;
         }) ;
 
         element.getDataURL = function(opts){
