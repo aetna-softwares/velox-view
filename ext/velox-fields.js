@@ -458,6 +458,14 @@
             cdn: "https://cdnjs.cloudflare.com/ajax/libs/moment.js/$VERSION/locale/*.js",
             bowerPath: "moment/locale/*.js",
             npmPath: "moment/locale/*.js"
+        },
+        {
+            name: "quill-map",
+            type: "js",
+            version: QUILL_VERSION,
+            cdn: "https://cdn.quilljs.com/$VERSION/quill.js",
+            bowerPath: "quill/dist/quill.min.js.map",
+            npmPath: "quill/dist/quill.min.js.map",
         }
     ] ;
 
