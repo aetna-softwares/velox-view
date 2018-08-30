@@ -1361,6 +1361,8 @@
 
         var maskField = null;
         var maskOptions = { 
+            placeholder: "",
+            digitsOptional: true,
             radixPoint: currentLocale.delimiters.decimal , 
             groupSeparator : currentLocale.delimiters.thousands , 
             prefix : "", suffix : "", positionCaretOnTab: false
@@ -1374,6 +1376,10 @@
             maskOptions.digits = digits ;
         }
 
+        input.addEventListener("focus", function(){
+            input.select() ;
+        }) ;
+
         element.getValue = function(){
             if(maskField){
                 var value = maskField._valueGet() ;
@@ -1383,16 +1389,22 @@
                     value = replaceAll(value, maskOptions.prefix, "");
                     value = replaceAll(value, maskOptions.suffix, "");
                 }
-                value = value === "" ? new libs.Decimal(0) : new libs.Decimal(value);
+                value = (value === "" || value === ".") ? null : new libs.Decimal(value);
                 if(fieldType === "percent"){
                     value = value.div(100) ;
                 }
-                return value.toNumber() ;
+                return value?value.toNumber():null ;
             }
             return Number(input.value) ;
         } ;
         element.setValue = function(value){
-            if(!value){ value = 0; }
+            if(!value && value !== 0){ 
+                input.value = "" ;
+                if(maskField){
+                    maskField._valueSet(null) ;
+                }
+                return;
+            }
             var decimalValue = new libs.Decimal(value) ;
             if(fieldType === "percent"){
                 decimalValue = decimalValue.mul(100) ;
@@ -1401,7 +1413,6 @@
             if(fieldType==="numeric" || fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
                 value = decimalValue.toFixed(maskOptions.digits || 2) .replace(".", currentLocale.delimiters.decimal); 
             }
-            input.value = (value?""+value:"") ;
             if(maskField){
                 maskField._valueSet(value) ;
             }
