@@ -142,13 +142,13 @@
             // prepare function arguments definition and value
             var argNames = [] ;
             var argValues = [] ;
-            var dataKeys  = Object.keys(currentData);
+            var dataKeys  = (currentData && typeof(currentData) === "object")?Object.keys(currentData):[];
             for(var i=0; i<dataKeys.length; i++){
                 var k = dataKeys[i] ;
                 argNames.push(k);
                 argValues.push(currentData[k]);
             }
-            dataKeys  = Object.keys(contextData);
+            dataKeys  = (contextData && typeof(contextData) === "object")?Object.keys(contextData):[];
             for(var i=0; i<dataKeys.length; i++){
                 var k = dataKeys[i] ;
                 argNames.push(k);
@@ -1828,6 +1828,24 @@
                     fullBindPath = this.bindPath ;
                 }
                 var bindData = pathExtract(this.bindObject, fullBindPath);
+
+                //dispatch bound event on this element
+                var triggerBoundEvent = function(){
+                    var event = document.createEvent('CustomEvent');
+                    event.initCustomEvent('bound', false, true, {
+                        value: bindData,
+                        baseData: baseData,
+                        bindPath: bindPath,
+                        view: this,
+                        data: bindData
+                    });
+                    var detailKeys = Object.keys(event.detail) ;
+                    for(var y=0; y<detailKeys.length; y++){
+                        var k = detailKeys[y] ;
+                        event[k] = event.detail[k] ;
+                    }
+                    el.dispatchEvent(event);
+                } ;
                 
                 if (el.setValue){
                     var currentValue = el.getValue();
@@ -1878,10 +1896,12 @@
                             (function(bindData){
                                 el.addEventListener("load", function(){
                                     el.contentWindow.document.body.innerHTML = bindData ;
+                                    triggerBoundEvent();
                                 });
                             })(bindData) ;
                         }else{
                             el.contentWindow.document.body.innerHTML = bindData ;
+                            triggerBoundEvent();
                         }
                     }else{
                         if(boundEl.isHTML){
@@ -1894,6 +1914,10 @@
                             }
                         }
                     }
+                }
+
+                if(el.tagName !== "IFRAME"){
+                    triggerBoundEvent();
                 }
             }
 
@@ -1927,21 +1951,7 @@
                 }
             }
 
-            //dispatch bound event on this element
-            var event = document.createEvent('CustomEvent');
-            event.initCustomEvent('bound', false, true, {
-                value: bindData,
-                baseData: baseData,
-                bindPath: bindPath,
-                view: this,
-                data: bindData
-            });
-            var detailKeys = Object.keys(event.detail) ;
-            for(var y=0; y<detailKeys.length; y++){
-                var k = detailKeys[y] ;
-                event[k] = event.detail[k] ;
-            }
-            el.dispatchEvent(event);
+            
         }
 
         //dispatch bound event on container element

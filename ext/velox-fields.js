@@ -3251,7 +3251,7 @@
                     ev.stopPropagation() ;
                 } );
                 window.jQuery(element).find("tbody").on('click', 'tr', function (ev) {
-                    if(ev.detail !== 1){ return; }
+                    if(ev.detail > 1){ return; }
                     if(ev.target.tagName === "INPUT" || ev.target.tagName === "BUTTON" || ev.target.parentElement.tagName === "BUTTON"){
                         return; //click on a button on the line, don't consider as a row click
                     }
