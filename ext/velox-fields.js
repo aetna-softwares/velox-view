@@ -2765,13 +2765,7 @@
         var eventListeners = {} ;
 
         element.render = function(){
-            if(datatable){
-                if(responsiveOpt){
-                    datatable.columns.adjust().responsive.recalc().draw();
-                }else{
-                    datatable.columns.adjust().draw();
-                }
-            }
+            redrawColumns() ;
         } ;
         element.search = function(value){
             ensureDatatable(function(){
@@ -2813,11 +2807,7 @@
             if(datatable){
                 datatable.clear();
                 datatable.rows.add(value);
-                if(responsiveOpt){
-                    datatable.columns.adjust().responsive.recalc().draw();
-                }else{
-                    datatable.columns.adjust().draw();
-                }
+                redrawColumns() ;
             }
         } ;
         element.setReadOnly = function(readOnly){
@@ -3038,6 +3028,22 @@
             }
         };
 
+        function redrawColumns(){
+            if(datatable && view.isDisplayed()){
+                if(responsiveOpt){
+                    datatable.columns.adjust().responsive.recalc().draw();
+                }else{
+                    datatable.columns.adjust().draw();
+                }
+            }
+        }
+
+        function redraw(){
+            if(datatable && view.isDisplayed()){
+                datatable.draw();
+            }
+        }
+
         view.ensureDisplayed(function(){
             if(!datatable){
                 //create only when displayed
@@ -3170,7 +3176,7 @@
                         }
                         v.close() ;
                         showFilters() ;
-                        datatable.draw() ;
+                        redraw() ;
                     }) ;
                     //openPopupSearchColumn(ev.target.parentElement.getAttribute("data-field-defname")) ;
                     ev.preventDefault() ;
@@ -3220,14 +3226,12 @@
                 triggerEvent(element, "tableinit") ;
             }else{
                 //already exists, redraw
-                if(responsiveOpt){
-                    datatable.columns.adjust().responsive.recalc().draw();
-                }else{
-                    datatable.columns.adjust().draw();
-                }
+                redrawColumns();
             }
         }) ;
     }
+
+    
 
     function createGridRenderer(tableAndColName, type){
         if(["int", "integer", "double", "float", "float8", "number", "decimal"].indexOf(type) !== -1){
