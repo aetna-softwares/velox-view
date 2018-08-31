@@ -2569,7 +2569,7 @@
             gridOptions.select = {
                 style: checkBoxMultiple?'multi':'single'
             } ;
-            function refreshHeaderCheckbox(){
+            var refreshHeaderCheckbox = function(){
                 var rows = datatable.rows({ 'search': 'applied' }).nodes();
                 var allUnchecked = true ;
                 var allChecked = true ;
@@ -2595,7 +2595,7 @@
                     selectAll.checked = true ;
                     selectAll.indeterminate = true;
                 }
-            }
+            } ;
             ensureDatatable(function(){
                 datatable.on( 'select', function ( e, dt, type, indexes ) {
                     if ( type === 'row' ) {
@@ -2897,7 +2897,7 @@
             return selection ;
         } ;
 
-        function getColumnDef(fieldName){
+        var getColumnDef = function(fieldName){
             var colDef = null;
             gridOptions.columns.some(function(col){
                 if(col.data === fieldName){
@@ -2906,17 +2906,17 @@
                 }
             }) ;
             return colDef;
-        }
+        } ;
 
-        function getColumnLabel(fieldName){
+        var getColumnLabel = function(fieldName){
             var colDef = getColumnDef(fieldName) ;
             if(colDef){
                  return colDef.title.replace(titleHeaderSearchHtml, "") ;
             }
             return "";
-        }
+        } ;
         
-        function showFilters(){
+        var showFilters = function(){
             var filters = gridFilters[thisGridId] ;
             var allTh = element.querySelectorAll('th[data-field-name]') ;
             for(var i=0; i<allTh.length; i++){
@@ -3011,10 +3011,10 @@
                     searchInfoDiv.parentElement.removeChild(searchInfoDiv) ;
                 }
             }
-        }
+        } ;
 
 
-       function showSearchHistory(){
+       var showSearchHistory = function(){
             var inputSearch = element.querySelector('[type="search"]') ;
             if(inputSearch){
                 var elHistory = document.createElement("SPAN") ;
@@ -3096,7 +3096,7 @@
             }
         };
 
-        function redrawColumns(){
+        var redrawColumns = function(){
             if(datatable && view.isDisplayed()){
                 if(responsiveOpt){
                     datatable.columns.adjust().responsive.recalc().draw();
@@ -3104,13 +3104,13 @@
                     datatable.columns.adjust().draw();
                 }
             }
-        }
+        };
 
-        function redraw(){
+        var redraw = function(){
             if(datatable && view.isDisplayed()){
                 datatable.draw();
             }
-        }
+        };
 
         view.ensureDisplayed(function(){
             if(!datatable){
