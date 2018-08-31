@@ -466,7 +466,55 @@
             cdn: "https://cdn.quilljs.com/$VERSION/quill.js",
             bowerPath: "quill/dist/quill.min.js.map",
             npmPath: "quill/dist/quill.min.js.map",
-        }
+        },
+        // {
+        //     name: "pdf-js-html",
+        //     type: "html",
+        //     version: PDFJS_VERSION,
+        //     npmPath: "velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/viewer.html"
+        // },
+        // {
+        //     name: "pdf-js-js",
+        //     type: "js",
+        //     version: PDFJS_VERSION,
+        //     npmPath: "velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/viewer.js"
+        // },
+        // {
+        //     name: "pdf-js-css",
+        //     type: "css",
+        //     version: PDFJS_VERSION,
+        //     npmPath: "velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/viewer.css"
+        // },
+        // {
+        //     name: "pdf-js-images",
+        //     type: "raw",
+        //     version: PDFJS_VERSION,
+        //     npmPath: "velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/images/*"
+        // },
+        // {
+        //     name: "pdf-js-locales-fr",
+        //     type: "raw",
+        //     version: PDFJS_VERSION,
+        //     npmPath: "velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/locale/fr/*"
+        // },
+        // {
+        //     name: "pdf-js-locales-es",
+        //     type: "raw",
+        //     version: PDFJS_VERSION,
+        //     npmPath: "velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/locale/es-ES/*"
+        // },
+        // {
+        //     name: "pdf-js-locales-de",
+        //     type: "raw",
+        //     version: PDFJS_VERSION,
+        //     npmPath: "velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/locale/de/*"
+        // },
+        // {
+        //     name: "pdf-js-locales-en",
+        //     type: "raw",
+        //     version: PDFJS_VERSION,
+        //     npmPath: "velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/locale/en-GB/*"
+        // },
     ] ;
 
     /**
@@ -975,6 +1023,26 @@
             //no lib
         } else if(fieldType === "pdf"){
             setLibToLoad("PDFObject", function(done){
+                if(!navigator.mimeTypes['application/pdf']){
+                    var isModernBrowser = (function (){ return (typeof window.Promise !== "undefined"); })() ;
+    
+                    var ua = window.navigator.userAgent;
+                    //Sniff for Firefox
+                    var isFirefox = (function (){ return (ua.indexOf("irefox") !== -1); } )();
+                    //Firefox started shipping PDF.js in Firefox 19.
+                    //If this is Firefox 19 or greater, assume PDF.js is available
+                    var isFirefoxWithPDFJS = (function (){
+                        if(!isFirefox){ return false; }
+                        //parse userAgent string to get release version ("rv")
+                        //ex: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:57.0) Gecko/20100101 Firefox/57.0
+                        return (parseInt(ua.split("rv:")[1].split(".")[0], 10) > 18);
+                    })();
+    
+                    if(isModernBrowser || isFirefoxWithPDFJS){
+                        //force PDF support
+                        navigator.mimeTypes['application/pdf'] = true ;
+                    }
+                }
                 loadLib("PDFObject", PDFOBJECT_VERSION, PDFOBJECT_LIB, done) ;
             }) ;
         } else if(fieldType === "html"){
@@ -3527,13 +3595,16 @@
             pdfEl.style.height = "100%";
             element.appendChild(pdfEl) ;
             var options = {} ;
-            if(!libs.PDFObject.supportsPDFs){
-                if(VeloxScriptLoader.options.policy === "cdn"){
-                    console.warn("This browser does not support PDF and PDF.js viewer cannot be load from CDN because it cannot run remotely") ;
-                }else{
-                    options.PDFJS_URL = VeloxScriptLoader.options.bowerPath+"velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/viewer.html" ;
-                }
-            }
+
+            
+
+            // if(!libs.PDFObject.supportsPDFs){
+            //     if(VeloxScriptLoader.options.policy === "cdn"){
+            //         console.warn("This browser does not support PDF and PDF.js viewer cannot be load from CDN because it cannot run remotely") ;
+            //     }else{
+            //         options.PDFJS_URL = VeloxScriptLoader.options.npmPath+"velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/viewer.html" ;
+            //     }
+            // }
             
             /*var embedEl = */libs.PDFObject.embed(baseUrl+value, pdfEl, options);
         } ;
