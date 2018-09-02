@@ -1877,7 +1877,7 @@
                         }
                         el.src = src ;
                     }else{
-                        el.src = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+                        el.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8zwQAAgYBAyKDV6YAAAAASUVORK5CYII=";
                     }
                 }else if (el.tagName === "OBJECT") {  
                     if(bindData){
@@ -1887,7 +1887,7 @@
                         }
                         el.data = src ;
                     }else{
-                        el.data = "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=";
+                        el.data = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8zwQAAgYBAyKDV6YAAAAASUVORK5CYII=";
                     }
                 } else {
                     bindData = this.format(bindData) ;
