@@ -236,7 +236,13 @@
                 //get the list array from data
                 var elements = this.elementsHavingAttribute("data-bind");
                 elements.forEach(function(element){
-                    element.addEventListener("change", function(){
+                    var eventType = "change" ;
+                    if(element.tagName === "INPUT" && element.type === "text"){
+                        eventType = "keyup" ;
+                    }else if(element.hasAttribute("data-field") && element.getAttribute("data-field") === "varchar"){
+                        eventType = "keyup" ;
+                    }
+                    element.addEventListener(eventType, function(){
                         //a change happen 
                         if(this.listAutoActive){ //the list is active
                             var listIndex = viewDef.instances.indexOf(this) ; //recompute because it may have change with remove actions
