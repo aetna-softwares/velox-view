@@ -2427,8 +2427,10 @@
                         index: this.indexMultiple,
                         view: this
                     });
-                    ev.preventDefault() ; 
-                    ev.stopPropagation() ;
+                    if(el.tagName !== "INPUT"){
+                        ev.preventDefault() ; 
+                        ev.stopPropagation() ;
+                    }
                 }).bind(this));
             }).bind(this)(i);
         }
