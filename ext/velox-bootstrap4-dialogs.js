@@ -42,12 +42,13 @@
         if(dialogCSSLoaded){ return ;}
 
         var css = ".modal-body { max-height: calc(100vh - 60px); overflow: auto; }";
+        css += ".modal-lg.modal-wide { max-width: 98%; } \n";
         css += ".modal-lg .modal-body { height: calc(100vh - 60px); } \n";
         css += "@media (min-width: 992px) {"+
             ".modal-md { "+
             "    max-width:50% "+
             "}"+
-            ".modal-lg .modal-body { height: calc(100vh - 120px); }"+
+            ".modal-lg .modal-body { height: calc(100vh - 121px); }"+
         "}" ;
 
         var head = document.getElementsByTagName('head')[0];
@@ -249,6 +250,8 @@
                 modalSize = "modal-md";
             }else if(options.size==="large"){
                 modalSize = "modal-lg";
+            }else if(options.size==="wide"){
+                modalSize = "modal-lg modal-wide";
             }
     
             var modalHtml = '<div class="modal fade" data-focus="false" tabindex="-1" role="dialog" aria-labelledby="exampleModalCenterTitle" aria-hidden="true">'+
