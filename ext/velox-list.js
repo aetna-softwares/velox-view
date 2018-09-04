@@ -1,7 +1,8 @@
+/*global define, echarts*/
 ; (function (global, factory) {
     if (typeof exports === 'object' && typeof module !== 'undefined') {
-        var VeloxScriptLoader = require("velox-scriptloader") ;
-        var VeloxWebView = require("velox-webview") ;
+        var VeloxScriptLoader = require("velox-loader") ;
+        var VeloxWebView = require("../velox-web-view") ;
         module.exports = factory(VeloxScriptLoader, VeloxWebView) ;
     } else if (typeof define === 'function' && define.amd) {
         define(['VeloxScriptLoader', 'VeloxWebView'], factory);
@@ -18,7 +19,7 @@
     var sortableCSSLoaded = false;
 
     ///// DEPENDENCIES LIBRARIES LOADING ////////
-    var SORTABLE_VERSION = "1.6.0";
+    var SORTABLE_VERSION = "1.7.0";
 
     var SORTABLE_LIB = {
         name: "sortablejs",
@@ -26,15 +27,19 @@
         version: SORTABLE_VERSION,
         cdn: "https://cdn.jsdelivr.net/npm/sortablejs@$VERSION/Sortable.min.js",
         bowerPath: "Sortable/Sortable.min.js",
-        npmPath: "Sortable/Sortable.min.js",
+        npmPath: "sortablejs/Sortable.min.js",
     } ;
 
+    
     /**
      * field extension definition
      */
     var extension = {} ;
     extension.name = "list" ;
-
+    
+    extension.libs = [
+        SORTABLE_LIB
+    ] ;
     //must run before fields extension
     extension.mustRunAfter = ["fields"] ;
 
