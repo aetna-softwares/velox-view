@@ -1701,7 +1701,7 @@
     } ;
     
     VeloxWebView.prototype.getElement = function(el){
-        if(el.realEls.length>0){ return el.realEls[0] ;}
+        if(el.realEls && el.realEls.length>0){ return el.realEls[0] ;}
         return el ;
     } ;
 
