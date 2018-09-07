@@ -436,30 +436,6 @@
         QUILL_LIB,
         LIBPHONE_LIB,
         {
-            name: "datatables-locales",
-            type: "json",
-            version: DATATABLES_VERSION,
-            cdn: "https://cdn.datatables.net/plug-ins/$VERSION/i18n/*.json",
-            bowerPath: "datatables.net-plugins/i18n/*.lang",
-            npmPath: "datatables.net-plugins/i18n/*.lang",
-        },
-        {
-            name: "flatpickr-calendar-locales",
-            type: "js",
-            version: FLATPICKR_VERSION,
-            cdn: "https://npmcdn.com/flatpickr@$VERSION/dist/l10n/*.js",
-            bowerPath: "flatpickr/dist/l10n/*.js",
-            npmPath: "flatpickr/dist/l10n/*.js",
-        },
-        {
-            name: "moment-locales",
-            type: "js",
-            version: MOMENTJS_VERSION,
-            cdn: "https://cdnjs.cloudflare.com/ajax/libs/moment.js/$VERSION/locale/*.js",
-            bowerPath: "moment/locale/*.js",
-            npmPath: "moment/locale/*.js"
-        },
-        {
             name: "quill-map",
             type: "js",
             version: QUILL_VERSION,
@@ -515,7 +491,44 @@
         //     version: PDFJS_VERSION,
         //     npmPath: "velox-view/ext/pdfjs/"+PDFJS_VERSION+"/web/locale/en-GB/*"
         // },
-    ] ;
+    ]
+    .concat(
+        ["de", "fr", "es", 'en-gb', "vi"].map(function(l){
+            return {
+                name: "moment-locales-"+l,
+                type: "js",
+                version: MOMENTJS_VERSION,
+                cdn: "https://cdnjs.cloudflare.com/ajax/libs/moment.js/$VERSION/locale/"+l+".js",
+                bowerPath: "moment/locale/"+l+".js",
+                npmPath: "moment/locale/"+l+".js"
+            };
+        })
+    ) 
+    .concat(
+        ["English", "German", "French", 'Spanish', "Vietnamese"].map(function(l){
+            return {
+                name: "datatables-locales-"+l,
+                type: "json",
+                version: DATATABLES_VERSION,
+                cdn: "https://cdn.datatables.net/plug-ins/$VERSION/i18n/"+l+".lang",
+                bowerPath: "datatables.net-plugins/i18n/"+l+".lang",
+                npmPath: "datatables.net-plugins/i18n/"+l+".lang",
+            } ;
+        })
+    ) 
+    .concat(
+        ["fr", "es", "de", 'vn'].map(function(l){
+            return {
+                name: "flatpickr-calendar-locales-"+l,
+                type: "js",
+                version: FLATPICKR_VERSION,
+                cdn: "https://npmcdn.com/flatpickr@$VERSION/dist/l10n/"+l+".js",
+                bowerPath: "flatpickr/dist/l10n/"+l+".js",
+                npmPath: "flatpickr/dist/l10n/"+l+".js",
+            };
+        })
+    ) 
+    ;
 
     /**
      * Translate the locale code in flatpicker naming conviention
