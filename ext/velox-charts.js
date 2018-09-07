@@ -307,6 +307,8 @@
         var currentValue = "";
         var inProp = true;
         var inComplexValue = false;
+        var inQuotedValue = false;
+        var currentQuoteChar = false;
         for(var i=0; i<str.length; i++){
             var c = str[i] ;
             if(inProp && c === ":"){
@@ -320,12 +322,18 @@
                 }else{
                     if(!currentValue && c === "{"){
                         inComplexValue = true ;
+                    }else if(!currentValue && (c === "'" || c === "\"")){
+                        inQuotedValue = true ;
+                        currentQuoteChar = c ;
                     }else{
                         if(inComplexValue && c === "}"){
                             inComplexValue = false;
                             obj[currentProp] = parseCssStyle(currentValue.trim()) ;
                             currentValue = "";
-                        }else if(!inComplexValue && c === ","){
+                        }else if(inQuotedValue && c === currentQuoteChar){
+                            inQuotedValue = false;
+                            currentQuoteChar = null;
+                        }else if(!inComplexValue && !inQuotedValue && c === ","){
                             inProp = true;
                             if(currentValue){
                                 obj[currentProp] = sanitizeValue(currentValue) ;
