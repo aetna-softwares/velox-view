@@ -3184,6 +3184,7 @@
                         var id = item.getAttribute("data-original-id") ;
                         customButtons.push({
                             text: item.innerHTML,
+                            titleAttr: item.title,
                             className: (item.className||"")+(" table-custom-button-"+id),
                             action: function(){
                                 view.emit(id) ;
