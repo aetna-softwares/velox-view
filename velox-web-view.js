@@ -2584,6 +2584,8 @@
             if(globalErrors.length > 0){
                 var msg = globalErrors.map(function(e){ return "<p>"+e.msg+"</p>" ;}).join("") ;
                 this.formError(msg) ;
+            }else{
+                this.clearFormError() ;
             }
             callback(null, formValidity&&errors.length === 0) ;
         }.bind(this)) ;
