@@ -1519,9 +1519,13 @@
                 input.focus() ;
             };
             
-            ["change", "focus", "blur", "keyUp", "keyDown"].forEach(function(eventName){
+            ["focus", "blur", "keyup", "keydown"].forEach(function(eventName){
                 input.addEventListener(eventName, function(ev){
                     triggerEvent(element, ev) ;
+                    if(eventName === "blur"){
+                        //change is not fired because of mask
+                        triggerEvent(element, "change") ;
+                    }
                 }) ;
             }) ;
         }
