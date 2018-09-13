@@ -2416,20 +2416,29 @@
         var title = filename;
 
         var buttons = [
-            'colvis', 
-            'copy',
+            {
+                extend: 'colvis',
+                titleAttr: VeloxWebView.tr?VeloxWebView.tr("global.columnVisibility"):"Column visibility",
+            },
+            {
+                extend: 'copy',
+                titleAttr: VeloxWebView.tr?VeloxWebView.tr("global.copyLines"):"Copy",
+            },
             {
                 extend: 'excel',
                 title: title,
+                titleAttr: VeloxWebView.tr?VeloxWebView.tr("global.excelExport"):"Excel",
                 filename: filename,
             },
             {
                 extend: 'pdf',
                 title: title,
+                titleAttr: VeloxWebView.tr?VeloxWebView.tr("global.pdfExport"):"PDF",
                 filename: filename,
             },
             {
                 extend: 'print',
+                titleAttr: VeloxWebView.tr?VeloxWebView.tr("global.print"):"PDF",
                 title: title,
             },
         ] ;
