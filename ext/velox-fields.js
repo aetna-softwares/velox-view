@@ -1801,6 +1801,7 @@
         css += ".select-multiple-container {min-height: 35px; width: 100%; border-width: 1px; position: relative;} ";
         css += ".readonly .select-multiple-container {background: #e9ecef;} ";
         css += ".select-multiple-values {line-height: 2.4em;} ";
+        css += ".select-multiple-option {font-size: 1.2em} ";
         css += ".select-multiple-option-selected {font-weight: bold; background-color: #EEE} ";
         css += ".select-multiple-value-item {background: #EEE; padding: 5px; margin-right: 10px; border-radius: 2px; border: 1px solid #DDD;white-space: nowrap;} ";
         
@@ -2084,10 +2085,17 @@
                 var options = select.options ;
                 for (var y=0; y<options.length; y++) {
                     var opt = options[y];
+                    if(!opt.hasAttribute("data-label")){
+                        opt.setAttribute("data-label", opt.innerText) ;
+                    }
                     if(isMobile){
                         opt.selected = false;
                     }else{
                         opt.className = opt.className.replace(" select-multiple-option-selected", "") ;
+                        opt.className = opt.className += " select-multiple-option";
+                        if(opt.value){
+                            opt.innerHTML = "&#9744; "+opt.getAttribute("data-label")  ;
+                        }
                     }
                 }
                 for(var i=0; i<currentValue.length; i++){
@@ -2099,11 +2107,12 @@
                                 if(isMobile){
                                     opt.selected = true;
                                 }else{
+                                    opt.innerHTML = "&#9746; "+opt.getAttribute("data-label") ;
                                     opt.className += " select-multiple-option-selected" ;
                                 }
                                 var spanValue = document.createElement("SPAN") ;
                                 spanValue.setAttribute("data-value", opt.value) ;
-                                spanValue.innerText = opt.innerText ;
+                                spanValue.innerText = opt.getAttribute("data-label")  ;
                                 spanValue.className = "select-multiple-value-item" ;
                                 divSelection.appendChild(spanValue) ;
                                 divSelection.appendChild(document.createTextNode(" ")) ;
