@@ -632,7 +632,7 @@
             if(colDef){
                 if(Array.isArray(colDef.values)){
                     if(VeloxWebView.i18n){
-                        if(value){;
+                        if(value){
                             if(colDef.type === "multiple"){
                                 if(!Array.isArray(value)){ value = [value] ; }
                                 return value.map(function(d){ 

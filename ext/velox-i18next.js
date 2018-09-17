@@ -167,9 +167,10 @@
     function format(value, type) {
         if (value === null || value === undefined) {
             if(["int", "integer", "number"].indexOf(type) !== -1){
-                return "0";
+                return " - ";
             }else if(["double", "float", "float8"].indexOf(type) !== -1){
-                return "0"+currentLocale.delimiters.decimal+"00";
+                return " - ";
+                //return "0"+currentLocale.delimiters.decimal+"00";
             }else{
                 return "";
             }
