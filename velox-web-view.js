@@ -194,9 +194,24 @@
                         //the expression use a variable name that is not in arguments name
                         
                         //add the variable to the argument list with undefined value
-                        var varName = e.message.split(" ")[0].replace(/'/g, "") ;
-                        argNames.push(varName);
-                        argValues.push(undefined) ;
+                        var varName = "";
+                        if(/is not defined$/.test(e.message)){//Chrome, FF
+                            varName = e.message.split(" ")[0].replace(/'/g, "") ;
+                        }else if(/is undefined$/.test(e.message)){//IE
+                            varName = e.message.split(" ")[0].replace(/'/g, "") ;
+                        }else if(e.message.indexOf("Can't find variable") === 0){//Safari
+                            varName = e.message.split(" ").pop().replace(/'/g, "") ;
+                        }
+                        if(varName){
+                            argNames.push(varName);
+                            argValues.push(undefined) ;
+                        }else{
+                            console.log("Unregonized error format "+e.message+", try to add all words....") ;
+                            e.message.split(" ").forEach(function(w){
+                                argNames.push(w.replace(/[^a-zA-Z0-9_]/g, ""));
+                                argValues.push(undefined) ;
+                            }) ;
+                        }
                         func = null;
                         funcKey = argNames.join("_")+expr ;
                         continue; //retry
