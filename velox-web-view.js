@@ -1175,7 +1175,7 @@
         var xhr = new XMLHttpRequest();
         xhr.open('GET', url);
         xhr.onload = (function () {
-            if (xhr.status === 200) {
+            if (xhr.status === 200 || (xhr.status === 0 && xhr.responseText)) {
                 callback.bind(this)(xhr.responseText);
             } else {
                 callback.bind(this)('Request to ' + url + ' failed.  Returned status of ' + xhr.status);
