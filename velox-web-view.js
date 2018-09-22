@@ -1300,6 +1300,9 @@
             var parser = new DOMParser();
             xmlDoc = parser.parseFromString(html,"text/html");
         }
+        if(!xmlDoc || !xmlDoc.head){
+            throw "No doc head in this HTML : "+html ;
+        }
         if(xmlDoc.head.children.length>0){
             var child = xmlDoc.head.children[0] ;
             var scriptIndex = 0;
