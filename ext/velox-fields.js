@@ -2893,7 +2893,7 @@
                     var obj = row ;
                     while(path.length>0){
                         var p = path.shift() ;
-                        if(!obj[p]){
+                        if(obj[p] === null || obj[p] === undefined){
                             if(path.length===0){
                                 obj[p] = null;
                             }else{
