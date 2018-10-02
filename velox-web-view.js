@@ -1298,7 +1298,14 @@
             // } ;
         }else{
             var parser = new DOMParser();
-            xmlDoc = parser.parseFromString(html,"text/html");
+            var testsParse = 0;
+            while(!xmlDoc || !xmlDoc.head){//loop because sometime safari mobile is not working at first try
+                testsParse++ ;
+                xmlDoc = parser.parseFromString(html,"text/html");
+                if(testsParse>3){
+                    break;
+                }
+            }
         }
         if(!xmlDoc || !xmlDoc.head){
             throw "No doc head in this HTML : "+html ;
