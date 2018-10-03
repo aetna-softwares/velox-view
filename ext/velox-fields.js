@@ -1446,7 +1446,15 @@
     function createNumberField(element, fieldType, fieldSize, fieldOptions){
         //loadNumberCSS() ;
         var input = appendInputHtml(element) ;
+
         input.type = "tel" ;
+        if(fieldType==="numeric" || fieldType==="decimal" || fieldType==="double" || fieldType==="float" || fieldType==="float8" || fieldType==="percent" || fieldType==="currency"){
+            var iOS = !!navigator.platform && /iPad|iPhone|iPod/.test(navigator.platform);
+            if(iOS){
+                input.type = "text" ;//ios does not support decimal separator in tel pad
+            }
+        }
+
 
         var maskField = null;
         var maskOptions = { 
