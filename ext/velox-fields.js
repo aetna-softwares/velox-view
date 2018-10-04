@@ -2737,8 +2737,11 @@
             if(th.hasAttribute("colspan")){ return ; }
             var colDef = {
                 data     : th.getAttribute("data-field-name")||"f"+i,
-                //width    : th.getAttribute("data-field-size")
             };
+            if(th.hasAttribute("data-field-size")){
+                colDef.width = th.getAttribute("data-field-size") ;
+            }
+
 
             if(th.hasAttribute("data-cell-view-id")){
                 var elView = view.cellViews[th.getAttribute("data-cell-view-id")] ;
