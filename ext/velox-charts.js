@@ -1,4 +1,4 @@
-/*global define, echarts*/
+/*global define, Chart*/
 ; (function (global, factory) {
     if (typeof exports === 'object' && typeof module !== 'undefined') {
         var VeloxScriptLoader = require("velox-loader") ;
@@ -84,46 +84,22 @@
     } ;
 
     ///// DEPENDENCIES LIBRARIES LOADING ////////
-    var ECHARTS_VERSION = "4.1.0"; 
+    var CHARTJS_VERSION = "2.7.2"; 
 
-    var ECHARTS_LIB = {
-        name: "echarts",
-        type: "js",
-        version: ECHARTS_VERSION,
-        cdn: "https://cdnjs.cloudflare.com/ajax/libs/echarts/$VERSION/echarts.min.js",
-        bowerPath: "echarts/dist/echarts.min.js",
-        npmPath: "echarts/dist/echarts.min.js",
-    } ;
+    var CHARTJS_LIB = [
+        {
+            name: "chartjs-js",
+            type: "js",
+            version: CHARTJS_VERSION,
+            cdn: "https://cdnjs.com/libraries/Chart.js",
+            bowerPath: "chart.js/dist/Chart.min.js",
+            npmPath: "chart.js/dist/Chart.min.js"
+        },
+    ] ;
    
     extension.libs = [
-        ECHARTS_LIB
+        CHARTJS_LIB
     ] ;
-
-
-
-    function triggerEvent(element, eventOrName){
-        var ev;
-        if(typeof(Event) === 'function') {
-            //normal browser
-            if(typeof(eventOrName) === "string"){
-                ev = new Event(eventOrName);
-            }else{
-                ev = new eventOrName.constructor(eventOrName.type, eventOrName);
-            }
-        }else{
-            //IE
-            if(typeof(eventOrName) === "string"){
-                ev = document.createEvent('Event');
-                ev.initEvent(eventOrName, true, true);
-            }else{
-                ev = document.createEvent('Event');
-                ev.initEvent(eventOrName.type, true, true);
-            }
-        }
-        element.dispatchEvent(ev);
-    }
-    
-
 
     /**
      * init view charts
@@ -220,8 +196,8 @@
     }
 
     function setNeededLib(chartType, chartOptions){
-        setLibToLoad("echarts", function(done){
-            loadLib("echarts", ECHARTS_VERSION, ECHARTS_LIB, done) ;
+        setLibToLoad("chart.js", function(done){
+            loadLib("chart.js", CHARTJS_VERSION, CHARTJS_LIB, done) ;
         }) ;
     }
 
@@ -356,6 +332,7 @@
     }
 
     function commonChartInit(element, option){
+        return ;
         if(element.hasAttribute("data-title")){
             var customTitle = parseCssStyle(element.getAttribute("data-title")) ;
             if(!option.title){ 
@@ -446,31 +423,49 @@
      * @param {function(Error)} callback called when finished
      */
     function createPie(element, chartType, fieldOptions, view){
-        var option = {} ;
+        var div = document.createElement('div') ;
+        div.style.position= "relative" ;
+        var canvas = document.createElement('canvas') ;
+        canvas.style.height= "100%" ;
+        div.appendChild(canvas) ;
+        element.appendChild(div) ;
 
-        var serieName = "";
+        var chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+        };
+        var option = {
+            type: chartType==="donut"?"doughnut":chartType,
+            options: chartOptions
+        } ;
+
+        var values = [] ;
+        var labels = [] ;
+        var colors = [] ;
+        var data = {
+            datasets: [{
+                data: values,
+                backgroundColor: colors
+            }],
+            labels: labels,
+        } ;
+        option.data = data;
+
         var elLabel = element.querySelector("label") ;
         if(elLabel){
-            option.title = { text: elLabel.innerHTML, x:'center' } ;
-            serieName = elLabel.innerHTML;
+            chartOptions.title = { display: true, text: elLabel.innerHTML, position:'top', fontSize: 14 } ;
+            element.removeChild(elLabel) ;
         }
 
-        option.tooltip = {
-            trigger: 'item',
-            formatter: "{a} <br/>{b} : {c} ({d}%)"
-        };
-
-        var data = {legendData : [], selected: {}, seriesData: []};
         
-        var colors = [] ;
         var elTable = element.querySelector("table") ;
         if(elTable){
             var ths = elTable.querySelectorAll("th") ;
             for(var i=0; i<ths.length; i++){
                 var th = ths[i];
                 var label = th.innerHTML;
-                data.legendData.push(th.innerHTML) ;
-                data.selected[label] = !th.hasAttribute("data-selected")||th.getAttribute("data-selected")==="true" ;
+                labels.push(label) ;
+                // data.selected[label] = !th.hasAttribute("data-selected")||th.getAttribute("data-selected")==="true" ;
                 if(th.hasAttribute("data-color")){
                     colors.push(th.getAttribute("data-color")) ;
                 }
@@ -478,54 +473,34 @@
             var tds = elTable.querySelectorAll("td") ;
             for(var i=0; i<tds.length; i++){
                 var td = tds[i];
-                var label = data.legendData[i];
+                var label = labels[i];
                 var value = Number(td.innerHTML) ;
-                data.seriesData.push({
-                    name: label,
-                    value: value
-                }) ;
+                values.push(value) ;
+                //data.colors[label] = colors[i] ;
             }
             var caption = elTable.querySelector("caption") ;
             if(caption){
-                serieName = caption.innerHTML ;
+                chartOptions.title = { 
+                    display: true,
+                    text: caption.innerHTML, 
+                    position:'top' 
+                } ;
             }
+            element.removeChild(elTable) ;
         }
 
-        if(colors.length>0){
-            option.color = colors ;
-        }
-
-        option.legend = {
-            type: 'scroll',
-            orient: 'horizontal',
-            top: 20,
-            data: data.legendData,
-            selected: data.selected
-        };
-
-        option.series = [
-            {
-                name: serieName,
-                type: 'pie',
-                radius : chartType==="donut"?['50%', '70%']:'50%',
-                //center: ['40%', '50%'],
-                data: data.seriesData,
-                itemStyle: {
-                    emphasis: {
-                        shadowBlur: 10,
-                        shadowOffsetX: 0,
-                        shadowColor: 'rgba(0, 0, 0, 0.5)'
-                    }
-                }
-            }
-        ] ;
 
         commonChartInit(element, option) ;
 
+        var chart = null;
+        view.ensureDisplayed(function(){
+            chart = new Chart(canvas, option) ;
+        });
 
-        var myChart = echarts.init(element);
 
-        var currentValue = data.seriesData ;
+        var currentValue = values.map(function(v,i){
+            return { name: v, value: labels[i]} ;
+        }) ;
 
         /**
          * 
@@ -533,10 +508,10 @@
          */
         element.setValue = function(value){
             currentValue = value;
-            option.legend.data = value.map(function(v){ return v.name ;});
-            option.series[0].data = value;
             view.ensureDisplayed(function(){
-                myChart.setOption(option);
+                chart.data.labels = value.map(function(v){ return  v.name; }),
+                chart.data.datasets[0].data = value.map(function(v){ return  v.value; }),
+                chart.update();
             });
         } ;
 
@@ -544,20 +519,15 @@
             return currentValue;
         } ;
 
-        view.ensureDisplayed(function(){
-            myChart.setOption(option);
-            myChart.resize() ;
-        });
+        // view.on("render", function(){
+        //     commonChartInit(element, option) ;
+        //     view.ensureDisplayed(function(){
+        //         myChart.setOption(option);
+        //     }) ;
+        // }) ;
 
-        view.on("render", function(){
-            commonChartInit(element, option) ;
-            view.ensureDisplayed(function(){
-                myChart.setOption(option);
-            }) ;
-        }) ;
-
-        element.getDataURL = function(opts){
-            return myChart.getDataURL(opts) ;
+        element.getDataURL = function(){
+            return chart.toBase64Image() ;
         };
     }
     
@@ -570,92 +540,145 @@
      * @param {function(Error)} callback called when finished
      */
     function createBar(element, chartType, fieldOptions, view){
-        var option = {} ;
 
-        var serieName = "";
+        var div = document.createElement('div') ;
+        div.style.position= "relative" ;
+        var canvas = document.createElement('canvas') ;
+        canvas.style.height= "100%" ;
+        div.appendChild(canvas) ;
+        element.appendChild(div) ;
+
+        var chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+        };
+        var option = {
+            type: chartType==="donut"?"doughnut":chartType,
+            options: chartOptions
+        } ;
+        
+
+        var datasets = [] ;
+        var categories = [] ;
+       
+        var data = {
+            labels: categories,
+            datasets: datasets,
+        } ;
+        option.data = data;
+
         var elLabel = element.querySelector("label") ;
         if(elLabel){
-            option.title = { text: elLabel.innerHTML, x:'center' } ;
-            serieName = elLabel.innerHTML;
+            chartOptions.title = { display: true, text: elLabel.innerHTML, position:'top', fontSize: 14 } ;
+            element.removeChild(elLabel) ;
         }
 
-        option.tooltip = {
-            trigger: 'item',
-            formatter: "{a} <br/>{b} : {c}"
-        };
-
-        var data = {xAxisData : [], selected: {}, seriesData: []};
-        
-        var colors = [] ;
+/*
+        |        | Serie1 | Serie2 |
+        | month1 |  val1  |  val2  |
+        | month2 |  val1  |  val2  |
+*/
         var elTable = element.querySelector("table") ;
         if(elTable){
-            var ths = elTable.querySelectorAll("th") ;
-            for(var i=0; i<ths.length; i++){
-                var th = ths[i];
-                data.xAxisData.push(th.innerHTML) ;
-                if(th.hasAttribute("data-color")){
-                    colors.push(th.getAttribute("data-color")) ;
+            var trs = elTable.querySelectorAll("tr") ;
+            for(var y=0; i<trs.length; y++){
+                var tr = trs[y] ;
+
+                if(y===0){
+                    //first line series labels
+                    var ths = tr.querySelectorAll("th") ;
+                    for(var i=0; i<ths.length; i++){
+                        var th = ths[i];
+                        var ds = {
+                            label : th.innerHTML,
+                            data: []
+                        };
+                        datasets.push(ds) ;
+                        if(th.hasAttribute("data-color")){
+                            ds.backgroundColor = th.getAttribute("data-color") ;
+                        }
+                    }
+                }else{
+                    //body lines
+                    var ths = tr.querySelectorAll("th") ;
+                    for(var i=0; i<ths.length; i++){
+                        var th = ths[i];
+                        categories.push(th.innerHTML) ;
+                    }
+
+                    var tds = tr.querySelectorAll("td") ;
+                    for(var i=0; i<tds.length; i++){
+                        var td = tds[i];
+                        var value = Number(td.innerHTML) ;
+                        datasets[i].data.push(value) ;
+                    }
                 }
-            }
-            var tds = elTable.querySelectorAll("td") ;
-            for(var i=0; i<tds.length; i++){
-                var td = tds[i];
-                var label = data.xAxisData[i];
-                var value = Number(td.innerHTML) ;
-                data.seriesData.push({
-                    name: label,
-                    value: value
-                }) ;
+
+                
             }
             var caption = elTable.querySelector("caption") ;
             if(caption){
-                serieName = caption.innerHTML ;
+                chartOptions.title = { 
+                    display: true,
+                    text: caption.innerHTML, 
+                    position:'top' 
+                } ;
             }
+            element.removeChild(elTable) ;
         }
 
-        if(colors.length>0){
-            option.color = colors ;
+        if(datasets.length<=1){
+            chartOptions.legend = { display: false } ;
         }
-
-        option.yAxis = {
-            type: 'value'
-        };
-        option.xAxis = {
-            type: 'category',
-            data: data.xAxisData
-        } ;
-        option.series = [
-            {
-                name: serieName,
-                type: 'bar',
-                data: data.seriesData.map(function(v){ return v.value ;}),
-                itemStyle: {
-                    emphasis: {
-                        shadowBlur: 10,
-                        shadowOffsetX: 0,
-                        shadowColor: 'rgba(0, 0, 0, 0.5)'
-                    }
-                }
-            }
-        ] ;
-
-        var myChart = echarts.init(element);
 
         commonChartInit(element, option) ;
+
+        var chart = null;
+        view.ensureDisplayed(function(){
+            chart = new Chart(canvas, option) ;
+        });
         
         
-        var currentValue = data.seriesData ;
+        var currentValue = datasets.map(function(ds){
+            return {
+                name: ds.label,
+                values: ds.data.map(function(v, i){
+                    return {
+                        name: categories[i],
+                        value: v
+                    };
+                })
+            };
+        });
         
         /**
          * 
-         * @param {Array} value array [{name: "", value: 123}]
+         * @param {Array} value array [{
+         *      name: "serie1", values: [
+         *          {name: "month1", value: 1}
+         *          {name: "month2", value: 2}
+         *          ] 
+         * }]
          */
         element.setValue = function(value){
             currentValue = value;
-            option.series[0].data = value.map(function(v){ return v.value ;});
-            option.xAxis.data = value.map(function(v){ return v.name ;});
+
             view.ensureDisplayed(function(){
-                myChart.setOption(option);
+                if(value[0]){
+                    chart.data.labels = value[0].values.map(function(v){ return v.name ;});
+                }
+
+                chart.data.datasets = value.map(function(v){ 
+                    return {
+                        label: v.name,
+                        backgroundColor: v.backgroundColor,
+                        data: v.values.map(function(v){ return v.value ;})
+                    } ;
+                }) ;
+                if(chart.data.datasets.length<=1){
+                    chart.options.legend = { display: false } ;
+                }
+                chart.update();
             });
         } ;
         
@@ -663,58 +686,20 @@
             return currentValue;
         } ;
         
-        view.ensureDisplayed(function(){
-            myChart.setOption(option);
-            myChart.resize() ;
-        });
+        // view.on("render", function(){
+        //     commonChartInit(element, option) ;
+        //     view.ensureDisplayed(function(){
+        //         myChart.setOption(option);
+        //     }) ;
+        // }) ;
 
-        view.on("render", function(){
-            commonChartInit(element, option) ;
-            view.ensureDisplayed(function(){
-                myChart.setOption(option);
-            }) ;
-        }) ;
-
-        element.getDataURL = function(opts){
-            return myChart.getDataURL(opts) ;
+        element.getDataURL = function(){
+            return chart.toBase64Image() ;
         };
     }
     
-    /**
-     * Create an unique ID
-     */
-    function uuidv4() {
-        if(typeof(window.crypto) !== "undefined" && crypto.getRandomValues){
-            return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, function(c){
-                return (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16) ;
-            }) ;
-        }else{
-            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-                var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-                return v.toString(16);
-            });
-        }
-    }
 
-
-    /**
-     * Change a string in regexp
-     * @param {string} str the string to transform in regexp
-     */
-    var escapeRegExp = function (str) {
-		return str.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
-	} ;
-
-    /**
-     * Replace all occurence in a string
-     * 
-     * @param {string} str string in which to replace
-     * @param {string} find the string to find
-     * @param {string} replace the string to replace
-     */
-	var replaceAll = function (str, find, replace) {
-		return str.replace(new RegExp(escapeRegExp(find), 'g'), replace);
-	} ;
+    
 
 
     return extension ;
