@@ -479,6 +479,10 @@
                 }
             }
         }
+        if(!parentElement){
+            //the parent element has been wiped out meanwhile
+            return;
+        }
         if(nextElement){
             parentElement.insertBefore(element, nextElement);
         } else if(previousElement){
