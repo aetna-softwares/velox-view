@@ -2225,11 +2225,10 @@
             if(isEnabled && !found){
                 //to enable but not found
                 for(var i=0; i<selectOptions.length; i++){
-                    var opt = selectOptions[i] ;
-                    if(opt.id == value){
+                    if(selectOptions[i].id == value){
                         var opt = document.createElement("OPTION") ;
-                        opt.value = options[i].id;
-                        opt.innerHTML = options[i].label;
+                        opt.value = selectOptions[i].id;
+                        opt.innerHTML = selectOptions[i].label;
                         select.appendChild(opt) ;
                     }
                 }
