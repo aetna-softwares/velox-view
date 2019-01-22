@@ -2055,9 +2055,22 @@
             }
         }
 
+        var selectOptions = [] ;
+        for(var i=0; i<select.options.length; i++){
+            selectOptions.push({
+                id: select.options[i].value,
+                label: select.options[i].innerHTML,
+            }) ;
+        }
         var currentValue = select.value ;
 
         var renderValues = function(){} ;
+
+        var isIos = false;
+        var nP = navigator.platform;      
+        if (nP == "iPad" || nP == "iPhone" || nP == "iPod" || nP == "iPhone Simulator" || nP == "iPad Simulator"){
+            isIos = true;
+        }
 
         var isMultiple = select.multiple ;
         if(isMultiple){
@@ -2201,6 +2214,9 @@
         } ;
 
         element.setValueEnable = function(value, isEnabled){
+            if(isIos){
+                element.setOptions(selectOptions) ;
+            }
             for(var i=0; i<select.options.length; i++){
                 var opt = select.options[i] ;
                 if(opt.value == value){
@@ -2222,9 +2238,13 @@
                     }
                 }
             }
+            if(isIos){
+                window.jQuery(select).find('option[disabled]').remove();
+            }
             renderValues() ;
         } ;
         element.setOptions = function(options){
+            selectOptions = options;
             select.innerHTML = "";
             if(!isMultiple || !isMobile){
                 var emptyOption = document.createElement("OPTION") ;
@@ -2246,6 +2266,9 @@
             renderValues() ;
         } ;
         element.getOptions = function(){
+            if(isIos){
+                return selectOptions ;
+            }
             var opts = [] ;
             for(var i=0; i<select.options.length; i++){
                 opts.push({
