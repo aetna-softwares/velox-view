@@ -2214,13 +2214,24 @@
         } ;
 
         element.setValueEnable = function(value, isEnabled){
-            if(isIos){
-                element.setOptions(selectOptions) ;
-            }
+            var found = false;
             for(var i=0; i<select.options.length; i++){
                 var opt = select.options[i] ;
                 if(opt.value == value){
+                    found = true;
                     opt.disabled = !isEnabled;
+                }
+            }
+            if(isEnabled && !found){
+                //to enable but not found
+                for(var i=0; i<selectOptions.length; i++){
+                    var opt = selectOptions[i] ;
+                    if(opt.id == value){
+                        var opt = document.createElement("OPTION") ;
+                        opt.value = options[i].id;
+                        opt.innerHTML = options[i].label;
+                        select.appendChild(opt) ;
+                    }
                 }
             }
             if(!isEnabled){
@@ -2237,9 +2248,9 @@
                         element.setValue(null) ;
                     }
                 }
-            }
-            if(isIos){
-                window.jQuery(select).find('option[disabled]').remove();
+                if(isIos){
+                    window.jQuery(select).find('option[disabled]').remove();
+                }
             }
             renderValues() ;
         } ;
