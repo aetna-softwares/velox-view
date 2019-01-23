@@ -1806,7 +1806,7 @@
         if(selectCSSLoaded){ return ;}
 
         var css = ".select-multiple-hidden {position: absolute; top:0; left:0; bottom:0; right:0; opacity: 0;  width: 100%; } ";
-        css += ".select-multiple-container {min-height: 35px; width: 100%; border-width: 1px; position: relative;} ";
+        css += ".select-multiple-container {min-height: 35px; width: 100%; border-width: 1px; position: relative; overflow-x: hidden;} ";
         css += ".readonly .select-multiple-container {background: #e9ecef;} ";
         css += ".select-multiple-values {line-height: 2.4em;} ";
         css += ".select-multiple-option {font-size: 1.2em} ";
