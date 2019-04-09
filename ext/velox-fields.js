@@ -1486,7 +1486,7 @@
                     value = replaceAll(value, maskOptions.prefix, "");
                     value = replaceAll(value, maskOptions.suffix, "");
                 }
-                value = (value === "" || value === ".") ? null : new libs.Decimal(value);
+                value = (value === "" || value === ".") ? null : new libs.Decimal(""+value);
                 if(fieldType === "percent"){
                     value = value.div(100) ;
                 }
@@ -1502,7 +1502,7 @@
                 }
                 return;
             }
-            var decimalValue = new libs.Decimal(value) ;
+            var decimalValue = new libs.Decimal(""+value) ;
             if(fieldType === "percent"){
                 decimalValue = decimalValue.mul(100) ;
             }
