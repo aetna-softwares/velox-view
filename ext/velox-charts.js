@@ -553,7 +553,7 @@
             maintainAspectRatio: false,
         };
         var option = {
-            type: chartType==="donut"?"doughnut":chartType,
+            type: chartType,
             options: chartOptions
         } ;
         
