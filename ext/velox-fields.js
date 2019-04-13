@@ -2612,6 +2612,13 @@
             order: []
         } ;
 
+        if(table.hasAttribute("data-paging")){
+            gridOptions.deferRender = true ;
+            gridOptions.paging = true ;
+            gridOptions.pageLength = Number(table.getAttribute("data-paging")) ;
+            
+        }
+
         var tfoot = element.querySelector("tfoot") ;
         if(tfoot){
             var scriptFooter = tfoot.querySelector("script") ;
