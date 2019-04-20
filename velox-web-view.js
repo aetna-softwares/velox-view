@@ -2325,7 +2325,9 @@
     VeloxWebView.prototype.updateData = function (dataToUpdate) {
 
         if(!this.boundElements){
-            throw "You try to call updateData() on a view that is not yet initialized or already closed" ;
+            console.log("You try to call updateData() on a view that is not yet initialized or already closed") ;
+            // throw  ;
+            return ;
         }
 
         var baseData = dataToUpdate;
